@@ -1,0 +1,1369 @@
+/*
+ * Typsnittet sätts HÄR och ärvs inte från värden.
+ *
+ * `guide-preview` gjorde det redan; editorn gjorde det inte, och skillnaden
+ * syntes aldrig på vår egen sajt eftersom `src/site/style.scss` sätter
+ * `font-family: var(--fw-font)` på `body`. En värd som inte gör det — eller en
+ * testsida utan stilmall — fick webbläsarens standard, alltså **serif**, i
+ * hela editorn. Mätt: `getComputedStyle(editor).fontFamily` gav "Times New
+ * Roman" medan `--fw-font` var korrekt definierad hela tiden. Tokenet fanns,
+ * ingen läste det.
+ *
+ * Det gör paketets yta oberoende av vad värdsidan råkar ha bestämt om sin
+ * brödtext, vilket är hela poängen med att ha ett token.
+ */
+@use "../../../viewer/styles/focus" as focus;
+@use "../../styles/select";
+@use "../../styles/cursors";
+
+:host {
+  display: block;
+  font-family: var(--fw-font);
+  /*
+   * The ground the package's own sizes stand on, taken from the page root
+   * rather than from whatever element we happen to be inside (Johan 21/9:
+   * *men vi jobbar i rem?*).
+   *
+   * A host page decides its own body size, and whatever it decides used to
+   * become ours: embedded in a page that sets 14 px, every relative length in
+   * here shrank with it, and the component looked like a different product on
+   * every site. GOV.UK states 19 px and Digdir 18; we stated nothing at all.
+   *
+   * `1rem` and not `16px`, which this was for one commit: `rem` resets to the
+   * page's ROOT, so the host's containers stop reaching us while the visitor's
+   * own default text size still does. A fixed px here would have overruled
+   * that setting — measured at a 20 px default, seventeen points went back
+   * down to 16, including the site's `h1` from 40 to 32 (LOGG 21/9). The type
+   * scale below `--fw-font-size-*` is in `rem` for the same reason; spacing,
+   * radii, borders and control height stay in px, because a grid is a measure
+   * and not a piece of text.
+   */
+  font-size: 1rem;
+  width: 100%;
+  height: var(--flowweaver-height, 650px);
+  min-height: var(--flowweaver-min-height, 500px);
+}
+
+/* Vårt eget helskärmsläge — se guide-editor.ts.
+
+   Plattformens `requestFullscreen` låg här och togs bort: på iPadOS lämnar ett
+   svep nedåt helskärmen, och det är Apples egen utgångsgest som varken går att
+   avlyssna eller hindras. Ett fast placerat element har ingen sådan gest att
+   krocka med.
+
+   `100dvh` och inte `100vh`: på en mobil räknar `vh` med adressfältet utfällt,
+   så sidans nederkant hamnar under fältet. `dvh` följer den yta som faktiskt
+   syns — vilket är hela poängen med ett läge som ska fylla skärmen.
+
+   Den enda kända bristen: ligger komponenten i en förälder med `transform`,
+   `filter` eller `contain` fästs den mot föräldern i stället för mot fönstret.
+   Det är värdsidans sak och går inte att upptäcka härifrån. */
+:host([wide]) {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+
+  /*
+   * `!important`, med flit och bara här. Värdsidan storleksätter elementet
+   * för det INBÄDDADE läget med en inline-stil (`style="height: 70vh"` på
+   * varje exempelsida), och en inline-stil slår ett `:host()`-block i
+   * skuggans stilark — så helskärmen ärvde sidans höjd och slutade tre
+   * fjärdedelar ned på Johans iPad och iPhone (1/9). I helskärm ÄR
+   * elementet fönstret, oavsett vad värden skrev för det lilla läget, och
+   * det enda som vinner över en inline-stil är ett viktigt värde.
+   */
+  width: 100vw !important;
+  width: 100dvw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  min-height: 0;
+  background: var(--fw-canvas);
+}
+
+/* Kvar för den som ändå försätter komponenten i äkta helskärm — via
+   webbläsarens egen meny, eller en värd som anropar `requestFullscreen`. */
+:host(:fullscreen) {
+  width: 100vw;
+  height: 100vh;
+  min-height: 0;
+  background: var(--fw-canvas);
+}
+
+.guide-editor {
+  /* Delad höjd för toolbaren och sidopanelens flikrad, så deras avskiljare
+     hamnar på exakt samma linje. Ärvs in i editor-toolbars shadow-rot. */
+  --fw-editor-header-height: 56px;
+
+  position: relative;
+  display: grid;
+  /* One column since story 145: the side panel lies over the workspace
+     instead of standing beside it (see `.guide-editor__sidebar`). */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+
+  overflow: hidden;
+}
+
+
+/* During a drag nothing under the pointer should select or change cursor. */
+.guide-editor.is-resizing-panel {
+  cursor: cursors.$col-resize;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/*
+ * The shield `panel-resize.ts` lays over the frame while the edge is being
+ * dragged: the cursor rule above cannot reach into node-editor's or the
+ * panel's shadow roots, and their own `move`/`text`/`pointer` showed through
+ * (Johan 29/9: a white hand on Windows, "osynlig"). Above the panel (25) and
+ * the toolbar (21); the drag's events go to the handle by pointer capture,
+ * so the shield only has to win the hit-test.
+ */
+.guide-editor__resize-shield {
+  position: absolute;
+  inset: 0;
+  z-index: 26;
+  cursor: cursors.$col-resize;
+}
+
+.guide-editor__main {
+  display: grid;
+  /* rad 1 varning, rad 2 toolbar (topmenyn ligger kvar), rad 3 arbetsytan */
+  grid-template-rows: auto auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  /* Ankare för språkradens lågvärdsläge nedan. */
+  position: relative;
+}
+
+/*
+ * `compact-header` — värdens uttalade ratt, ingen höjdautomatik (Johans
+ * produktinvändning 2/9: "är det bästa för helheten? kanske bara under
+ * speciella förutsättningar"). Värden som VET att dess yta är låg —
+ * Sitevisions konfigdialog är fast 520 px hög men bred nog (mätningen
+ * 2/9: fönster − 46) — sätter attributet, och språkraden lämnar sin egen
+ * rad för menyradens högra sida. Flytten är CSS, inte DOM: samma
+ * element, samma lyssnare. Ovanför verktygsfältets z-20 så menyerna
+ * inte täcker den.
+ */
+:host([compact-header]) .guide-editor__context {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: var(--fw-editor-header-height, 56px);
+  align-items: center;
+  padding: 0 12px;
+  z-index: 21;
+  background: transparent;
+  border-bottom: 0;
+}
+
+.guide-editor__warning {
+  grid-row: 1;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--fw-warning);
+  background: var(--fw-warning-surface);
+  color: var(--fw-warning-text);
+  font-size: var(--fw-font-size-md);
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+/* The host's own line about what is being edited. It takes no room when nothing
+   is slotted in, and it is inside the element that goes full screen — which is
+   the whole reason it exists here rather than above us. */
+/* `:not([hidden])`, because `display: flex` on the element itself beats the
+   browser's `[hidden] { display: none }` — the strip then took its few pixels of
+   height while empty, and a test that centres the canvas caught it half a pixel
+   out. A rule that quietly disables `hidden` is the kind that is found later,
+   somewhere else, as a layout that is slightly wrong. */
+/*
+ * Raden ovanför arbetsytan: värdens sammanhang till vänster, språkvalet till
+ * höger. Den ritas alltid, eftersom språkvalet bor här — det är första posten
+ * som fälls ihop när värden inte slottar något.
+ */
+.guide-editor__context {
+  display: flex;
+  /*
+   * Baseline, not centre. A host that slots two lines (the storage page:
+   * name and buttons, then the status sentence) had the language picker
+   * centred against the whole block — nine pixels below the buttons it
+   * visually belongs with (Johan 23/9). A flex item's baseline is its first
+   * line's, so the picker follows the host's first line whatever comes under
+   * it; for a one-line host it is the same as before.
+   */
+  align-items: baseline;
+  gap: 4px 12px;
+
+  /*
+   * Radbrytning mellan posterna, inte inuti dem.
+   *
+   * Utan den krymper värdens post tills dess text bryter var som helst — mätt
+   * i en smal Sitevision-dialog blev *Du redigerar: Bostadsbidrag* till *Du* på
+   * en rad och resten på nästa, med namnet avskilt från det som säger vad det
+   * är. Med `wrap` flyttar i stället hela språkvalet ned, och värdens rad får
+   * bredden den behöver.
+   */
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--fw-border-subtle);
+  background: var(--fw-surface);
+  font-size: 0.9em;
+  list-style: none;
+}
+
+.guide-editor__context > li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  /*
+   * Krymp inte under innehållet. Det är den halvan `flex-wrap` inte gör själv:
+   * en flexpost får som förval krympa till sitt min-content, och först när den
+   * inte kan det längre bryter raden.
+   */
+  min-width: max-content;
+}
+
+/*
+ * Värdens egen post får krympa, till skillnad från språkvalet.
+ *
+ * `min-width: max-content` ovan finns för att en post inte ska krympa under sin
+ * text innan raden bryter. Det är rätt för språkvalet, som är vårt och alltid
+ * lika brett — och fel för en värd som slottar en hel rad: den kan inte krympa,
+ * och då växer editorn i stället utanför sin egen bredd. Mätt på 390 px
+ * (berättelse 124, andra tillägget), där värdens rad sköt canvasen i sidled.
+ *
+ * Värden säger det med attributet `context-fill` i stället för att vi gissar
+ * vilket slags innehåll som sitter i slotten: förvalet är kvar, och grinden
+ * `guide-editor-context-row.browser.test.ts` — som mätte att språkvalet hellre
+ * flyttar ned än klämmer värdens mening — är grön utan attributet.
+ *
+ * Skriven som `> .guide-editor__context-host` och inte som klassen ensam:
+ * regeln ovan är `.guide-editor__context > li`, alltså klass plus element, och
+ * en klass ensam förlorar på specificitet. Mätt först när raden blev 933 px
+ * bred i ett 390 px fönster.
+ */
+:host([context-fill]) .guide-editor__context > .guide-editor__context-host {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+/*
+ * `display: inline-flex` ovan väger tyngre än `[hidden]`, som bara sätter
+ * `display: none` i webbläsarens egen stilmall. Utan den här raden göms
+ * ingenting, och en mock som skulle visa den tomma raden såg exakt ut som den
+ * fyllda — vilket är precis hur felet skulle ha nått hit.
+ */
+.guide-editor__context > li[hidden] {
+  display: none;
+}
+
+/*
+ * Till höger, oavsett om värden har något att säga. `justify-content:
+ * space-between` hade lagt det till vänster så fort första posten göms, och
+ * en kontroll som byter plats beroende på vad någon annan slottar är svårare
+ * att hitta än en som står still.
+ */
+.guide-editor__locale {
+  margin-left: auto;
+
+  [data-locale-label] {
+    color: var(--fw-text-muted);
+    font-size: var(--fw-font-size-base);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  /* The panel's field box: its padding and 16px text give the fields'
+     height (and keep iOS from zooming in on focus). */
+  select {
+    padding: var(--fw-space-3);
+    border: 1px solid var(--fw-border-control);
+    border-radius: var(--fw-radius-sm);
+    background: var(--fw-surface);
+    color: var(--fw-text-strong);
+    font: inherit;
+    font-size: var(--fw-font-size-xl);
+    font-weight: 400;
+    cursor: pointer;
+
+    &:focus-visible {
+      @include focus.ring;
+    }
+  }
+}
+
+/* The same drawn chevron as the panel's selects (Astra 29/9): a wrapper,
+   because the arrow is a mask filled from a token — see `_select.scss`.
+   After the field rule above: the same specificity, and the arrow's right
+   padding has to win over the field's. */
+.guide-editor__locale-select {
+  @include select.wrap;
+}
+
+.guide-editor__locale-progress {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--fw-primary-surface);
+  color: var(--fw-primary-strong);
+  font-size: var(--fw-font-size-sm);
+  font-weight: 600;
+  white-space: nowrap;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.guide-editor__next-untranslated {
+  padding: 2px 10px;
+  border: 1px solid var(--fw-border);
+  border-radius: 999px;
+  background: var(--fw-surface);
+  color: var(--fw-text-strong);
+  font: inherit;
+  font-size: var(--fw-font-size-sm);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--fw-primary-surface);
+    border-color: var(--fw-primary);
+  }
+
+  &:focus-visible {
+    @include focus.ring;
+  }
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+/*
+ * Palette left, canvas right — and each one named, not merely ordered.
+ *
+ * Auto placement fills the columns in source order, so the day the palette was
+ * genuinely hidden it left the grid, the canvas slid into the `auto` column and
+ * collapsed to 2 px while the `1fr` column stood empty. Measured in read-only
+ * mode at 1100, 1500 and 1700 px: node-editor 2 px wide every time. It never
+ * showed before because `:host { display: block }` in node-palette.scss beat
+ * the `[hidden]` rule, so the palette was never actually gone.
+ *
+ * With both items placed by column, a hidden palette leaves an empty `auto`
+ * column of zero width and the canvas keeps its own.
+ */
+.guide-editor__workspace {
+  grid-row: 3;
+  position: relative;
+  display: grid;
+  /* Palette, canvas, and the side panel's rail (story 145). */
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.guide-editor__palette {
+  grid-column: 1;
+  grid-row: 1;
+  display: grid;
+  min-height: 0;
+}
+
+.guide-editor__workspace .guide-editor__canvas {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+/*
+ * The palette's column is its rail, 57 px with its border, always (story
+ * 145/146): the full palette and the category menus lie over the canvas from
+ * here, so the canvas keeps its width whatever is open. 57 because the rail's
+ * buttons are 44 px (K6) inside 6 px on each side and the border.
+ */
+.guide-editor__workspace node-palette {
+  width: 57px;
+  min-height: 0;
+}
+
+/* The palette's column as one number, for the side panel's ceiling;
+   `data-palette` is set by the editor — "none" in the read-only modes. */
+.guide-editor {
+  --guide-editor-palette-width: 57px;
+}
+
+.guide-editor[data-palette="none"] {
+  --guide-editor-palette-width: 0px;
+}
+
+.guide-editor__canvas {
+  /* position: relative så knuffen ("Prova detta") kan flyta som overlay
+     överst i canvasen utan att påverka node-editorns mått. */
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+node-editor {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+editor-toolbar {
+  grid-row: 2;
+  min-width: 0;
+}
+
+/*
+ * The side panel, laid over the workspace (story 145).
+ *
+ * It used to be a column of its own, and every time it opened the canvas got
+ * narrower. Now it lies over the flow from the workspace's end and covers the
+ * rail it opened from; the canvas keeps its width whether it is open or folded
+ * (criterion 2), and nothing in the view moves.
+ *
+ * The width is the default, 380 to 440 px at 30 % of the workspace as it has
+ * been since 29/9 — or the one the editor dragged or the host set (story 141),
+ * held between the 380 floor and the room it may cover less 200
+ * (`CANVAS_KEEPS` in `panel-resize.ts`, which reports the same bounds in
+ * `aria-value*`). The room is the workspace less the palette's column, whose
+ * width the editor sets as `--guide-editor-palette-width` when the palette
+ * folds or opens — not as the window changes, so a window that narrows after a
+ * drag reflows in CSS alone. For one day the whole ceiling came from a
+ * ResizeObserver, and a busy browser left a 900 px panel in a 1000 px editor
+ * (measured 7/10).
+ *
+ * Under the toolbar's menus (20) and over the canvas's controls (10): an open
+ * menu is drawn over the panel, not cut by it.
+ */
+.guide-editor__sidebar {
+  position: absolute;
+  z-index: calc(var(--fw-z-sticky) + 5);
+  top: 0;
+  bottom: 0;
+  inset-inline-end: 0;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  box-sizing: border-box;
+  width: clamp(380px, 30%, 440px);
+  max-width: 100%;
+  min-height: 0;
+  border-inline-start: 1px solid var(--fw-border);
+  background: var(--fw-surface);
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.guide-editor[data-panel-width] .guide-editor__sidebar {
+  width: clamp(
+    var(--guide-editor-panel-floor, 380px),
+    var(--guide-editor-panel-width),
+    max(
+      var(--guide-editor-panel-floor, 380px),
+      100% - var(--guide-editor-palette-width, 57px) - var(--guide-editor-canvas-keeps, 200px)
+    )
+  );
+}
+
+/*
+ * Folding in and out (criterion 9): 180 ms, a fixed edge revealed rather than
+ * a layer slid, as in the prototype — a translated panel left part of itself
+ * painted on the iPad (LOGG 4/10). Closing content is inert from the first
+ * frame; the script hides it when the motion ends. Reduced motion switches at
+ * once.
+ */
+.guide-editor__sidebar[data-motion="opening"] {
+  animation: guide-editor-panel-in 180ms ease-out;
+}
+
+.guide-editor__sidebar[data-motion="closing"] {
+  animation: guide-editor-panel-out 180ms ease-in forwards;
+}
+
+@keyframes guide-editor-panel-in {
+  from {
+    clip-path: inset(0 0 0 100%);
+  }
+
+  to {
+    clip-path: inset(0);
+  }
+}
+
+@keyframes guide-editor-panel-out {
+  from {
+    clip-path: inset(0);
+  }
+
+  to {
+    clip-path: inset(0 0 0 100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guide-editor__sidebar[data-motion] {
+    animation: none;
+  }
+}
+
+/* The panel's own row: » at the start, the edge it folds towards. */
+.guide-editor__sidebar-head {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--fw-border-subtle, var(--fw-border));
+}
+
+/*
+ * The rail the panel folds into: 57 px with its border, the palette's width
+ * (criterion 1). « on top, then the two shortcuts, 44 px each and 8 apart.
+ */
+.guide-editor__panel-rail {
+  grid-column: 3;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  box-sizing: border-box;
+  width: 57px;
+  min-height: 0;
+  border-inline-start: 1px solid var(--fw-border);
+  background: var(--fw-surface);
+}
+
+.guide-editor__panel-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--fw-primary-strong, var(--fw-primary));
+  font: inherit;
+  font-size: var(--fw-font-size-3xl);
+  line-height: var(--fw-line-tight);
+  cursor: pointer;
+
+  /* A shape under the pointer, not only a tint: the tint is 1.16 : 1 against
+     the panel, and the icon-contrast gate asks 3 : 1 of a control's form. */
+  &:hover {
+    border: 1px solid var(--fw-primary);
+    background: var(--fw-primary-surface);
+  }
+
+  &:focus-visible {
+    @include focus.ring-inset(-3px);
+  }
+
+  /* Right to left the panel stands at the other edge, so the arrows turn. */
+  &:dir(rtl) > span {
+    display: inline-block;
+    transform: scaleX(-1);
+  }
+}
+
+.guide-editor__panel-rail > .guide-editor__panel-arrow {
+  width: 100%;
+}
+
+.guide-editor__panel-shortcuts {
+  display: grid;
+  justify-items: center;
+  gap: var(--fw-space-2);
+  padding-top: var(--fw-space-4);
+}
+
+/* GRAFISK-PROFIL decision 14: one colour for the rails' buttons, the content
+   family's ink on its tint, a 24 px plate with an 18 px glyph. */
+.guide-editor__panel-shortcut {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--fw-border-control);
+  border-radius: var(--fw-radius-md);
+  background: var(--fw-surface);
+  color: var(--fw-node-content-ink);
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--fw-primary);
+    background: var(--fw-primary-surface);
+  }
+
+  &:focus-visible {
+    @include focus.ring(2px);
+  }
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.guide-editor__panel-shortcut-plate {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--fw-radius-md);
+  background: var(--fw-node-content-tint);
+}
+
+/*
+ * The panel's left edge, as a handle (story 141).
+ *
+ * 44 px to hit (K6), straddling the border: 22 over the canvas, 22 over the
+ * panel, so the canvas keeps its width and only its last 22 px of edge answer
+ * to the handle. It starts where the canvas starts (measured, set from
+ * `panel-resize.ts`): above that the toolbar's row runs to the panel's edge
+ * with a control at its end. The header height here is only the first frame.
+ *
+ * At rest nothing is drawn: the edge is the panel's ordinary border (Johan
+ * 29/9, after a Dribbble sweep of resizable panels — IDE and file panes show
+ * the edge, no grip). Over it the pointer turns `col-resize` and the edge
+ * lights in `--fw-primary`; the same under a drag, and under keyboard focus,
+ * where it also carries the focus ring (K3). The lit line holds 3 : 1 against
+ * both surfaces it touches — `guide-editor-panel-width` measures it.
+ */
+.guide-editor__panel-resize {
+  position: absolute;
+  z-index: 2;
+  top: var(--fw-editor-header-height, 56px);
+  bottom: 0;
+  left: -22px;
+  width: 44px;
+  cursor: cursors.$col-resize;
+  touch-action: none;
+
+  /* The edge, lit: centred on the panel's border. */
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 20px;
+    width: 3px;
+    background: transparent;
+  }
+
+  &:hover::before,
+  &:focus-visible::before,
+  .is-resizing-panel &::before {
+    background: var(--fw-primary);
+  }
+
+  &:focus-visible {
+    outline: none;
+  }
+
+  &:focus-visible::before {
+    @include focus.ring(2px);
+  }
+
+  /* A toolbar menu is open over the canvas's edge (see `panel-resize.ts`). */
+  &.is-standing-aside {
+    pointer-events: none;
+  }
+}
+
+.guide-editor__tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  box-sizing: border-box;
+  /* Samma höjd som toolbaren så avskiljarna ligger på samma linje. */
+  min-height: var(--fw-editor-header-height, 56px);
+  padding: 0 8px;
+  border-bottom: 1px solid var(--fw-border);
+  background: var(--fw-surface-subtle);
+
+  button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    background: transparent;
+    color: var(--fw-text-muted);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  button[aria-selected="true"] {
+    border-bottom-color: var(--fw-primary);
+    color: var(--fw-primary-strong);
+  }
+
+  button:focus-visible {
+    @include focus.ring-inset(-3px);
+  }
+}
+
+.guide-editor__sidebar-panel {
+  min-width: 0;
+  min-height: 0;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.guide-editor__preview-panel {
+  display: grid;
+  // Actions, the host's answers (story 085), then the preview takes the rest.
+  grid-template-rows: auto auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.guide-editor__given {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--fw-border-subtle);
+  font-size: var(--fw-font-size-sm);
+  color: var(--fw-text-secondary);
+
+  summary {
+    cursor: pointer;
+    color: var(--fw-text-strong);
+    font-weight: 600;
+  }
+
+  textarea {
+    display: block;
+    width: 100%;
+    margin-top: 6px;
+    padding: 6px 8px;
+    border: 1px solid var(--fw-border-control);
+    border-radius: 7px;
+    background: var(--fw-surface);
+    color: var(--fw-text-strong);
+    font: inherit;
+    font-family: var(--fw-font-mono);
+    resize: vertical;
+  }
+}
+
+.guide-editor__given-label {
+  display: block;
+  margin-top: 8px;
+}
+
+.guide-editor__given-unmatched {
+  margin: 6px 0 0;
+  color: var(--fw-text-secondary);
+}
+
+.guide-editor__given-unmatched:empty {
+  display: none;
+}
+
+.guide-editor__preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--fw-border-subtle);
+
+  button {
+    flex: 1;
+    padding: 8px 10px;
+    border: 1px solid var(--fw-border-control);
+    border-radius: 7px;
+    background: var(--fw-surface);
+    color: var(--fw-text-strong);
+    font: inherit;
+    font-size: var(--fw-font-size-base);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background: var(--fw-surface-subtle);
+  }
+
+  button[hidden] {
+    display: none;
+  }
+
+}
+
+.guide-editor__preview-panel guide-preview {
+  min-height: 0;
+  padding: 16px;
+  overflow: auto;
+}
+
+properties-panel {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Kortkommandon-dialog */
+.guide-editor__shortcuts {
+  width: min(560px, 92vw);
+  max-height: 82vh;
+  padding: 0;
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-lg, 14px);
+  background: var(--fw-surface);
+  color: var(--fw-text);
+  box-shadow: 0 24px 60px rgb(16 24 40 / 28%);
+}
+
+.guide-editor__shortcuts::backdrop {
+  background: rgb(16 24 40 / 45%);
+}
+
+.guide-editor__shortcuts-head {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--fw-border);
+  background: var(--fw-surface);
+}
+
+.guide-editor__shortcuts-head h2 {
+  margin: 0;
+  font-size: var(--fw-font-size-2xl);
+}
+
+.guide-editor__shortcuts-head button {
+  border: 0;
+  border-radius: var(--fw-radius-sm, 8px);
+  background: transparent;
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-2xl);
+  line-height: 1;
+  padding: 6px 9px;
+  cursor: pointer;
+}
+
+.guide-editor__shortcuts-head button:hover {
+  background: var(--fw-bg);
+}
+
+.guide-editor__shortcuts-body {
+  padding: 8px 20px 4px;
+  overflow-y: auto;
+}
+
+.guide-editor__shortcuts-body section {
+  margin-bottom: 18px;
+}
+
+.guide-editor__shortcuts-body h3 {
+  margin: 0 0 8px;
+  font-size: var(--fw-font-size-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fw-text-secondary);
+}
+
+.guide-editor__shortcuts-body dl {
+  margin: 0;
+}
+
+.guide-editor__shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--fw-border-subtle, rgb(16 24 40 / 6%));
+}
+
+.guide-editor__shortcut-row dt {
+  color: var(--fw-text);
+}
+
+.guide-editor__shortcut-row dd {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.guide-editor__shortcuts kbd {
+  display: inline-block;
+  min-width: 20px;
+  padding: 3px 7px;
+  border: 1px solid var(--fw-border);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: var(--fw-bg);
+  color: var(--fw-text-strong);
+  font: 600 12px/1.2 var(--fw-font-mono, ui-monospace, monospace);
+  text-align: center;
+}
+
+.guide-editor__kbd-plus,
+.guide-editor__kbd-or {
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-sm);
+  padding: 0 2px;
+}
+
+.guide-editor__shortcuts-hint {
+  margin: 0;
+  padding: 12px 20px 18px;
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-base);
+}
+
+/* Rundtur: highlight-ring på målet + en callout med pil och kommentar. */
+.guide-editor__tour {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.guide-editor__tour[hidden] {
+  display: none;
+}
+
+/* Toning bara över canvasen: ett fixerat lager klippt till canvas-rutan, med
+   ett "hål" (box-shadow-spread) vid den demonstrerade noden. Topmenyn,
+   paletten och sidopanelen ligger utanför och tonas aldrig. */
+.guide-editor__tour-dim {
+  position: fixed;
+  overflow: hidden;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.guide-editor__tour-hole {
+  position: absolute;
+  border-radius: 12px;
+  box-shadow: 0 0 0 9999px rgb(16 24 40 / 42%);
+  transition: all 0.18s ease;
+}
+
+.guide-editor__tour-ring {
+  position: fixed;
+  /* Egen teal-färg – skiljer sig från vanlig markering (indigo). */
+  border: 2px solid var(--fw-spotlight);
+  border-radius: 12px;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--fw-spotlight) 30%, transparent),
+    0 10px 30px color-mix(in srgb, var(--fw-spotlight) 28%, transparent);
+  transition: all 0.18s ease;
+}
+
+.guide-editor__tour-callout {
+  position: fixed;
+  width: 300px;
+  max-width: calc(100vw - 16px);
+  padding: 14px 16px;
+  border: 1px solid var(--fw-border);
+  border-radius: 12px;
+  background: var(--fw-surface);
+  color: var(--fw-text);
+  box-shadow: 0 18px 44px rgb(16 24 40 / 26%);
+  pointer-events: auto;
+}
+
+.guide-editor__tour-callout::before {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: var(--fw-surface);
+  border: 1px solid var(--fw-border);
+}
+
+.guide-editor__tour-callout[data-arrow="up"]::before,
+.guide-editor__tour-callout[data-arrow="down"]::before {
+  left: clamp(16px, var(--arrow-x, 50%), calc(100% - 16px));
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.guide-editor__tour-callout[data-arrow="up"]::before {
+  top: -8px;
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.guide-editor__tour-callout[data-arrow="down"]::before {
+  bottom: -8px;
+  border-left: 0;
+  border-top: 0;
+}
+
+.guide-editor__tour-callout[data-arrow="left"]::before,
+.guide-editor__tour-callout[data-arrow="right"]::before {
+  top: clamp(16px, var(--arrow-y, 50%), calc(100% - 16px));
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.guide-editor__tour-callout[data-arrow="left"]::before {
+  left: -8px;
+  border-top: 0;
+  border-right: 0;
+}
+
+.guide-editor__tour-callout[data-arrow="right"]::before {
+  right: -8px;
+  border-bottom: 0;
+  border-left: 0;
+}
+
+.guide-editor__tour-count {
+  margin: 0 0 4px;
+  font-size: var(--fw-font-size-sm);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fw-text-secondary);
+}
+
+.guide-editor__tour-text {
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+.guide-editor__tour-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.guide-editor__tour-spacer {
+  flex: 1 1 auto;
+}
+
+.guide-editor__tour-actions button {
+  border: 1px solid var(--fw-border-control);
+  border-radius: 8px;
+  padding: 7px 14px;
+  background: var(--fw-surface);
+  color: var(--fw-text-strong);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.guide-editor__tour-actions [data-tour-next] {
+  border-color: var(--fw-primary);
+  background: var(--fw-primary);
+  color: var(--fw-on-primary);
+}
+
+.guide-editor__tour-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.guide-editor__tour-close {
+  padding: 6px 9px !important;
+  border-color: transparent !important;
+  background: transparent !important;
+  color: var(--fw-text-secondary) !important;
+  font-size: var(--fw-font-size-lg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guide-editor__tour-ring {
+    transition: none;
+  }
+}
+
+/* -----------------------------
+   Kontrollraden
+------------------------------ */
+
+/* Nedtill till vänster. Minikartan ligger nedtill till höger, och de ska inte
+   skymma varandra. Listan fälls uppåt av samma skäl — nedåt finns ingen plats. */
+.guide-editor__health {
+  position: absolute;
+  bottom: 12px;
+  /* Beside an open side panel, not under it (story 145, criterion 8). */
+  left: calc(12px + var(--fw-canvas-left-inset, 0px));
+  /* A popover: above the canvas's zoom field (sticky, 10), which since 23/9
+     sits bottom right and overlapped the open list on a narrow canvas — the
+     field was drawn over the message someone had just asked for (Ted 24/9). */
+  z-index: var(--fw-z-popover);
+
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 6px;
+
+  align-items: flex-start;
+
+  max-width: min(420px, calc(100% - 24px));
+}
+
+.guide-editor__health-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 6px 12px;
+
+  border: 1px solid var(--fw-border-control);
+  border-radius: 999px;
+
+  background: var(--fw-surface);
+  color: var(--fw-text-strong);
+  box-shadow: 0 4px 14px rgb(16 24 40 / 12%);
+
+  font: inherit;
+  font-size: var(--fw-font-size-base);
+
+  cursor: pointer;
+
+  &:focus-visible {
+    @include focus.ring;
+  }
+}
+
+/* En prick i samma färg som allvarligheten. Färgen är aldrig ensam bärare —
+   texten säger "3 fel", pricken förstärker bara. Se K3 i docs/KRAV.md. */
+.guide-editor__health-toggle::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--fw-success);
+}
+
+.guide-editor__health[data-severity="error"] .guide-editor__health-toggle::before {
+  background: var(--fw-danger-text);
+}
+
+.guide-editor__health[data-severity="warning"] .guide-editor__health-toggle::before {
+  background: var(--fw-node-service-ink);
+}
+
+.guide-editor__health-list {
+  width: 420px;
+  max-width: 100%;
+  max-height: 40vh;
+
+  padding: 12px 14px;
+
+  overflow-y: auto;
+
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-md);
+
+  background: var(--fw-surface);
+  box-shadow: 0 12px 32px rgb(16 24 40 / 18%);
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.guide-editor__health-heading {
+  margin: 0 0 8px;
+  font-size: var(--fw-font-size-md);
+  font-weight: 700;
+  color: var(--fw-text-strong);
+}
+
+.guide-editor__health-clean {
+  margin: 0;
+  color: var(--fw-text-muted);
+  font-size: var(--fw-font-size-base);
+  line-height: 1.5;
+}
+
+.guide-editor__health-items {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  button {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: var(--fw-radius-sm);
+    background: transparent;
+    color: var(--fw-text-strong);
+    font: inherit;
+    font-size: var(--fw-font-size-base);
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--fw-primary-surface);
+    }
+
+    &:focus-visible {
+      @include focus.ring-inset(-2px);
+    }
+  }
+}
+
+/* Ordet står utskrivet, inte bara en färg. */
+.guide-editor__health-badge {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: var(--fw-radius-sm);
+  font-size: var(--fw-font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+
+  &[data-severity="error"] {
+    background: var(--fw-danger-surface);
+    color: var(--fw-danger-text);
+  }
+
+  &[data-severity="warning"] {
+    background: var(--fw-node-service-tint);
+    color: var(--fw-node-service-ink);
+  }
+}
+
+/* Ctrl+K (story 074): skymning över editorn, rutan högt så listan får växa
+   nedåt. [hidden] via display — klassens flex hade annars vunnit (fällan
+   som bitit tre gånger). */
+.guide-editor__quick-open {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 90px;
+  background: rgb(15 23 42 / 45%);
+}
+
+.guide-editor__quick-open[hidden] {
+  display: none;
+}
+
+.guide-editor__quick-open-box {
+  width: min(560px, calc(100% - 32px));
+  border-radius: 14px;
+  background: var(--fw-surface);
+  box-shadow: 0 24px 60px rgb(2 6 23 / 35%);
+  overflow: hidden;
+
+  input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 14px 18px;
+    border: 0;
+    border-bottom: 1px solid var(--fw-border-subtle, var(--fw-border));
+    font: inherit;
+    color: var(--fw-text);
+    background: transparent;
+  }
+}
+
+.guide-editor__quick-open-list {
+  max-height: 320px;
+  overflow: auto;
+  padding: 8px;
+}
+
+.guide-editor__quick-open-hit {
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--fw-text);
+
+  &[aria-selected="true"] {
+    background: var(--fw-primary-surface);
+    color: var(--fw-primary-strong, var(--fw-primary));
+    font-weight: 600;
+  }
+}
+
+.guide-editor__quick-open-empty {
+  margin: 0;
+  padding: 12px;
+  color: var(--fw-text-secondary);
+}
+
+/* Listläget (story 072): trädet över arbetsytan. [hidden] via display —
+   klass-display hade annars vunnit (fällan som bitit fyra gånger). */
+.guide-editor__list-view {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  overflow: auto;
+  padding: 18px 26px;
+  /* The canvas's colour: the list lies over the canvas and follows its theme.
+     It had a token of its own that never darkened — a light sheet in dark mode. */
+  background: var(--fw-canvas);
+}
+
+.guide-editor__list-view[hidden] {
+  display: none;
+}
+
+/* Mobilbeskedet (Johan 2/9): syns bara på små skärmar — media, inte
+   container, för dialogen på en stor skärm ska slippa det. */
+.guide-editor__canvas {
+  position: relative;
+}
+
+.guide-editor__small-screen {
+  display: none;
+}
+
+@media (max-width: 699px) {
+  /* En egen rad överst — i rotens enda rad delade beskedet cell med
+     huvudytan och målades över (mätt: 360×21 men osynligt). */
+  .guide-editor {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .guide-editor__small-screen {
+    display: block;
+    grid-row: 1;
+    /* Rutnätets fulla bredd — som cell klämdes raden till 28 px (mätt). */
+    grid-column: 1 / -1;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 10px 14px;
+    background: var(--fw-primary-surface);
+    color: var(--fw-primary-strong, var(--fw-primary));
+    font-size: 13.5px;
+    border-bottom: 1px solid var(--fw-border-subtle, var(--fw-border));
+  }
+}

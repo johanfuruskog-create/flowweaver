@@ -1,0 +1,484 @@
+/*
+ * Design-tokens som mixins — en enda källa för färg, radie och skugga.
+ *
+ * Ligger separat för att både biblioteket och demosidan ska kunna använda dem
+ * utan att värdena finns på två ställen. Vem som *tillämpar* dem, och på vilken
+ * selektor, är en annan fråga:
+ *
+ *   biblioteket → `tokens.scss`, på sina egna taggar
+ *   demosidan   → `demo-tokens.scss`, på `:root`
+ */
+
+@mixin fw-light {
+  /* Låter native-kontroller (fält, scrollbars) följa temat. */
+  color-scheme: light;
+
+  /* Primär (indigo) */
+  --fw-primary: #4f46e5;
+  --fw-primary-hover: #4338ca;
+  --fw-primary-strong: #3538cd;
+  --fw-primary-surface: #eef2ff;
+  --fw-on-primary: #ffffff; /* text på en fylld primärknapp; vänder i mörkt läge */
+
+  /* Text (grå) */
+  --fw-text: #101828;
+  --fw-text-strong: #344054;
+  --fw-text-secondary: #475467;
+  --fw-text-muted: #667085;
+
+  /* Ytor och kanter */
+  --fw-surface: #ffffff;
+  --fw-surface-subtle: #f9fafb;
+  /* Upphöjd yta: menyer och popovers som ligger ovanpå ett fält (Astra via
+   * Johan 28/9, efter att ramen `--fw-border` ensam inte räckte i mörkt
+   * läge). Ljust: samma som `--fw-surface-subtle` med flit — där bär ram
+   * och skugga lyftet. Mörkt: ett steg ljusare än subtle, se den sidan.
+   * Semantisk, inte komponentbunden: nästa popover läser samma. Följer
+   * värdens byte av färgskala automatiskt — skalorna byter bara accenten. */
+  --fw-surface-raised: #f9fafb;
+  --fw-bg: #f2f4f7;
+  --fw-border: #d0d5dd;
+  --fw-border-subtle: #e4e7ec;
+  /* Kanten på en kontroll man kan skriva i eller trycka på — inte samma sak som
+   * en avdelare. WCAG 1.4.11 kräver 3:1 mot det som ligger bakom, och `--fw-border`
+   * mäter 1.47 här: den är gjord för att dela av, inte för att rita en gräns
+   * någon ska hitta. Mätt: 4.97:1 mot både fältets och sidans yta, vilket ligger
+   * nära webbläsarens egen fältkant (#767676, 4.54) — samma kant vårt datumfält
+   * redan får gratis och klarar sig på. */
+  --fw-border-control: #667085;
+
+  /* Semantik */
+  --fw-danger: #d92d20;
+  --fw-danger-text: #b42318;
+  /* Text på den fyllda röda — den destruktiva huvudhandlingen i en
+   * bekräftelse (GRAFISK-PROFIL, B3 Astra 30/9). Vänder INTE i mörkt läge:
+   * `--fw-danger` är samma i båda, så bläcket är det också. Knappen bar
+   * `--fw-surface`, mörk i mörkt läge: 3,57:1; vitt ger 4,83:1 i båda
+   * (mätt i contrast.browser.test.ts). */
+  --fw-on-danger: #ffffff;
+  --fw-success: #16a34a;   --fw-success-text: #15803d;
+  --fw-success-surface: #ecfdf3; --fw-success-border: #75e0a7;
+  --fw-warning: #f59e0b;   --fw-warning-text: #92400e;
+  --fw-warning-surface: #fffbeb; --fw-warning-border: #fdb022;
+  --fw-danger-surface: #fef3f2; --fw-danger-border: #fda29b;
+  /* Fjärde semantiken, för inforutan (story 096): ett besked utan larm. Text
+   * mot yta mätt i contrast.browser.test.ts som de tre andra. */
+  --fw-info-text: #1e40af;
+  --fw-info-surface: #eff6ff; --fw-info-border: #93c5fd;
+  /* Demo-/rundtur-markering – teal, tydligt skild från indigo-markeringen. */
+  --fw-spotlight: #0d9488;
+
+  /* Varumärkets två trådar i loggan (Sammanvävningen). Ljusare i mörkt läge. */
+  --fw-logo-blue: #2563eb;
+  --fw-logo-green: #16a34a;
+
+  /* Ytterligare gråtoner och primär-tints (för selektering/hover/kanter). */
+  --fw-canvas: #f8fafc;          /* canvasens bakgrund */
+  --fw-text-disabled: #98a2b3;
+  --fw-primary-surface-2: #e0e7ff; /* hover/aktiv tint */
+  --fw-primary-border: #c7d2fe;
+  --fw-primary-muted: #a5b4fc;
+
+  /*
+   * Nodidentitet – en färg per nodtyp, delad mellan palettikonens badge och
+   * nodhuvudet på canvasen. `solid` = huvudets bakgrund (ljus text via
+   * --fw-on-node); `tint` = badgens bakgrund; `ink` = texten/glyfen på tinten.
+   * I ljust läge är ink = solid; i mörkt läge ljusnar ink (se fw-dark) så att
+   * glyfen bär mot den mörknade tinten. Så en ikon i paletten bär samma färg
+   * som noden får när den placeras.
+   */
+  --fw-on-node: #ffffff;        /* text/glyf på huvudets solidfärg — VÄNDER i mörkt läge */
+  /*
+   * Den runda märkningen i nodhuvudet: en ljus bricka som `--fw-node-header`
+   * står mörk på. Ljus i BÅDA lägen, och det är skälet den finns.
+   *
+   * Fram till 22/9 ritades den med `--fw-on-node`, och det höll så länge det
+   * tokenet var vitt i båda lägen. När fyllningarna fick mörka varianter
+   * vände `--fw-on-node` med dem — och då blev brickan nästan svart under en
+   * nästan svart glyf, mätt 1,3:1. Tokenet bar två roller: *bläck på en
+   * nodfärg* och *ljus bricka under mörkt bläck*. Bara den första ska vända.
+   */
+  --fw-node-marking: #ffffff;
+  --fw-node-content: #3730a3;   --fw-node-content-tint: #eef2ff; --fw-node-content-ink: #3730a3; /* Innehåll (indigo) */
+  --fw-node-rule: #6b21a8;      --fw-node-rule-tint: #f5f3ff;    --fw-node-rule-ink: #6b21a8;    /* Regel (lila) */
+  --fw-node-calc: #0e7490;      --fw-node-calc-tint: #ecfeff;    --fw-node-calc-ink: #0e7490;    /* Uträkning (teal) */
+  --fw-node-service: #b45309;   --fw-node-service-tint: #fffbeb; --fw-node-service-ink: #b45309; /* Tjänsteanrop (amber) */
+  --fw-node-end: #166534;       --fw-node-end-tint: #ecfdf3;     --fw-node-end-ink: #166534;     /* Avslut (grön) */
+  --fw-node-header: #1f2937;    /* mörk glyf på `--fw-node-marking` i huvudet (båda lägen) */
+
+  /* Anteckningsnoden (sticky-note). Editor-metadata: ett gult lappformat som
+   * inte tillhör nodtyperna ovan. Samma i båda lägen tills vidare — lappen
+   * var gul även i mörkt läge innan den fick tokens (2 september 2026), och
+   * städrundan ändrar inget synligt. Ett mörkt lappformat är ett eget beslut. */
+  --fw-note-border: #e6c200;
+  --fw-note-surface: #fff8d6;
+  --fw-note-label: #7a5c00;   /* den versala rubriken */
+  --fw-note-text: #4a3d00;    /* lappens text */
+
+  /*
+   * Radius by role — what a thing IS decides how round it is.
+   *
+   * Measured 2026-09-20 across `src/editor`, `src/viewer` and `src/site`:
+   * 43 distinct `border-radius` values, 155 lines of literal px outside
+   * `styles/`. The literals: 8px x58, 999px x32, 10px x28, 12px x12, 4px x9,
+   * 6px x7, 14px x6, 16px x5, plus 3/5/7/9/18/20/22px and three rem values.
+   * Johan, the same day: "olika rundning på knapparna". The cause is not the
+   * old scale below — it is that nothing said WHICH step a button takes. Six
+   * steps 2px apart is finer than the eye can tell, so every component chose
+   * for itself and the answers drifted apart.
+   *
+   * Johan's decision: a button is 8px, and the pill shape goes — including
+   * the `button { border-radius: 999px }` in the conflict and publish dialogs
+   * and the site's calls to action. Chips and badges keep the pill: they are
+   * labels, not actions, and the shape is what says which one you are looking
+   * at.
+   *
+   * Pick the role, never a number. A value off these five is a decision, and
+   * a decision goes in a comment next to it.
+   */
+  /*
+   * Tre av rollerna pekar på skalan i stället för att upprepa dess tal
+   * (Astras C4, 21/9). De var redan lika med sitt steg — 8, 8 och 12 — och
+   * ska följa det: flyttar skalan, flyttar rollen. Ett tal skrivet två gånger
+   * är det här repots vanligaste fel, i miniatyr.
+   *
+   * **Knapp och fält är fortfarande två tokens**, båda på `md`. Att de är lika
+   * i dag är ett val och inte en identitet: en värd som vill ge fälten en egen
+   * rundning sätter `--fw-radius-field` och rör inte knapparna. Hade de slagits
+   * ihop till ett hade den möjligheten försvunnit tyst.
+   *
+   * `dialog` och `pill` står kvar med sina tal, för de är inte steg i skalan:
+   * skalan slutar på 14 och dialogen är 16, och pillerformen är en form och
+   * inte ett mått. En alias dit hade varit en siffra som låtsas vara en roll.
+   */
+  --fw-radius-button: var(--fw-radius-md);  /* buttons and anything else you press */
+  --fw-radius-field: var(--fw-radius-md);   /* inputs, selects, textareas — a field matches its button */
+  --fw-radius-card: var(--fw-radius-xl);    /* cards, list rows, panels, the note */
+  --fw-radius-dialog: 16px;  /* dialogs, and sheets that behave like dialogs */
+  --fw-radius-pill: 999px;   /* the shape itself; three rules already ask for it by name */
+  --fw-radius-chip: var(--fw-radius-pill); /* chips and badges — the only role that stays round */
+
+  /*
+   * The old six-step scale, untouched until the sweep has moved every
+   * component onto a role above. Measured the same day: 93 uses (sm 45,
+   * md 36, lg 5, xl 5, xs 2) and `2xl` has no user at all. When the count
+   * reaches zero the scale can go; the number is here so the next reader
+   * can tell how far that is.
+   */
+  --fw-radius-xs: 4px;
+  --fw-radius-sm: 6px;
+  --fw-radius-md: 8px;
+  --fw-radius-lg: 10px;
+  --fw-radius-xl: 12px;
+  --fw-radius-2xl: 14px;
+
+  /*
+   * Spacing scale — one four-pixel grid for gap, padding and margin.
+   *
+   * Measured 2026-09-20 across `src/editor`, `src/viewer` and `src/site`:
+   * 30 distinct px values on those three properties (8x105, 10x91, 12x71,
+   * 16x64, 6x63, 14x36, 18x19, plus 9/5/7/11/13/22). Roughly 250 of them sit
+   * on 6, 10, 14 or 18 — halfway between the steps below. Johan, the same day:
+   * "avståndet mellan element är ofta lite off, några pixlar men synligt."
+   * That is the cause, and this scale is the fix. Same in light and dark, so
+   * it is not repeated in `fw-dark`.
+   *
+   * Pick a step; do not invent one between two. 1, 2 and 3px stay outside the
+   * scale on purpose — a hairline border, the gap between a label and its
+   * value, and a focus ring are optical, not rhythm, and rounding them to 4
+   * would be visible in the wrong direction.
+   *
+   * To bind related things, halve the spacing already in the component (the
+   * rule in `.claude/skills/flowweaver-design/SKILL.md`): a step down this
+   * scale, never a third value invented on the spot.
+   */
+  --fw-space-1: 4px;
+  --fw-space-2: 8px;
+  --fw-space-3: 12px;
+  --fw-space-4: 16px;
+  --fw-space-5: 24px;
+  --fw-space-6: 32px;
+  /* Between the site's larger sections only — the next step set apart from
+     the one before it (Astra 30/9, B8). The viewer and the editor stop at 6. */
+  --fw-space-7: 48px;
+
+  /*
+   * Elevation in three layers — how far off the page a thing sits.
+   *
+   * Measured 2026-09-20: 54 distinct `box-shadow` values, 35 literal lines
+   * outside `styles/` against two tokens. Sorting the literals by vertical
+   * offset gave three groups and nothing in between:
+   *   y 1-4, blur 2-14   — 10 lines: fields, cards, a selected node
+   *   y 6-8, blur 16-24  —  5 lines: the chip picker, a dragged node
+   *   y 12-24, blur 28-80 — 13 lines: dialogs, toasts, dropdown menus
+   * The remaining literals are not elevation at all: 4 `inset` rules, which
+   * are borders drawn as shadows, and ~22 spread-only rings (`0 0 0 Npx`),
+   * which are focus and selection rings and belong to `--fw-focus-ring`.
+   *
+   * So: three levels, named after the role, valued from what the code already
+   * does. `low` and `raised` are the two shadows that existed, so every rule
+   * using the old names renders identically; `floating` is the dialog shell's
+   * own value, which `email-output-dialog` and `guide-preview-dialog` had each
+   * copied. The y=12 menus and toasts move to `raised` in the sweep — role
+   * decides, not the number they happen to carry today.
+   */
+  --fw-shadow-low: 0 4px 12px rgb(16 24 40 / 5%);       /* cards, rows, resting fields */
+  --fw-shadow-raised: 0 6px 18px rgb(16 24 40 / 9%);    /* popovers, menus, toasts, a lifted node */
+  --fw-shadow-floating: 0 24px 48px rgb(16 24 40 / 24%); /* dialogs — the only thing above the page */
+
+  /* The old names, kept as aliases so nothing changes under the sweep. They
+   * follow the dark swap on their own: the alias points at the level, and it
+   * is the level that is redefined in `fw-dark`. */
+  --fw-shadow-sm: var(--fw-shadow-low);
+  --fw-shadow-md: var(--fw-shadow-raised);
+
+  /* Fokus-ring – en enda synlig indikator för tangentbordsfokus. */
+  --fw-focus-ring: rgb(79 70 229 / 35%);
+
+  /*
+   * Typsnitt – en källa. Systemstacken (ingen webbfont att ladda, noll
+   * nätverkskostnad, ser inhemsk ut på varje OS). Vill man ha ett varumärkes-
+   * typsnitt (t.ex. Inter) räcker det att self-hosta det och peka om --fw-font.
+   */
+  --fw-font: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --fw-font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Typografirampen — de åtta storlekar som räcker (mätt 2026-09-02:
+   * de täckte 254 av ~290 px-förekomster; resten är avsiktliga avvikare,
+   * listade i docs/REFAKTORERING.md). Ett nytt gränssnitt väljer ett steg
+   * härifrån; ett värde utanför rampen är ett beslut som ska synas i en
+   * kommentar.
+   *
+   * `base` är rampens mittsteg och INTE grundstorleken — det stod så här
+   * och var fel: 13 px är den vanligaste storleken i både visaren och
+   * editorn, aldrig en grund något räknas från.
+   *
+   * **Rampen är i `rem`, måtten i px** (Johan 21/9: *men vi jobbar i rem?*).
+   * Text skalar med besökarens egen grundstorlek; avstånd, radier, kanter och
+   * kontrollhöjd gör det inte, för ett rutnät är ett mått och inte en text —
+   * och räknarna i `css-ratchet` mäter px. Grunden är sidans rot, som
+   * paketet återställer till med `font-size: 1rem` på visarens och editorns
+   * `:host`, så att en värds egna containrar inte når in medan besökarens
+   * inställning gör det. GOV.UK anger 19, Digdir 18; vi angav ingen alls.
+   *
+   * Talen är oförändrade vid grundstorlek 16: varje steg är en jämn sextondel
+   * (11/16 = 0.6875 och så vidare), så omskrivningen kan inte flytta något.
+   * Mätt: pixelidentiska bilder av en case-sida och editorn i 900. */
+  --fw-font-size-xs: 0.6875rem; /* 11 px */
+  --fw-font-size-sm: 0.75rem; /* 12 */
+  --fw-font-size-base: 0.8125rem; /* 13 */
+  --fw-font-size-md: 0.875rem; /* 14 */
+  --fw-font-size-lg: 0.9375rem; /* 15 */
+  --fw-font-size-xl: 1rem; /* 16 */
+  --fw-font-size-2xl: 1.125rem; /* 18 */
+  --fw-font-size-3xl: 1.5rem; /* 24 */
+
+  /*
+   * Weight — three roles, and 700 is a heading.
+   *
+   * Measured 2026-09-20: 6 distinct values over 180 lines outside `styles/`.
+   * 600 x97, 700 x71, 800 x17, 400 x16, 500 x3, `normal` x2. 600 and 700 were
+   * used interchangeably for the same kind of thing, which is why headings of
+   * the same rank looked different from panel to panel.
+   *
+   * Johan's decision the same day: a heading is 700. `strong` is the label
+   * and button weight; 800 and 500 have no role and go in the sweep.
+   */
+  --fw-weight-text: 400;     /* body copy, help text, anything you read */
+  --fw-weight-strong: 600;   /* labels, buttons, table headers, an emphasised value */
+  --fw-weight-heading: 700;  /* every heading, whatever its size */
+
+  /*
+   * Line height — two, and the gap between them is the point.
+   *
+   * Measured 2026-09-20: 17 distinct values over 133 lines outside `styles/`,
+   * in two clusters with almost nothing between them. Reading: 1.5 x38,
+   * 1.6 x33, 1.55 x16, 1.65 x3 (90 in all). Tight: 1 x24, 1.15 x8, 1.3 x6,
+   * 1.2 x2, 1.25 x2, plus single uses of 1.1/1.12/1.27 (45 in all). Only
+   * 1.4/1.45 (18) sit between, and they are body copy that drifted.
+   *
+   * So one value per cluster. `tight` is for text that is one line by design —
+   * a heading, a button, a badge — where 1.5 adds air the shape does not want.
+   */
+  --fw-line-body: 1.5;
+  --fw-line-tight: 1.25;
+
+  /*
+   * Letter spacing — only two kinds of text need any.
+   *
+   * Measured 2026-09-20: 13 distinct values over 43 lines outside `styles/`,
+   * and they split cleanly by sign. Positive, on small uppercase labels
+   * (9 of the 10 `0.04em` sites sit under a `text-transform: uppercase`):
+   * 0.04em x10, 0.06em x8, 0.08em x6, 0.02em x2, 0.05em and 0.01em x1.
+   * Negative, on large headings: -0.01em x10, -0.02em x5, -0.015em x3.
+   *
+   * `caps` is the middle of that first range rather than its mode (0.04em,
+   * by two lines): uppercase at 11-12px needs the air, and the range runs to
+   * 0.08em. `heading` is the mode of the second. Everything else is normal —
+   * body copy at these sizes does not want tracking at all. Johan chose
+   * 0.06em over the mode on 20/9, so this is a decision, not a guess.
+   */
+  --fw-tracking-caps: 0.06em;      /* small uppercase labels, and nothing else */
+  --fw-tracking-heading: -0.01em;  /* headings from ~18px up */
+
+  /*
+   * Motion — one duration, one curve.
+   *
+   * Measured 2026-09-20: 21 lines outside `styles/` carry a transition time.
+   * 120ms x10, 160ms x3, 180ms x2, 140ms x2, 0.18s x2, 90ms and 220ms x1.
+   * Curves: `ease` x18, `ease-out` x2, one spring. Nothing about the elements
+   * explained which got which — the same hover lift was 120 in one panel and
+   * 180 in the next.
+   *
+   * Johan's decision the same day: 120ms, one time. It is already the most
+   * common, and at this scale the difference between 120 and 180 is not a
+   * feeling, it is a delay.
+   *
+   * The tour's spotlight keeps its spring (`cubic-bezier(0.34, 1.35, 0.64, 1)`
+   * at 220ms) as a written exception in its own file: it is a thing arriving,
+   * not a state changing. No token — one user is not a scale.
+   *
+   * K5: every transition still sits under `prefers-reduced-motion`. A token
+   * shortens motion; it does not decide whether motion happens.
+   */
+  --fw-motion-duration: 120ms;
+  --fw-motion-ease: ease;
+
+  /*
+   * Stacking — five layers, and a name says which.
+   *
+   * Measured 2026-09-20: 19 distinct `z-index` values over 35 lines outside
+   * `styles/` — 1,2,3,4,5,6,10,15,20,21,25,30,40,60,80,90,1000 and one
+   * 2147483000. Half of them are ad-hoc answers to "be above that thing",
+   * which is how 21 and 25 happen.
+   *
+   * Five layers is what the interface actually has. A new surface picks one;
+   * two things on the same layer are ordered by document order, which is the
+   * cheaper tool.
+   *
+   * The 2147483000 in `guide-editor.scss` (`:host([wide])`, the full-window
+   * mode) stays as it is and gets no token. It is not a layer in this stack:
+   * it has to beat whatever the HOST page stacks around us, and that number
+   * is unknowable from here.
+   */
+  --fw-z-raised: 1;     /* lifted within its own box: a selected row, a handle */
+  --fw-z-sticky: 10;    /* headers and toolbars that stay while content scrolls */
+  --fw-z-popover: 20;   /* menus, pickers, tooltips — dismissable, tied to a trigger */
+  --fw-z-overlay: 30;   /* the scrim that dims the page */
+  --fw-z-dialog: 40;    /* the dialog on top of that scrim */
+
+  /*
+   * Control height — one number, and it is a requirement.
+   *
+   * K6 in `docs/KRAV.md`: anything a visitor points at is at least 44x44px to
+   * hit. Measured 2026-09-20: 44px is already the most common control height
+   * by far (31 lines), with 36, 40, 30-34 and 38 trailing it. Those are the
+   * editor's, which K6 exempts — the editor is a desktop surface.
+   *
+   * One token, not a scale. A control smaller than this is a K6 exception and
+   * has to say so next to itself.
+   */
+  --fw-control-height: 44px;
+}
+
+/*
+ * Mörkt läge – bara en token-swap. Nodhuvudenas identitetsfärger (--fw-node-*)
+ * står kvar mättade med vit text (fungerar på både ljus och mörk bakgrund, och
+ * undviker renderingsegenheten med ljusa headers); det är ytorna, texten,
+ * kanterna och badge-tintsen som mörknar. Tillämpas manuellt via
+ * [data-theme="dark"] och automatiskt via OS-inställningen.
+ */
+@mixin fw-dark {
+  color-scheme: dark;
+
+  --fw-primary: #818cf8;
+  --fw-primary-hover: #a5b4fc;
+  --fw-primary-strong: #a5b4fc;
+  --fw-primary-surface: #1e2547;
+  --fw-primary-surface-2: #262f52;
+  --fw-primary-border: #3b3f7a;
+  --fw-primary-muted: #4f46e5;
+  /* Primären ljusnar (#818cf8) för text mot mörk botten, så fyllda knappar
+   * behöver mörk text i stället för vit. */
+  --fw-on-primary: #10131f;
+
+  --fw-text: #e6edf3;
+  --fw-text-strong: #cdd5df;
+  --fw-text-secondary: #b3bdc9;
+  --fw-text-muted: #8b96a5;
+  --fw-text-disabled: #6b7688; /* AA-audit: 2.96 → 3.75 mot ytan, fortsatt tydligt inaktiverad */
+
+  --fw-surface: #161b26;
+  --fw-surface-subtle: #1c2230;
+  /* Ett steg ljusare än subtle (1.23:1 mot fältets `--fw-surface`, mätt),
+   * valt som det ljusaste där `--fw-text-muted` ännu håller 4.5:1 (4.66);
+   * `--fw-text` 11.8, `--fw-text-secondary` 7.4, `--fw-primary-hover` 7.0.
+   * Astras eget förslag var #262c3b — nästan samma. */
+  --fw-surface-raised: #252c3b;
+  --fw-canvas: #0d1117;
+  --fw-bg: #0d1117;
+  --fw-border: #3f4a63; /* AA-audit: 1.38 → 1.95 så mörka kort-/fältkanter faktiskt syns */
+  --fw-border-subtle: #232a38;
+  /* Se den ljusa sidan. Handrättningen ovan stannade på 1.95 och höll den dagen
+   * den gjordes; det är därför den här har ett test bakom sig i stället för en
+   * kommentar. Mätt: 5.75:1. */
+  --fw-border-control: #8b96a5;
+
+  --fw-danger-text: #fca5a5; --fw-danger-surface: #2a1416; --fw-danger-border: #7a2e2e;
+  --fw-success-text: #6ee7b7; --fw-success-surface: #10221a; --fw-success-border: #1f5c43;
+  --fw-warning-text: #fcd34d; --fw-warning-surface: #241a08; --fw-warning-border: #7a5a1a;
+  --fw-info-text: #93c5fd; --fw-info-surface: #0f1a2e; --fw-info-border: #1e4a8a;
+  /*
+   * Nodfamiljerna i mörkt läge (alternativ B, Johan 22/9).
+   *
+   * Fram till nu hade fyllningarna INGEN mörk variant medan tint och ink hade
+   * det: i mörkt läge stod fem ljusa-lägets färger kvar medan allt runt dem
+   * vände. Det gav bland annat startsidans vägfigur tre uttryck på fyra steg.
+   *
+   * **Räknat, inte valt** (`tools/oklch.mjs`): nyansen H är oförändrad, C är
+   * oförändrad — alla fem rymdes i sRGB — och ljusheten är lyft med **ett
+   * enda konstant tal, +0,210 L**. Konstanten är med flit: ett eget minimum
+   * per familj hade lagt alla fem inom 0,014 L av varandra, alltså just den
+   * utjämning Johan avböjt. Nu är spridningen exakt densamma som i ljust
+   * läge, 0,157 — tyngdskillnaderna är kvar, bara flyttade.
+   *
+   * Talet 0,210 är det minsta som ger varje familj 4,6:1 mot den mörka
+   * glyfen. Mätt utfall: 4,61 (innehåll) till 8,39 (tjänsteanrop) mot glyfen,
+   * och 4,72 till 8,58 mot den mörka canvasen. Primärfärgen ligger på 6,20 i
+   * samma mätning, alltså mitt i fältet.
+   *
+   * Färgstyrkan är INTE utjämnad. Att uträkning är blekare än regel är samma
+   * skillnad som i ljust läge, och om den ska bort är det ett eget
+   * designbeslut (LOGG 22/9).
+   */
+  --fw-on-node: #10131f;        /* samma mörka bläck som --fw-on-primary */
+  --fw-node-content: #6c72ea;
+  --fw-node-rule: #a968ef;
+  --fw-node-calc: #5fb5d3;
+  --fw-node-service: #fc9459;
+  --fw-node-end: #5ba46f;
+
+  --fw-spotlight: #2dd4bf;
+  --fw-logo-blue: #3b82f6;
+  --fw-logo-green: #22c55e;
+
+  /*
+   * Badge-tints (palettikoner) mörknar; solidfärgerna i huvudena rörs inte
+   * (--fw-on-node är vit i båda lägen). Ink ljusnar så att glyf/text bär mot
+   * den mörknade tinten – annars blir det mörkt-på-mörkt.
+   */
+  --fw-node-content-tint: #1e2547; --fw-node-content-ink: #a5b4fc;
+  --fw-node-rule-tint: #251a35;    --fw-node-rule-ink: #d8b4fe;
+  --fw-node-calc-tint: #0c2a31;    --fw-node-calc-ink: #67e8f9;
+  --fw-node-service-tint: #2a1e0a; --fw-node-service-ink: #fcd34d;
+  --fw-node-end-tint: #0f2a1a;     --fw-node-end-ink: #6ee7b7;
+
+  /* Shadows keep their geometry and swap the ink: a coloured shadow is
+   * invisible on a dark surface, so the dark side goes black and lifts the
+   * alpha hard. The two that existed did 5%->40% and 9%->50%; `floating`
+   * follows the same line at 24%->60%. The `--fw-shadow-sm/md` aliases are
+   * not repeated here — they point at these. */
+  --fw-shadow-low: 0 4px 12px rgb(0 0 0 / 40%);
+  --fw-shadow-raised: 0 6px 18px rgb(0 0 0 / 50%);
+  --fw-shadow-floating: 0 24px 48px rgb(0 0 0 / 60%);
+}

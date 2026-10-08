@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="sv">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>FlowWeaver — Mina guider</title>
+  </head>
+  <body>
+    <main class="guides">
+      <a class="demo-back" href="./index.html">Tillbaka till demon</a>
+
+      <header class="guides__intro">
+        <h1 id="title">Guider</h1>
+        <p id="intro"></p>
+      </header>
+
+      <!--
+        Beskedet som inte är ett fel: ingen värd inkopplad, eller en värd utan
+        inloggning. Båda är dokumenterade sätt att köra det här, så raden säger
+        vad man gör i stället för vad som gick fel.
+      -->
+      <p class="guides__notice" id="notice" hidden></p>
+
+      <section class="guides__signed-out" id="signed-out" hidden>
+        <p id="signed-out-text"></p>
+        <!--
+          En länk och inte en knapp: inloggningen är en navigering till värden,
+          och en länk går att öppna i en ny flik, kopiera och nå med tangenter
+          utan att någon skriver koden för det.
+        -->
+        <a class="guides__button guides__button--primary" id="login" href="#"></a>
+      </section>
+
+      <section class="guides__signed-in" id="signed-in" hidden>
+        <p class="guides__who">
+          <span id="who"></span>
+          <button type="button" class="guides__button" id="logout"></button>
+        </p>
+
+        <div class="guides__tools">
+          <!--
+            En riktig etikett, kopplad till fältet. Den stod som en `<span>`
+            medan sökningen var en väljare, som bar sitt eget namn inuti sig.
+          -->
+          <label class="guides__search-label" id="search-label" for="search"></label>
+
+          <span class="guides__search" id="search-box">
+            <!--
+              En vanlig sökruta, som filtrerar listan under sig medan man
+              skriver (Johan 18/9: *"Sök på titel funkar inte — den borde vara
+              en vanlig sökning så ändras listan nedanför"*).
+
+              Här stod `<chip-picker>` förut, besökarnas egen väljare. Den var
+              fel verktyg på precis det sätt som är svårast att se: den ritar
+              sitt sökfält först över åtta alternativ, så med tre guider fanns
+              det ingenting att skriva i — men rutan såg ut som ett sökfält
+              ändå, med *Alla guider visas* i sig. Mätt: fältet i skuggträdet
+              var 0x0, klicket tog ingen fokus, och *bygg* hamnade ingenstans.
+
+              `type="search"` och inte `text`: webbläsaren ger då sin egen
+              rensningsknapp där den har en, och Escape tömmer fältet på köpet.
+            -->
+            <input type="search" class="guides__search-input" id="search">
+          </span>
+          <button type="button" class="guides__button guides__button--primary" id="new" hidden></button>
+
+          <!--
+            Varför knappen inte står där (berättelse 128, kriterium 6).
+
+            En knapp som bara är borta läses som att sidan är trasig, eller
+            värre: som att man själv gjort något fel. `role="status"` för att
+            skälet ska sägas för den som inte ser skärmen — och raden ritas
+            bara när knappen saknas, aldrig bredvid den.
+          -->
+          <p class="guides__role-note" id="create-note" role="status" hidden></p>
+
+          <!--
+            *Bara mina* — listan är allas, och det här är avgränsningen
+            (berättelse 127). Av som standard: den sanna listan ska vara den
+            man möter, och den som letar efter guiden en kollega just ändrade
+            ska inte mötas av en tom skärm utan ledtråd.
+
+            Hjälpraden står bredvid och pekas ut med `aria-describedby`, för
+            *mina* betyder något värden avgör — skapad av mig, eller senast
+            ändrad av mig — och det är inte självklart ur två ord.
+          -->
+          <!--
+            Hur många listan visar. `role="status"`, för raden ändras medan man
+            skriver och är då hela beskedet om att sökningen gör något.
+          -->
+          <p class="guides__count" id="count" role="status"></p>
+
+          <span class="guides__filter" id="filter" hidden>
+            <input type="checkbox" id="only-mine" aria-describedby="only-mine-hint">
+            <label for="only-mine" id="only-mine-label"></label>
+            <span class="guides__filter-hint" id="only-mine-hint"></span>
+          </span>
+        </div>
+
+        <ul class="guides__list" id="list"></ul>
+        <p class="guides__nothing" id="nothing" hidden></p>
+      </section>
+    </main>
+    <!--
+      The setup first, then the app: modules run in import order, and the app
+      reads its settings once, when it starts.
+    -->
+    <script type="module">
+      import "./host-setup.js";
+      import "../src/host/guides.ts";
+    </script>
+  </body>
+</html>

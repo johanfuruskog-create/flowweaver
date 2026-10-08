@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Runs the CSS ratchet when a stylesheet is staged, so a literal where a token
+# belongs is refused at the commit and not found in a full run hours later
+# (Johan 30/9: "så om Fia går utanför den med t.ex. avstånd så varnar det").
+# Installed by `npm install` through the `prepare` script (core.hooksPath);
+# git config is shared by every worktree of the repo, so the team's trees all
+# get it. Skip with `git commit --no-verify` only when the commit itself is the
+# ratchet clicking down.
+set -o pipefail
+if git diff --cached --name-only --diff-filter=ACMR | grep -q '\.scss$'; then
+  echo "css-ratchet: en stilfil är med — kör grinden…"
+  if ! npx vitest run src/gates/css-ratchet.test.ts --reporter=dot 2>&1 | tail -40; then
+    echo "css-ratchet föll: en literal där en token hör hemma. Se raderna ovan."
+    exit 1
+  fi
+fi

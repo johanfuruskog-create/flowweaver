@@ -1,0 +1,165 @@
+{
+ "id": "scb-counties",
+ "standard": "custom",
+ "label": {
+  "sv": "Län — SCB",
+  "en": "Counties — Statistics Sweden"
+ },
+ "version": "2026",
+ "published": "2026-01-01",
+ "source": "SCB, Län och kommuner i kodnummerordning",
+ "sourceUrl": "https://www.scb.se/hitta-statistik/regional-statistik-och-kartor/regionala-indelningar/lan-och-kommuner/lan-och-kommuner-i-kodnummerordning/",
+ "labelSources": {
+  "sv": "SCB, Län och kommuner i kodnummerordning",
+  "en": "SCB, Län och kommuner i kodnummerordning (namnen är egennamn och översätts inte)"
+ },
+ "items": [
+  {
+   "value": "01",
+   "label": {
+    "sv": "Stockholms län",
+    "en": "Stockholms län"
+   }
+  },
+  {
+   "value": "03",
+   "label": {
+    "sv": "Uppsala län",
+    "en": "Uppsala län"
+   }
+  },
+  {
+   "value": "04",
+   "label": {
+    "sv": "Södermanlands län",
+    "en": "Södermanlands län"
+   }
+  },
+  {
+   "value": "05",
+   "label": {
+    "sv": "Östergötlands län",
+    "en": "Östergötlands län"
+   }
+  },
+  {
+   "value": "06",
+   "label": {
+    "sv": "Jönköpings län",
+    "en": "Jönköpings län"
+   }
+  },
+  {
+   "value": "07",
+   "label": {
+    "sv": "Kronobergs län",
+    "en": "Kronobergs län"
+   }
+  },
+  {
+   "value": "08",
+   "label": {
+    "sv": "Kalmar län",
+    "en": "Kalmar län"
+   }
+  },
+  {
+   "value": "09",
+   "label": {
+    "sv": "Gotlands län",
+    "en": "Gotlands län"
+   }
+  },
+  {
+   "value": "10",
+   "label": {
+    "sv": "Blekinge län",
+    "en": "Blekinge län"
+   }
+  },
+  {
+   "value": "12",
+   "label": {
+    "sv": "Skåne län",
+    "en": "Skåne län"
+   }
+  },
+  {
+   "value": "13",
+   "label": {
+    "sv": "Hallands län",
+    "en": "Hallands län"
+   }
+  },
+  {
+   "value": "14",
+   "label": {
+    "sv": "Västra Götalands län",
+    "en": "Västra Götalands län"
+   }
+  },
+  {
+   "value": "17",
+   "label": {
+    "sv": "Värmlands län",
+    "en": "Värmlands län"
+   }
+  },
+  {
+   "value": "18",
+   "label": {
+    "sv": "Örebro län",
+    "en": "Örebro län"
+   }
+  },
+  {
+   "value": "19",
+   "label": {
+    "sv": "Västmanlands län",
+    "en": "Västmanlands län"
+   }
+  },
+  {
+   "value": "20",
+   "label": {
+    "sv": "Dalarnas län",
+    "en": "Dalarnas län"
+   }
+  },
+  {
+   "value": "21",
+   "label": {
+    "sv": "Gävleborgs län",
+    "en": "Gävleborgs län"
+   }
+  },
+  {
+   "value": "22",
+   "label": {
+    "sv": "Västernorrlands län",
+    "en": "Västernorrlands län"
+   }
+  },
+  {
+   "value": "23",
+   "label": {
+    "sv": "Jämtlands län",
+    "en": "Jämtlands län"
+   }
+  },
+  {
+   "value": "24",
+   "label": {
+    "sv": "Västerbottens län",
+    "en": "Västerbottens län"
+   }
+  },
+  {
+   "value": "25",
+   "label": {
+    "sv": "Norrbottens län",
+    "en": "Norrbottens län"
+   }
+  }
+ ]
+}

@@ -1,0 +1,1517 @@
+@use "../../styles/cursors";
+@use "../../../viewer/styles/focus" as focus;
+
+:host {
+  position: absolute;
+  display: block;
+  width: 240px;
+  z-index: 2;
+  user-select: none;
+}
+/* `hidden` has to bite on a host that sets its own `display`.
+
+   The UA rule `[hidden] { display: none }` loses to `:host` on specificity, so
+   `hidden` on a flow-node set the attribute and changed nothing — the card
+   stayed where it was and went on catching clicks (measured: Playwright could
+   not click the page, "<flow-node hidden> intercepts pointer events"). Exactly
+   the trap the palette's read-only mode fell into, which is why this is here. */
+:host([hidden]) {
+  display: none;
+}
+
+
+.flow-node {
+  /* The containing block for a page's visitor view, which is taken out of the
+     flow — see the rule further down. */
+  position: relative;
+  overflow: visible;
+  background: var(--fw-surface);
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-xl);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 10%);
+}
+
+/* Tydlig tangentbordsfokus på noden (fokuserbar via tabindex). */
+.flow-node:focus-visible {
+  @include focus.ring(3px);
+}
+
+.flow-node__header {
+  /* Ankare för `.flow-node__header-tooltip` (E10, uppdraget bilaga 5). */
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 16px;
+  /*
+   * Innehållsfärgen är standard, inte en uppräkning. Listan på fyra
+   * frågetyper nedanför lämnade varje annan typ — flerval, uppslagen,
+   * kartan, filen — med `--fw-text` som bakgrund och vit text ovanpå:
+   * oläsligt i mörkt läge, hittat av Johan på kartnoden 2026-08-24.
+   * Undantagen (logik, avslut, anteckning) pekas ut; allt annat är
+   * innehåll, även en värds egen nodtyp.
+   */
+  background: var(--fw-node-content);
+  border-bottom: 1px solid var(--fw-border-subtle);
+  border-radius: 12px 12px 0 0;
+  font-size: var(--fw-font-size-md);
+  font-weight: 700;
+  color: var(--fw-on-node);
+}
+
+/*
+ * Kategorifärgade nodhuvuden (samma grupper som paletten) gör stora
+ * grafer skanningsbara: Innehåll = indigo, Logik = lila, Avslut = grön.
+ * Alla bakgrunder håller minst 4,5:1 mot vit text; rubrik och ikon är
+ * fortsatt de icke-färgburna signalerna.
+ *
+ * Avslut är `data-ending`, satt av varje ställe som ritar en nod (nod,
+ * minikarta, dragskugga, struktur, palett) ur nodkontraktets `endsGuide`
+ * — ingen typlista i stilen. Fem listor med två typer var stod här förut,
+ * och inlämningen stod indigo bredvid ett grönt resultat (Johan såg det i
+ * trailern 9/9). Granska är inte ett avslut: den har en väg vidare.
+ */
+.flow-node[data-node-type="rule"] .flow-node__header {
+  background: var(--fw-node-rule);
+}
+
+.flow-node[data-node-type="calculation"] .flow-node__header {
+  background: var(--fw-node-calc);
+}
+
+.flow-node[data-node-type="service-call"] .flow-node__header {
+  background: var(--fw-node-service);
+}
+
+.flow-node[data-ending] .flow-node__header {
+  background: var(--fw-node-end);
+}
+
+/*
+ * Ikonens urtag (kalenderns rader, diamantens gren) bär klassen `cut` och
+ * fylls med HUVUDETS färg — samma fem familjer som bakgrunderna ovan. I
+ * paletten fyller badgens tint dem; här ärvde de currentColor = vitt och en
+ * vit form fick vita urtag (sett i stillbild 1/9). Ett urtag är ett hål, och
+ * ett hål har bakgrundens färg.
+ */
+.flow-node__type-icon svg .cut {
+  fill: var(--fw-node-content);
+}
+
+.flow-node[data-node-type="rule"] .flow-node__type-icon svg .cut {
+  fill: var(--fw-node-rule);
+}
+
+.flow-node[data-node-type="calculation"] .flow-node__type-icon svg .cut {
+  fill: var(--fw-node-calc);
+}
+
+.flow-node[data-node-type="service-call"] .flow-node__type-icon svg .cut {
+  fill: var(--fw-node-service);
+}
+
+.flow-node[data-ending] .flow-node__type-icon svg .cut {
+  fill: var(--fw-node-end);
+}
+
+:host([data-dragging]) .flow-node__header {
+  cursor: cursors.$grabbing;
+}
+
+/* En nyskapad nod (lägg till / duplicera) poppar fram så ögat hittar den. */
+:host([data-appear]) .flow-node {
+  animation: flow-node-appear 200ms ease both;
+}
+
+@keyframes flow-node-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :host([data-appear]) .flow-node {
+    animation: none;
+  }
+}
+
+.flow-node__content {
+  padding: 16px;
+}
+
+.flow-node__title {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.4;
+  color: var(--fw-text);
+}
+
+/* Obligatoriskt: en asterisk efter rubriken, där ett formulär sätter den,
+   i kravets färg (story 077 — Johan: "en asterisk bredvid namnet?"). Ordet
+   finns i kortets tillgängliga namn; symbolen är aldrig enda kanalen. */
+.flow-node__required {
+  color: var(--fw-warning-text);
+  font-weight: 700;
+}
+
+/* `{{applicantName}}` i en text på kortet: samma lucka som besökarvyn ritar
+   (guide-preview__variable-gap) — variabelns etikett, streckad. Två ritningar
+   av samma sak ska se likadana ut. Blå, inte grå (Johan 3/9): grått läses som
+   avstängt; luckan är det levande i texten, det som besökarens svar fyller.
+   Primärfärgen håller AA mot både kortet och sin egen yta — kontrastgrinden
+   har paret. Ikonen bär betoningen, så ingen kursiv och normal vikt även i
+   en fet rubrik. */
+.flow-node__variable-gap {
+  display: inline-block;
+  /* A little room on top only: measured in a heading, the caps sat 3 px
+     below the border and the baseline 5.5 px above it — the descender space
+     pushes the word up. 0.1 em on top puts cap-to-baseline in the middle. */
+  padding: 0.1em 6px 0;
+  border: 1px dashed var(--fw-primary);
+  border-radius: var(--fw-radius-sm);
+  background: var(--fw-primary-surface);
+  color: var(--fw-primary);
+  font-weight: normal;
+  /* Tighter than the text around it, so the box (border included) fits inside
+     the line: measured 22.3 px tall on a 20.3 px line, and two gaps on
+     consecutive lines touched (Johan 3/9: "går i varandra"). */
+  line-height: 1.15;
+
+  /* The mark follows the text size, so it holds its own in a heading too
+     (Johan 3/9: the fixed 10 px looked lost there). */
+  svg {
+    width: 0.7em;
+    height: 0.7em;
+    margin-right: 0.2em;
+    vertical-align: -0.05em;
+  }
+}
+
+.flow-node__description {
+  margin: 8px 0 0;
+  font-size: var(--fw-font-size-md);
+  line-height: 1.45;
+  color: var(--fw-text-muted);
+  /* A word with no space to break at — a link's address, before the card
+     stopped drawing them: `(/du-vill-ansoka/studera/doktorandstudier.html)`
+     ran 100 px past the card on the imported guides (7/9 2026). */
+  overflow-wrap: anywhere;
+
+  /* Uppdrag 23/9, Del A punkt 3: the card is a thumbnail on a canvas people
+   * scan, not a place to read a long description — the whole text is
+   * unabridged in the properties panel and in the visitor's own view. Two
+   * rows, then a clip; the card's height follows, since nothing below fills
+   * a gap. `-webkit-line-clamp` is the floor K18 already sets for the editor
+   * (Chrome 98 / Safari 15.4 / Firefox 95 support both the prefixed and the
+   * unprefixed property), so there is no fallback to write. */
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+
+  /* A link, drawn as the visitor's view draws one, but without its href
+     (`FormattedTextService.renderInert`) — so the browser gives it no colour
+     or underline of its own, and the card says "link" itself. Same colour
+     as the visitor's, on the muted text it sits in. */
+  a {
+    color: var(--fw-primary-strong);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+  }
+}
+
+/*
+ * 16 och inte 12: radhöjden 28 plus mellanrummet är avståndet mellan två portars
+ * mittpunkter, och det avståndet är vad en träffyta får vara bred. 12 gav 40 och
+ * en yta under Apples 44. Priset är 4 px per portrad — en fråga med sex svar
+ * växer 24 px.
+ */
+.flow-node__ports {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+/* The entry ring shares the first row with the first exit.
+
+   It had a row of its own — 28 px and a 16 px gap with nothing in it but the
+   ring — which was the hole between the tags and "Man" on every question.
+   Johan 1/9: "korta ner dem när de är kortare, bara så stora de tar plats".
+   Two columns: the entry in the first, the exits stacked in the second, so
+   the rings keep their x on the edges and the lines their anchors. Pages
+   keep their own rows: their height is what the fields are placed against. */
+:host(:not([data-page-container])) .flow-node__ports {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+:host(:not([data-page-container])) .flow-node__port-row--input {
+  grid-row: 1;
+  grid-column: 1;
+}
+
+:host(:not([data-page-container])) .flow-node__port-row--output {
+  grid-column: 2;
+}
+
+/* A node with no exits takes its line 22 px from the bottom of the card.
+
+   Its only row is the entry, and after the content it stood under the text —
+   300 px below the header on the imported guides, the line ending where
+   nobody looks for it (Johan 7/9: "porten sitter för långt ner på
+   resultatet … går det inte att räkna från botten istället för toppen?").
+   First try put it level with the header; Johan's call was the bottom edge:
+   "Sätt 24px från botten" — then 32 and 28 tried from stills, and 22 chosen
+   because that is where a question's last answer ring sits (content padding
+   16 + border 1 + 5 px of its 28 px row), so a result beside a question
+   meets its line at the same height. The row is rendered as a child of the card
+   (flow-node.ts, `entryOnly`) and placed against the card's bottom, so it
+   follows whichever view the card is showing — structure or the visitor's —
+   without anything to lift. The ring keeps its x (the content padding it
+   used to sit in, as `left`) and the row is only as tall as the ring, so
+   22 px is the ring's own edge and not a row's. Out of the flow, so the
+   card's height is its text's alone. 21: the offset counts from inside the
+   1 px border, and 22 is measured from the edge one sees. */
+:host([data-entry-only]) .flow-node__ports {
+  position: absolute;
+  bottom: 21px;
+  left: 16px;
+  width: 0;
+}
+
+:host([data-entry-only]) .flow-node__port-row {
+  min-height: 0;
+}
+
+/* "…dock en minimihöjd så det inte ser för litet ut." A floor, not a size:
+   most nodes are taller than this by their content alone. */
+:host(:not([data-page-container]):not([data-page-child])) .flow-node {
+  min-height: 150px;
+}
+
+.flow-node__port-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+  gap: 10px;
+
+  &--input {
+    justify-content: flex-start;
+  }
+
+  &--output {
+    justify-content: flex-end;
+  }
+}
+
+/* Slutpunktsraden (story 068) och upprepningsraden (story 084): stilla
+   fakta, inte rubrik. */
+.flow-node__recipients,
+.flow-node__repeats {
+  margin: 8px 0 0;
+  color: var(--fw-text-secondary);
+  font-size: 12.5px;
+}
+
+/* A calculation's rows on its card (uppdrag 29/9 Del D): the recipients
+   row's size and colour, one line each, cut rather than wrapped — the
+   card is a picture of the flow, the panel holds the whole name. */
+.flow-node__calculations {
+  display: grid;
+  gap: 2px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--fw-text-secondary);
+  font-size: 12.5px;
+
+  li {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+}
+
+.flow-node__port-label {
+  font-size: var(--fw-font-size-md);
+  color: var(--fw-text-strong);
+
+  /* Radbruten text pekar mot sin port: höger på utgångar, vänster på
+     ingångar. Utan det hamnade "EU/EES" på andra raden långt från pricken
+     den hör till (Johans foto, medborgarskapsguiden). */
+  .flow-node__port-row--output & {
+    text-align: right;
+  }
+
+  /*
+   * Etiketten får bryta i stället för att spränga noden. `min-width: 0` behövs
+   * för att en flex-artikel annars inte krymper under sitt innehåll, och
+   * `anywhere` för att ett enda långt ord (en URL, ett långt sammansatt ord)
+   * inte ska sticka ut ur kortet.
+   */
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Portens färg följer kopplingen som rör den. Sätts av node-editor via
+ * `data-color`, och bara när alla kopplingar vid porten är eniga — möts två
+ * färger står porten kvar i standardfärgen i stället för att ljuga om vilken
+ * väg som gäller.
+ *
+ * Samma `-ink`-toner som strecken, så cirkel och linje alltid matchar. */
+.flow-node__port[data-color="content"] { background: var(--fw-node-content-ink); box-shadow: 0 0 0 2px var(--fw-node-content-ink); }
+.flow-node__port[data-color="rule"] { background: var(--fw-node-rule-ink); box-shadow: 0 0 0 2px var(--fw-node-rule-ink); }
+.flow-node__port[data-color="calc"] { background: var(--fw-node-calc-ink); box-shadow: 0 0 0 2px var(--fw-node-calc-ink); }
+.flow-node__port[data-color="service"] { background: var(--fw-node-service-ink); box-shadow: 0 0 0 2px var(--fw-node-service-ink); }
+.flow-node__port[data-color="end"] { background: var(--fw-node-end-ink); box-shadow: 0 0 0 2px var(--fw-node-end-ink); }
+.flow-node__port[data-color="danger"] { background: var(--fw-danger-text); box-shadow: 0 0 0 2px var(--fw-danger-text); }
+
+.flow-node__port {
+  /*
+   * Cirkeln är en flex-artikel i port-raden och krympte därför när etiketten
+   * tog plats — ett långt svarsalternativ tryckte ihop den till en oval (mätt:
+   * 11×18 i stället för 18×18). Den är ett fast träffområde och en fast
+   * ankarpunkt för kopplingen; den ska aldrig ge vika för text.
+   */
+  flex: none;
+  position: relative;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+
+  /*
+   * Ett finger som drar från en port ska dra en linje, inte scrolla canvasen.
+   *
+   * Viewporten har `overflow: auto`, alltså nativ scroll — och den startar i
+   * webbläsaren innan någon lyssnare får ordet. `preventDefault` på pointerdown
+   * stoppar den inte, och `stopPropagation` gör det inte heller: det är inte en
+   * händelse som bubblar, det är en gest webbläsaren äger. Bara `touch-action`
+   * säger ifrån.
+   *
+   * Nodhuvudet har haft det här hela tiden, vilket är varför noder gick att dra
+   * på en surfplatta men kopplingar inte gjorde det.
+   */
+  touch-action: none;
+
+  border: 3px solid var(--fw-surface);
+  border-radius: 50%;
+  background: var(--fw-primary);
+  box-shadow: 0 0 0 2px var(--fw-primary);
+  cursor: cursors.$crosshair;
+
+  /*
+   * Träffytan är större än pricken.
+   *
+   * 18×18 är bekvämt för en pekare som landar där man tittade och dåligt för ett
+   * finger, som täcker en centimeter och kommer ungefär rätt. Pricken får inte
+   * växa med — den är också den punkt kopplingen ritas till, och på en fråga med
+   * fem svar börjar större prickar tränga undan etiketterna.
+   *
+   * 44×44 är Apples mått och WCAG 2.2 SC 2.5.5. Vad som begränsar är avståndet
+   * till närmaste granne, för två träffytor ovanpå varandra gör **fel** port
+   * nåbar — värre än en liten yta. Mätt över alla nodtyper: ett enda portpar är
+   * trångt, två svar på en fråga, och alla andra par ligger 238 px isär. Det
+   * paret låg på 40, så `gap` i `.flow-node__ports` gick från 12 till 16.
+   *
+   * Ytorna är kvadrater, så det som avgör är det största av avstånden i x och y
+   * — inte fågelvägen. Två portar 40 px rakt under varandra möts vid 40, inte
+   * vid 57.
+   */
+  &::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+  }
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    background 140ms ease,
+    opacity 140ms ease;
+
+  /* Opak, inte en tonad mättnad: en procentuell indigo-slöja klarar aldrig
+     1.4.11:s 3:1 mot både en nästan vit och en nästan svart yta samtidigt —
+     samma brist `_focus.scss` dokumenterar för fokusringens slöja för sig.
+     Mätt (Siv, genomgången 30/9, E4) mot det porten faktiskt vilar på:
+     rgb(79 70 229 / 28%) gav 1,55:1 ljust och 1,25:1 mörkt. `--fw-primary-strong`
+     — samma familj som dialogens vanliga accent — ger 8,08 och 8,64. */
+  &:hover {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 3px var(--fw-primary-strong);
+  }
+
+  &:focus-visible {
+    @include focus.ring(3px);
+  }
+
+  &--input {
+    margin-left: -25px;
+  }
+
+  &--output {
+    margin-right: -25px;
+  }
+
+  /* Den port ett halvgjort drag utgår från. Ringen är samma sort som fokus,
+     men i annan färg — fokus säger var jag står, den här säger vad jag håller
+     i, och de kan vara på olika ställen samtidigt. */
+  &[data-pending] {
+    background: var(--fw-success);
+    box-shadow:
+      0 0 0 2px var(--fw-success),
+      0 0 0 6px rgb(22 163 74 / 30%);
+  }
+
+  &--highlighted {
+    background: var(--fw-success);
+    box-shadow: 0 0 0 2px var(--fw-success);
+  }
+
+  &--dimmed {
+    opacity: 0.2;
+  }
+}
+
+.flow-node__header {
+  cursor: cursors.$grab;
+  touch-action: none;
+
+  &:active {
+    cursor: cursors.$grabbing;
+  }
+}
+
+.flow-node {
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+/*
+ * Ringen låg utanför rörelseblocket medan allt annat på kortet låg innanför —
+ * hittat 18/9 när markeringen slutade blinka och frågan blev vad som händer för
+ * den som bett att slippa rörelse. En ram som tonar in är rörelse som ingen bad
+ * om, och den som valt bort rörelse ska få markeringen direkt.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .flow-node {
+    transition: none;
+  }
+}
+
+.flow-node[data-selected] {
+  border-color: var(--fw-primary);
+  box-shadow:
+    0 0 0 3px rgb(79 70 229 / 22%),
+    0 8px 24px rgb(0 0 0 / 12%);
+}
+
+/* Vägen hit: allt som inte ligger på den tonas ned.
+
+   Två nivåer, för de säger olika saker. En **nod** utanför vägen är inte med i
+   svaret alls och får den kraftigare nedtoningen. En **portrad** som är kvar i
+   full styrka på en nod som är med säger i stället "just det här svaret leder
+   hit, det andra gör det inte" — och eftersom raden bär både etiketten och
+   cirkeln räcker en regel för båda. En tänd linje som slutade i ett släckt
+   svarsalternativ hade sagt halva saken.
+
+   Nedtoning och inte gömning: det man letar efter när man frågar "vilka vägar
+   leder hit" är ofta *var det inte går*, och en nod som försvinner går inte att
+   peka på. 0.28 respektive 0.34 är valt så att texten fortfarande går att läsa
+   om man lutar sig fram.
+
+   Ingen övergång: kopplingarna under tonas också om utan animation, eftersom
+   `drawConnections()` skapar nya element vid varje ritning (se node-editor.scss)
+   — två olika hastigheter på samma gest hade sett ut som ett fel. */
+.flow-node[data-off-route] {
+  opacity: 0.28;
+}
+
+/* Raden tonas, men **inte** cirkeln — den byter färg i stället.
+
+   Genomskinlighet på porten lät kopplingen under den lysa rakt igenom: linjerna
+   ritas i lagret bakom noderna och cirkeln sitter med negativ marginal ovanpå
+   dem, så en halvgenomskinlig cirkel blir ett hål med ett streck i. Cirkeln är
+   dessutom det enda i raden som har en *plats* i bilden; den ska stå kvar och
+   säga "här går det, men inte den här vägen".
+
+   Etiketten får tonas fritt — den ligger inne i kortet och har ingenting bakom
+   sig att avslöja. */
+/*
+ * Punkten vid ett villkorat alternativ (berättelse 134).
+ *
+ * Ett tecken och inte meningen: kortet ska säga ATT alternativet har ett
+ * villkor, orden står i panelen. Storleken är satt i px och inte i em — den
+ * ska vara lika stor bredvid en kort etikett som bredvid en lång, och den är
+ * inte text.
+ *
+ * Färgen bär ingenting ensam: prickens hela innebörd står i dess `aria-label`
+ * (K3), så en skärm utan färgseende förlorar inte något.
+ */
+.flow-node__port-conditional {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-inline-start: 4px;
+  vertical-align: 1px;
+
+  border-radius: 50%;
+  background: var(--fw-text-secondary);
+}
+
+.flow-node__port-row[data-off-route] .flow-node__port-label {
+  opacity: 0.34;
+}
+
+.flow-node__port-row[data-off-route] .flow-node__port {
+  background: var(--fw-border);
+  box-shadow: 0 0 0 2px var(--fw-border);
+}
+
+/* Saknar översättning i aktivt språk: gul ram så luckan syns på håll.
+   Meddelandet bor inte längre i en plakett här — det åt upp huvudets bredd
+   på varje berörd nod (Johans öga) — utan i markören i huvudet och i nodens
+   tillgängliga namn, samma konvention som hälsomarkören. */
+:host([data-untranslated]) .flow-node {
+  box-shadow:
+    0 0 0 2px var(--fw-warning),
+    0 8px 24px rgb(0 0 0 / 10%);
+}
+
+:host([data-page-child]) {
+  width: 620px;
+  z-index: 3;
+}
+
+/*
+ * Anteckningen ligger överst.
+ *
+ * Den är inte en del av flödet — den är någon som pekar på flödet. Utan egen
+ * regel hamnade den på 2, alltså BAKOM varje fält på en sida (3) och bakom
+ * vilken nod som helst som råkade ritas senare. En lapp som skyms av det den
+ * kommenterar är samma sorts fel som en varning bakom en dialog: den finns,
+ * men når inte fram (Johans fråga om anteckningar på sidfält, 29/8).
+ */
+:host([data-node-type="annotation"]) {
+  z-index: 5;
+}
+
+/* Mjuk förflyttning när syskon flödar om under en dragning. */
+:host([data-page-child][data-reflowing]) {
+  transition:
+    left 160ms ease,
+    top 160ms ease;
+}
+
+/* FLIP-landning när ett släppt fält glider in i sin slot. */
+:host([data-page-child][data-settling]) {
+  transition: transform 180ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :host([data-page-child][data-reflowing]),
+  :host([data-page-child][data-settling]) {
+    transition: none;
+  }
+}
+
+:host([data-page-child]) .flow-node {
+  border-color: var(--fw-primary-border);
+  border-radius: var(--fw-radius-lg);
+  box-shadow: 0 4px 12px rgb(49 46 129 / 10%);
+}
+
+:host([data-page-child]) .flow-node[data-selected] {
+  border-color: var(--fw-primary);
+  box-shadow:
+    0 0 0 3px rgb(79 70 229 / 22%),
+    0 8px 24px rgb(0 0 0 / 12%);
+}
+
+:host([data-page-child]) .flow-node[data-node-type="page-spacer"] {
+  border-style: dashed;
+  background: rgb(255 255 255 / 55%);
+  box-shadow: none;
+}
+
+:host([data-page-child]) .flow-node[data-node-type="page-spacer"] .flow-node__header {
+  background: var(--fw-primary-surface);
+  color: var(--fw-primary);
+}
+
+/* A field's header has the same padding as every other node's: 44 px inside,
+   so the ⋯ button's 44 × 44 target (E10, see `.flow-node__menu-button`) lies
+   inside the card. It was 8 / 12, a 33 px header, and a target centred on the
+   button reached 5 px above the card into the page around it. */
+:host([data-page-child]) .flow-node__header {
+  border-radius: 10px 10px 0 0;
+  background: var(--fw-node-content);
+  font-size: var(--fw-font-size-sm);
+}
+
+:host([data-page-child]) .flow-node__content {
+  padding: 10px 12px;
+}
+
+:host([data-page-child]) .flow-node__description {
+  display: none;
+}
+
+.flow-node__visibility-badge {
+  margin: 8px 10px 0;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: var(--fw-warning-surface);
+  color: var(--fw-warning-text);
+  font-size: var(--fw-font-size-xs);
+  font-weight: 700;
+  line-height: 1.3;
+}
+:host([data-page-child][data-column-span="4"]) {
+  width: 198.667px;
+}
+
+:host([data-page-child][data-column-span="6"]) {
+  width: 304px;
+}
+
+:host([data-page-container]) {
+  width: 660px;
+  z-index: 1;
+}
+
+:host([data-page-container]) .flow-node {
+  min-height: var(--page-height, 414px);
+  box-sizing: border-box;
+  border-color: var(--fw-border);
+  border-radius: 20px;
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease,
+    min-height 160ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :host([data-page-container]) .flow-node {
+    transition:
+      border-color 120ms ease,
+      box-shadow 120ms ease;
+  }
+}
+
+:host([data-page-container]) .flow-node__header {
+  border-radius: 20px 20px 0 0;
+}
+
+/* Anteckningsnod: en sticky-note med en riktad pil. Editor-metadata. */
+.flow-node[data-node-type="annotation"] {
+  position: relative;
+  border-color: var(--fw-note-border);
+  background: var(--fw-note-surface);
+}
+
+.flow-node[data-node-type="annotation"] .flow-node__header {
+  color: var(--fw-note-label);
+  background: transparent;
+  font-size: var(--fw-font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.flow-node[data-node-type="annotation"] .flow-node__note-text {
+  margin: 0;
+  color: var(--fw-note-text);
+  white-space: pre-wrap;
+}
+
+/* Den riktade pilen: en triangel på nodens kant. */
+.flow-node__note-arrow {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.flow-node__note-arrow[data-dir="down"] {
+  left: 50%;
+  bottom: -12px;
+  transform: translateX(-50%);
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-top: 12px solid var(--fw-note-border);
+}
+
+.flow-node__note-arrow[data-dir="up"] {
+  left: 50%;
+  top: -12px;
+  transform: translateX(-50%);
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-bottom: 12px solid var(--fw-note-border);
+}
+
+.flow-node__note-arrow[data-dir="left"] {
+  top: 50%;
+  left: -12px;
+  transform: translateY(-50%);
+  border-top: 9px solid transparent;
+  border-bottom: 9px solid transparent;
+  border-right: 12px solid var(--fw-note-border);
+}
+
+.flow-node__note-arrow[data-dir="right"] {
+  top: 50%;
+  right: -12px;
+  transform: translateY(-50%);
+  border-top: 9px solid transparent;
+  border-bottom: 9px solid transparent;
+  border-left: 12px solid var(--fw-note-border);
+}
+
+/* Problemmärkning på noden. Ordet står utskrivet — färgen förstärker bara, den
+   är aldrig ensam bärare av budskapet. Se K3 i docs/KRAV.md. */
+/* Problemet sitter i huvudet, som en markör med fast storlek.
+
+   Den ersätter ett textband inne i kortet. Bandet läste bra men kostade tre
+   saker: det skrek på varje halvbyggd nod, det visade bara nodens första
+   problem, och det **ändrade nodens höjd** — 213 px blev 232 — vilket flyttade
+   portarna ifrån sina redan ritade kopplingar. En markör som alltid är 18×18
+   ändrar ingen höjd alls.
+
+   Formen bär allvarlighetsgraden tillsammans med färgen: cirkel för fel, mjuk
+   fyrkant för varning. Färg ensam är inte information (K3). Orsaken finns i
+   `aria-label` och `title`, i nodens eget tillgängliga namn, och i
+   kontrollraden. */
+/* Startnodens saknade ingång, kvar som utrymme. Noden ska inte ändra höjd när
+   porten försvinner — se kommentaren i flow-node.ts. */
+.flow-node__port-row--reserved {
+  visibility: hidden;
+}
+
+/* Tecknet som säger att headern går att dra.
+
+   Inte en kontroll: hela headern drar, precis som förut, och det här är bara
+   märket som säger det. På ett skrivbord sa `cursor: grab` samma sak; på en
+   pekskärm sa ingenting någonting.
+
+   Att i stället göra *bara* greppet dragbart var det andra alternativet, och det
+   hade krympt målet från en hel header till några pixlar — fel riktning för ett
+   finger.
+
+   `:active` och en pågående dragning sa `move` fram till 22/9 — samma
+   ord som "flytta det här till en annan yta", inte "du håller i det du
+   pekade på". Versionslistans och panelens burna rad har hela tiden sagt
+   `grabbing`, för `grab` lovar `grabbing` och ingenting annat; nodhuvudet
+   sa ett löfte och höll ett annat. Mätt mot båda artiklarna i docs/IDEAS.md
+   (Johan 22/9 kväll): en markör, inte tre, för samma gest överallt i
+   editorn. */
+.flow-node__grip {
+  flex: none;
+  margin: -1px 2px -1px 0;
+  /* Measured at 11px: an 8×11 pixel mark carrying the only hint that a header
+     can be dragged, at 0.55 opacity — 3.34:1 against a result node's header.
+     Not invisible, and too small to read as anything. 16px makes it 12×16, and
+     the stronger ink takes it clear of 4.5:1 on every node colour. */
+  font-size: var(--fw-font-size-xl);
+  line-height: 1;
+  opacity: 0.8;
+  cursor: inherit;
+  user-select: none;
+}
+
+/*
+ * If it cannot be changed, nothing promises a drag — but the ports stay.
+ *
+ * `data-readonly` is set by node-editor whenever the mode may not write. The
+ * grip promises a drag that cannot happen, so it is not drawn at all.
+ *
+ * **The ports are drawn, and that is a correction** (Johan 18/9, after the
+ * pictures of the lock: *"Låst läge ska ha portar — ser dumt ut när linjerna
+ * ligger bakom noderna"*). They were `visibility: hidden` here, and a hidden
+ * port still anchors its line — so every connection ran to a point behind the
+ * card and stopped there, with no end. The drawing said *this line goes
+ * nowhere* about a guide whose only fault was that somebody else had it open.
+ *
+ * So they are visible and **inert**: no pointer, no hover, no drag, and no tab
+ * stop (`updateTabOrder` in flow-node.ts, which also hides them from a screen
+ * reader — in this mode they are the end of a line and not a control). The
+ * canvas refuses the gestures on its own account too (`canMutate`), which is
+ * the guard; this is the part that stops anybody trying.
+ *
+ * Never `display: none` on a port: `getPortCenter` reads its rectangle as the
+ * line's anchor, and a removed element measures 0×0 — every connection would
+ * collapse into the node's corner. Same reason as
+ * `.flow-node__port-row--reserved` above.
+ */
+:host([data-readonly]) .flow-node__grip {
+  display: none;
+}
+
+:host([data-readonly]) .flow-node__port {
+  pointer-events: none;
+  cursor: default;
+}
+
+/* The eye and the pencil, to the left of the menu button.
+
+   Icon only on a narrow node: the header already carries three marks to the
+   right of the title (grip, markers, menu), and one more word there forces the
+   title to wrap. The page node is 660 px wide and gets the word, because that
+   is where somebody meets the button first (Johan's sketch, 2026-09-01).
+
+   Always visible, for the same reason as the menu button below: an affordance
+   that lives only in `:hover` does not exist on half the devices (PRAXIS 17).
+
+   In the visitor's view it becomes a white pill on the header's colour, so it
+   is visible from across the canvas which nodes are switched, without reading
+   anything. */
+/* Both views in one grid cell. See flow-node.ts for why. */
+.flow-node__views {
+  display: grid;
+  min-width: 0;
+}
+
+.flow-node__views > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+.flow-node__visitor {
+  visibility: hidden;
+}
+
+/* A page's visitor view sits OUTSIDE the flow.
+
+   A page node's height does not come from the card's content but from
+   `--page-height`, which the canvas works out from the fields' own layout — and
+   the fields are placed against the measured bottom of the text block. With the
+   preview in the flow that bottom moves and every field goes down with it
+   (measured: 320 px became 558).
+
+   The rule that a box never changes with how you look at it still holds, because
+   a page is SHORTER as a visitor view: measured 2026-09-01, the four example
+   pages were 85, 347, 85 and 501 px shorter than their structure. If that is
+   ever the other way round the preview hangs below the card instead of growing
+   it — and this is the comment to read when it does. The example gate
+   `example-graphs-no-overlap` measures it and fails first. */
+/* Every node, not only pages: the structure is placed absolutely inside this
+   box when the eye is lit, and without it the containing block is the card —
+   so the port rows spanned the content padding too and every ring stood 16 px
+   outside the edge (seen in the visitor view of question-gender). */
+.flow-node__views {
+  position: relative;
+}
+
+/* The view that is not shown never holds the box up. With the pencil the
+   visitor's view is hidden but was still in the grid cell, and a miniature
+   taller than its structure made the structure 25 px taller than before
+   064 (question-age: 318 for 293). Out of the flow, at the top, so its
+   rows can still be measured when the eye is lit next. */
+:host(:not([data-visitor-view])) .flow-node__visitor,
+:host([data-page-container]) .flow-node__visitor {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+}
+
+:host([data-visitor-view]) .flow-node__structure {
+  visibility: hidden;
+}
+
+/* The box SHRINKS to the visitor's view — and only shrinks.
+
+   "A box never changes with how you look at it" exists to stop a node from
+   growing over a neighbour. Shrinking cannot overlap anything, and the pencil
+   brings the box back to the size the guide was laid out with — so the rule's
+   purpose holds while the card follows the shorter view. Keeping the taller
+   structure's height left 90–100 px of nothing under the form (Johan on the
+   first 064 builds: "boxen är för lång"). With the eye lit the preview is in
+   the flow and the structure steps out of it, absolutely placed at the top:
+   its port rows keep their y (the answer rings are moved onto the preview's
+   rows separately, see below), so lines stand still or follow rows — never
+   jump. The one exception is a ring the shorter card no longer reaches: it
+   is lifted onto the card and its line drawn again (`keepRingsInside` in
+   flow-node.ts, Johan 7/9). A page also lets go of `min-height` from the
+   canvas. The one growth
+   left is a visitor view taller than its structure, which the example gate
+   measures against the neighbours. */
+:host([data-visitor-view]) .flow-node__structure {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+}
+
+:host([data-visitor-view]) .flow-node__visitor {
+  position: static;
+}
+
+:host([data-page-container][data-visitor-view]) .flow-node {
+  min-height: 0;
+}
+
+/* The rings are the exception: they belong to both views.
+
+   `visibility` is inherited and can be handed back to a descendant, which is
+   the whole reason the port rows can live inside the structure cell — they keep
+   the cell its right height (the node is the taller VIEW, never a view plus a
+   row of ports) while the rings they hold stay on screen with the eye lit. The
+   labels beside them do not: the answer's own words are in the preview.
+
+   **Read-only too, since 18/9, and that reverses story 063.** The rule said
+   `:not([data-readonly])` there: the rings were hidden on purpose, because a
+   connection is information and not an affordance, and their boxes stayed only
+   as the lines' anchors. Johan saw what that looks like in a locked guide —
+   *"Låst läge ska ha portar — ser dumt ut när linjerna ligger bakom noderna"* —
+   and he is right: a hidden anchor still anchors, so every line ran to a point
+   behind the card and stopped with no end. The drawing said *this goes nowhere*
+   about a guide whose only fault was that somebody else had it open.
+
+   The objection 063 raised is answered a layer down instead of by hiding: the
+   ring is drawn and **inert** (`pointer-events: none`, no tab stop,
+   `aria-hidden` — see the read-only block above). It is the end of a line, not
+   a handle. */
+:host([data-visitor-view]) .flow-node__structure .flow-node__port {
+  visibility: visible;
+}
+
+:host([data-visitor-view]) .flow-node__visitor {
+  visibility: visible;
+}
+
+/* An exit that has moved to its answer's row.
+
+   The ring is moved with `transform`, not with `position` — the row has to keep
+   its height in the card, or the node shrinks when the eye is lit (measured:
+   748 px became 616). The row's label is hidden at the same time: in the
+   visitor's view the answer's own words are right there in the preview, and the
+   same word twice on one line is noise. */
+/* …and a ring lifted onto the card when the card got shorter than its row
+   (`keepRingsInside`) moves the same way. */
+.flow-node__port-row[data-answer-row] .flow-node__port,
+.flow-node__port-row[data-kept-inside] .flow-node__port {
+  transform: translate(calc(-1 * var(--answer-row-inset, 0px)), var(--answer-row-shift, 0));
+
+  &:hover {
+    transform: translate(calc(-1 * var(--answer-row-inset, 0px)), var(--answer-row-shift, 0)) scale(1.15);
+  }
+}
+
+/* The ring travels onto the opened list, which paints after the ports in the
+   card's own stacking order — without the lift the list covers it
+   ("höj z-index på portarna", Johan 2/9). */
+.flow-node__port-row[data-answer-row] {
+  position: relative;
+  z-index: 2;
+}
+
+/* No transition on the ring's transform, in EITHER direction. On the eye the
+   ring otherwise ANIMATED 300 px upwards (measured mid-transition at 49 px of
+   303); on the pencil it GLID back after the canvas's last redraw, so the
+   lines stayed bunched at the answers' rows until something was dragged
+   (Johans bild 2/9). The hover's shadow and tint keep their transition. */
+.flow-node__port-row .flow-node__port {
+  transition-property: box-shadow, background-color, border-color;
+}
+
+:host([data-visitor-view]) .flow-node__port-label {
+  visibility: hidden;
+}
+
+/* Samlingsporten: de gömda alternativens ringar staplas på fler-raden som
+   EN fylld cirkel med siffran i mitten. Slate, inte svart (Johans val av
+   fyra färger 2/9): mjukare, samma familj som kortets grå kant och de
+   stumma ringarna — och inte lila, som hade lästs som en ansluten port. */
+.flow-node__port-row[data-more-port] .flow-node__port {
+  border-color: var(--fw-text-secondary);
+  background: var(--fw-text-secondary);
+  box-shadow: 0 0 0 2px var(--fw-text-secondary);
+}
+
+/* Siffran centreras med rutnät över HELA cirkeln (inset: 0) — varje
+   variant med translate stod snett, mätt på bild. Vägen hit gick via
+   hörnbricka (åt upp den lilla ringen), naken siffra i blek ring
+   (otydlig och ocentrerad) och oval pill (bra, men cirkeln är renare).
+   ::before, inte ::after — ::after är portens 44 px träffyta (mätt:
+   brickan ärvde dess vänsterkant och blev en pill). */
+.flow-node__port[data-more-count]::before {
+  content: attr(data-more-count);
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  /* Ytans färg, inte vitt: i mörkt läge är cirkeln ljus och siffran mörk. */
+  color: var(--fw-surface);
+  font-size: var(--fw-font-size-xs);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.flow-node__visitor-toggle {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+
+  /* Drawn at 24 px with the same negative margin as the menu button — the
+     header must not get taller because the button exists — and taken at 44 by
+     the ::after below, for the same reason as the menu button's. */
+  position: relative;
+  min-width: 24px;
+  height: 24px;
+  margin: -4px 0;
+  padding: 0 2px;
+
+  border: 0;
+  border-radius: var(--fw-radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: var(--fw-font-size-xs);
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* `hidden` has to bite here too — the same trap as `:host([hidden])` at the top
+   of this file. The class sets `display: inline-flex`, which beats the UA rule
+   `[hidden] { display: none }` on specificity, so the button hidden for a run
+   stayed on screen and went on taking a tab stop. Found by looking at a
+   picture of the run, not by the suite. */
+.flow-node__visitor-toggle[hidden] {
+  display: none;
+}
+
+/* The two header buttons take a finger in 44 × 44 and are drawn at their own
+   size (E10 in docs/GENOMGANG-2026-09-30.md: the header's buttons are a dense
+   row, Astra 30/9). Drawn small, taken large — the chip's cross does the same
+   (`_chips.scss`). As wide as the button where the button is wider, which the
+   eye with its words on a page is. A pseudo-element's hit is its element's,
+   so the pointerdown the button stops is the one that lands here too, and a
+   press at the target's edge does not start a drag.
+
+   44 tall fits exactly: every header is 14 + 16 + 14 inside its border, so the
+   target never reaches past the card, and the ports sit below the header. */
+.flow-node__visitor-toggle::after,
+.flow-node__menu-button::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, 44px);
+  height: 44px;
+  transform: translate(-50%, -50%);
+}
+
+/* E10 godkänd som byggd (uppdraget 30/9, bilaga 5): hover OCH tangentbords-
+   fokus, inte bara `title`s hover. Samma form som canvasens zoomrads egen
+   tooltip (`.node-editor__canvas-toolbar-tooltip`), positionerad ovanför
+   huvudet i stället för ovanför verktygsraden — `bindHeaderTooltip`
+   placerar den, `.flow-node__header`s `position: relative` är ankaret. */
+.flow-node__header-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  z-index: var(--fw-z-popover);
+
+  margin-bottom: var(--fw-space-2);
+  padding: var(--fw-space-1) var(--fw-space-2);
+
+  border-radius: var(--fw-radius-sm);
+
+  background: var(--fw-text);
+  color: var(--fw-surface);
+  box-shadow: var(--fw-shadow-raised);
+
+  font-size: var(--fw-font-size-xs);
+  font-weight: var(--fw-weight-text);
+  white-space: nowrap;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+/* Two targets side by side need their centres 44 apart. Drawn 24 wide, the
+   header's gap of 10 put them 34 apart — 10 px of each in the other. */
+.flow-node__visitor-toggle:not([hidden]) + .flow-node__menu-button {
+  margin-left: 10px;
+}
+
+.flow-node__visitor-toggle-text {
+  display: none;
+}
+
+:host([data-page-container]) .flow-node__visitor-toggle {
+  padding: 0 8px;
+}
+
+:host([data-page-container]) .flow-node__visitor-toggle-text {
+  display: inline;
+  white-space: nowrap;
+}
+
+.flow-node__visitor-toggle:hover {
+  background: color-mix(in srgb, currentColor 18%, transparent);
+}
+
+/* The same ring as the menu button, for the same reason: `--fw-on-node`
+   measures 9.93:1 against the node header in both themes, `--fw-primary`
+   barely 1.6:1. */
+.flow-node__visitor-toggle:focus-visible {
+  @include focus.ring-on-node;
+  background: color-mix(in srgb, currentColor 18%, transparent);
+}
+
+:host([data-visitor-view]) .flow-node__visitor-toggle {
+  background: var(--fw-node-marking);
+  color: var(--fw-node-header);
+  border-radius: 999px;
+}
+
+:host([data-visitor-view]) .flow-node__visitor-toggle:hover {
+  background: color-mix(in srgb, var(--fw-node-marking) 88%, transparent);
+}
+
+/* What a run puts in a node's header (story 065 points 3–4).
+
+   It stands where the eye stands — the eye is gone during a run — so the
+   header carries one mark either way and does not change width. Story 065's
+   rail: becoming "Du är här" must not change the node's rectangle. */
+.flow-node__proving-mark {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-left: auto;
+  border-radius: 50%;
+  /* Brickan, inte bläcket: `--fw-node-marking` är ljus i båda lägen medan
+     `--fw-on-node` vänder sedan 22/9. Se tokenets kommentar. */
+  background: var(--fw-node-marking);
+  color: var(--fw-node-header);
+  font-size: var(--fw-font-size-base);
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* `display` on the class beats the user agent's `[hidden]` — the same trap
+   the palette fell into (LOGG 1/9): the hidden ball still took 24 px and made
+   every header 8 px taller, which moved the page's fields. */
+.flow-node__proving-mark[hidden] {
+  display: none;
+}
+
+.flow-node__proving-dot {
+  display: block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--fw-primary);
+}
+
+:host([data-answered]) .flow-node__proving-mark {
+  background: var(--fw-success);
+  color: var(--fw-on-primary);
+}
+
+/* Nothing can be changed during a run — a change ends it — so the menu has
+   nothing to offer, and its place is where the ball stands. */
+:host([data-proving]) .flow-node__menu-button {
+  display: none;
+}
+
+/* The step on the edge: the run's own numbering where START usually sits.
+   Same shape as the start flag; START steps aside while the run is on. */
+.flow-node__step-flag {
+  position: absolute;
+  top: -9px;
+  left: 12px;
+  z-index: 1;
+  pointer-events: none;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--fw-primary);
+  color: var(--fw-on-primary);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+:host([data-answered]) .flow-node__step-flag {
+  background: var(--fw-success);
+}
+
+:host([data-proving]) .flow-node__start-flag {
+  display: none;
+}
+
+/* Lit where the run has been and stands; everything else dimmed. Johan 1/9:
+   "släcker vi alla andra, tänder upp den valda steg för steg — och där man
+   varit". Colour is not the only channel: the lit nodes also carry the green
+   frame, the ball and the step on the edge. */
+:host([data-proving]:not([data-current]):not([data-answered]):not([data-trail])) .flow-node {
+  opacity: 0.35;
+}
+
+/* The type's name stays in the header during a run (design D, 1/9): the
+   mark is a 24 px ball where the menu button stood, not a word. */
+
+/* The step the run stands on. A ring in the primary colour, drawn with
+   `box-shadow` and not `border`, for the same reason the untranslated ring is:
+   a border would take a pixel out of the card's inside and move everything in
+   it — and the ports with it. */
+:host([data-current]) .flow-node {
+  box-shadow:
+    0 0 0 3px var(--fw-primary),
+    0 8px 24px rgb(0 0 0 / 10%);
+}
+
+
+/* A node the run has been through. Green ring, and never green alone: the tick
+   in the header says the same thing in a second channel (KRAV on colour). */
+:host([data-trail]:not([data-current])) .flow-node {
+  box-shadow:
+    0 0 0 2px var(--fw-success),
+    0 8px 24px rgb(0 0 0 / 10%);
+}
+
+/* The exit the run took. The ring is the answer that was given, so it is the
+   one thing on the node that must be findable at a glance. */
+.flow-node__port[data-trail] {
+  background: var(--fw-success);
+  box-shadow: 0 0 0 3px var(--fw-success);
+}
+
+.flow-node__menu-button {
+  /* Vägen till menyn för den som inte kan högerklicka. Se flow-node.ts. */
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  /* 24 px är WCAG 2.5.8:s minsta målyta, och den mäts på det klickbara — inte
+     på tecknet. Samma negativa marginal som hälsomarkören bredvid, av samma
+     skäl: huvudet får inte bli högre av att knappen finns. */
+  position: relative;
+  width: 24px;
+  height: 24px;
+  margin: -4px -4px -4px 0;
+  padding: 0;
+
+  border: 0;
+  border-radius: var(--fw-radius-sm);
+  background: transparent;
+  color: inherit;
+  font-size: var(--fw-font-size-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* Alltid synlig, på varje nod.
+
+   Den var först dold tills noden markerades, med motiveringen att trettio noder
+   annars blir trettio knappar. Det var en gissning om oreda som byttes mot
+   upptäckbarhet — och knappen finns just för att högerklick är oupptäckbart. Att
+   gömma den bakom en gest man måste känna till var att återinföra felet den
+   skulle rätta: två tryck där ett räcker, och det första utan synlig anledning.
+
+   Kostnaden är verklig men liten: ett tecken i varje nodhuvud, på samma plats i
+   alla, läses som ett mönster snarare än som stök. Kopplingarnas handtag är kvar
+   villkorade — en linje har inget huvud att lägga en knapp i, och handtag som
+   flyter över canvasen krockar med varandra där linjer korsas. */
+
+/* Ärver nodhuvudets färg, som mäter 9,93:1 mot huvudet i båda lägena. Hovringen
+   var `--fw-surface-hover` — ett token jag hittade på, vars reservvärde var en
+   svart tonad yta som inte syns alls i mörkt läge. En tonad version av samma
+   färg följer med temat och fungerar i båda. */
+.flow-node__menu-button:hover {
+  background: color-mix(in srgb, currentColor 18%, transparent);
+}
+
+/* Ringen mäts mot det den ligger på, inte mot canvasen.
+
+   Knappen sitter i nodhuvudet, som är färgat per nodtyp. Mot det ger
+   `--fw-primary` 1,58:1 i ljust, alltså en ring som nästan försvinner i
+   bandet den ligger på. `--fw-on-node` är det token som betyder just bläck på
+   en nod, och mäter 9,93:1 i ljust läge mot en fråga.
+
+   Raden sa tidigare *samma i båda temana eftersom nodfärgerna inte vänder*.
+   Det stämmer inte sedan 22/9: fyllningarna har mörka varianter, och tokenet
+   vänder med dem. Mätt om samma dag är den lägsta av de fem 4,61:1 i mörkt
+   läge (innehåll) — fortfarande långt över 1.4.11:s 3:1, och fortfarande
+   samma token av samma skäl.
+
+   Den tonade bakgrunden räcker inte som ensam markering — den var det första
+   försöket, och det var vad som såg svagt ut. */
+.flow-node__menu-button:focus-visible {
+  @include focus.ring-on-node;
+  background: color-mix(in srgb, currentColor 18%, transparent);
+}
+
+.flow-node__health {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  /* Får inte göra huvudet högre. Mätt: 18 px mot en textrad på 16 sköt noden
+     2 px, vilket är exakt den höjdändring markören finns för att undvika.
+     Negativ marginal håller radboxen där den var. */
+  margin: -1px 0;
+  font-size: var(--fw-font-size-sm);
+  font-weight: 800;
+  line-height: 1;
+  cursor: help;
+
+  /* Rund i båda lägena. Formen skilde dem åt först — cirkel för fel, rundad
+     fyrkant för varning — men två olika former på samma plats i två noder
+     bredvid varandra läses som två olika saker, inte som två grader av samma
+     sak. Skillnaden bärs av färgen och, viktigare, av markörens namn: det är
+     orsaken i klartext, inte ordet "Fel". K3 förbjuder färg *ensam*, och namnet
+     är det som gör att den inte är ensam. */
+  border-radius: 50%;
+
+  &[data-severity="error"] {
+    background: var(--fw-danger-surface);
+    color: var(--fw-danger-text);
+  }
+
+  &[data-severity="warning"] {
+    background: var(--fw-node-service-tint);
+    color: var(--fw-node-service-ink);
+  }
+}
+
+/* Översättningsluckans markör delar hälsomarkörens klass och varningsgrad —
+   samma skylt som en okopplad nod bär (Johans jämförelse). Klassen
+   .flow-node__translation finns kvar som krok, utan egna stilar. */
+
+/* Rubriken och markören på var sin sida. Texten får krympa, markören aldrig.
+   EN rad: etiketten är en etikett, inte prosa — `anywhere` bröt den mitt i
+   ordet ("Res-ult" i översättningsfilmens poster, Johans öga) och huvudet
+   blev två rader, med flyttade portar som följd. Fulla namnet bor i nodens
+   aria-label, så ellipsen gömmer ingenting för den som inte ser. */
+/*
+ * Typens ikon i huvudet: badgens glyf i huvudets färg (currentColor = vit),
+ * ett steg före namnet — INLINE i textraden och linjerad mot dess baslinje.
+ * Centrerad mot radrutan satt den synbart fel mot versalerna på Johans iPad
+ * (1/9), och en pixels nudge flyttade bara felet: radrutan ser olika ut i
+ * SF, Segoe och DejaVu. `vertical-align` i em följer typsnittet i stället.
+ * -0.2em lägger 16px-formens mitt strax över versalhöjdens mitt.
+ */
+.flow-node__type-icon {
+  display: inline-block;
+  vertical-align: -0.2em;
+  margin-right: 8px;
+  color: inherit;
+  font-size: var(--fw-font-size-md);
+  line-height: 1;
+
+  svg {
+    display: block;
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.flow-node__header-text {
+  /* Vänsterställd (Johans önskan): etiketten tar återstående bredd, så den
+     lägger sig intill gripen och skjuter markörer och meny åt höger —
+     samma läsriktning som resten av kortet. */
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-align: left;
+  text-overflow: ellipsis;
+}
+
+/* Startfliken sitter på kortets axel, utanför huvudraden — raden bär redan
+   grip, markörer och meny (Johans väg hit: "Start · " åt bredd, ▶ sa för
+   lite). Ordet i klartext, dekor för ögat: nodens namn säger redan Startnod. */
+.flow-node__start-flag {
+  position: absolute;
+  top: -9px;
+  left: 12px;
+  z-index: 1;
+  /* Fliken ligger över huvudets överkant, och huvudet är draghandtaget —
+     pekaren måste rakt igenom, annars är remsan död för dragning (Johans
+     fråga innan den hann bli en bugg). */
+  pointer-events: none;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--fw-primary);
+  color: var(--fw-on-primary);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/*
+ * Fältets etikett: variabelnamnet, sist i kortet.
+ *
+ * Kontur i stället för fylld botten — ett fyllt märke konkurrerar med
+ * rubriken, och rubriken är kortets viktigaste rad. Färgen lånas ur kanvasens
+ * kategorier så att ingen ny betydelse införs: innehållets indigo för
+ * variabeln (guidens eget språk).
+ *
+ * Dold tills arbetsytan bär `data-show-variables` (Vy → Visa variabelnamn,
+ * story 077). Raden ritas ändå, så valet är ett attribut och ingen omritning
+ * av varje kort.
+ */
+.flow-node__field-labels {
+  display: none;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 8px 10px 2px;
+}
+
+:host([data-show-variables]) .flow-node__field-labels {
+  display: flex;
+}
+
+.flow-node__field-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px 2px 6px;
+  border: 1px solid currentcolor;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+}
+
+.flow-node__field-label svg {
+  flex: none;
+  opacity: 0.9;
+}
+
+.flow-node__field-label--variable {
+  color: var(--fw-node-content-ink);
+}
+
+.flow-node__field-label-alias {
+  white-space: nowrap;
+}
+
+.flow-node__field-label--variable .flow-node__field-label-text {
+  font-family: ui-monospace, "SF Mono", "Cascadia Mono", monospace;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+

@@ -1,0 +1,24 @@
+@use "../../viewer/styles/tokens-mixins" as *;
+
+/*
+ * Exempelsidans egna tokens.
+ *
+ * Sajten runt omkring FlowWeaver — rubriker, bakgrund, länkar — är också klädd
+ * i de här värdena, och den *är* hela sidan. Därför ligger de på `:root` här.
+ *
+ * Biblioteket sätter sina egna på sina egna taggar (se `tokens.scss`), så en
+ * inbäddad editor klär sig själv oavsett vad sidan omkring gör. Att båda finns
+ * är alltså inte en dubblering utan två olika ansvar — värdena kommer från
+ * samma mixins.
+ *
+ * Sidans tema styrs av `:root[data-theme]`, satt av demons egen växlare.
+ * FlowWeavers element följer med genom att växlaren också anropar `setTheme()`.
+ */
+
+:root { @include fw-light; }
+
+:root[data-theme="dark"] { @include fw-dark; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { @include fw-dark; }
+}

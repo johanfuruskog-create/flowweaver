@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="sv">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>FlowWeaver — editor</title>
+    <link rel="stylesheet" href="../dist-lib/tokens.css">
+    <link rel="stylesheet" href="./demo.css">
+    <script src="../dist-lib/flowweaver-editor.global.js"></script>
+  </head>
+  <body class="demo-editor">
+    <nav class="demo-bar" aria-label="Demo">
+      <a class="demo-back" href="./index.html">Tillbaka till demon</a>
+      <a href="./viewer.html">Prova guiden</a>
+      <button type="button" id="reset">Börja om med exemplet</button>
+    </nav>
+    <guide-editor mode="edit" feature-level="advanced" active-locale="sv"></guide-editor>
+    <script type="module">
+      import { forgetGuide, keepGuide, loadGuide } from "./demo.js";
+
+      const editor = document.querySelector("guide-editor");
+      editor.graph = await loadGuide();
+      keepGuide(editor);
+      document.querySelector("#reset").addEventListener("click", async () => {
+        forgetGuide();
+        editor.graph = await loadGuide();
+      });
+    </script>
+  </body>
+</html>

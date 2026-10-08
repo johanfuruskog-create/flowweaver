@@ -1,0 +1,325 @@
+@use "../../styles/dialog-shell";
+@use "../../../viewer/styles/focus" as focus;
+
+/*
+ * Sammanslagningen är den bredaste dialogen i verktyget, och innehållet avgör:
+ * två spalter med hela meningar i. Smalare och varje mening bryts tre gånger,
+ * vilket är precis vad två spalter fanns till för att slippa.
+ */
+dialog {
+  width: min(720px, calc(100vw - 32px));
+  max-height: min(100dvh - 32px, 100vh - 32px);
+  /* Hörnet ärvs från dialogskalet (dialogrollen, 16) sedan 20/9 kväll —
+     den egna 22-rundningen gick när Johan valde ett hörn för alla sex. */
+}
+
+/*
+ * `[open]`, och det är hela skillnaden mellan en dialog och en osynlig fälla.
+ *
+ * Webbläsarens egen regel för en stängd `<dialog>` är `display: none`, och en
+ * `display` på elementnamnet slår den (PRAXIS 36). Samma fel som
+ * publiceringsdialogen betalade för 17/9: den stängda lådan låg synlig mitt i
+ * sidan och tog klick som var på väg till knappen under.
+ */
+dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-space-4);
+  /* Utan `min-height: 0` vägrar en flexbox krympa under sitt innehåll, och då
+     rullar ingenting — den växer i stället utanför dialogen. */
+  min-height: 0;
+}
+
+.merge-dialog__head,
+.merge-dialog__actions {
+  flex: none;
+}
+
+.merge-dialog__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-space-2);
+}
+
+.merge-dialog__body {
+  display: flex;
+  flex-direction: column;
+  /* 20px: på rastret men utan egen roll (mellan -4:s 16 och -5:s 24) —
+     samma tal som spalternas mellanrum nedan. */
+  gap: 20px;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+h2 {
+  margin: 0;
+  font-weight: var(--fw-weight-heading);
+  letter-spacing: var(--fw-tracking-heading);
+}
+
+/* Rubriken tar fokus när dialogen öppnas; ringen runt den ska synas. */
+h2:focus-visible {
+  @include focus.ring(4px);
+}
+
+h3 {
+  margin: 0 0 var(--fw-space-2);
+  font-size: var(--fw-font-size-lg);
+  font-weight: var(--fw-weight-heading);
+}
+
+/*
+ * Raden som säger hur många val som återstår. Den bär beskedet i **ord**, och
+ * knappen bär det som `aria-disabled` — attributet hindrar, meningen förklarar.
+ */
+.merge-dialog__count {
+  margin: 0;
+  color: var(--fw-text-secondary);
+}
+
+.merge-dialog__rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.merge-dialog__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-space-2);
+  padding: var(--fw-space-3);
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-card);
+  color: var(--fw-text);
+  font-size: var(--fw-font-size-lg);
+  line-height: var(--fw-line-body);
+}
+
+/*
+ * En rad som kräver ett svar får varningens gula yta, och den bär ingenting
+ * ensam: rubriken ovanför säger *Ni har ändrat samma sak* i klartext och
+ * raden har två knappar ingen annan rad har (K3).
+ *
+ * `[data-overlap]` och inte `:not([data-resolved])`, som det stod till 19/9:
+ * den senare gjorde varenda rad under *Följer med* gul, och en lista där allt
+ * larmar säger ingenting om vad som behöver göras.
+ */
+.merge-dialog__row[data-overlap] {
+  border-color: var(--fw-warning-border);
+  background: var(--fw-warning-surface);
+  color: var(--fw-warning-text);
+}
+
+/*
+ * …tills den är besvarad. Då är den en rad som alla andra — det är hela
+ * beskedet *det här är avklarat*, och att markeringen ligger kvar hade gjort
+ * en genomläst lista lika larmande som en orörd.
+ */
+.merge-dialog__row[data-answered] {
+  border-color: var(--fw-border);
+  background: transparent;
+  color: var(--fw-text);
+}
+
+/* En rad båda gjort likadant: dämpad, utan val, men aldrig borta. */
+.merge-dialog__row[data-resolved] {
+  color: var(--fw-text-secondary);
+}
+
+.merge-dialog__row-title {
+  margin: 0;
+  font-weight: var(--fw-weight-heading);
+  /* Långa ord — en url, ett variabelnamn — bryter hellre än trycker ut raden
+     ur lådan. Mätt på 390 px, där en rubrik på 40 tecken räcker. */
+  overflow-wrap: anywhere;
+}
+
+/*
+ * Två spalter, lika breda: frågan raden svarar på är *vems är vad?*, och en
+ * spalt som är bredare än den andra läser som att den väger tyngre.
+ */
+.merge-dialog__columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  /* 20px: samma tal, samma skäl som radens `gap` ovan. */
+  gap: var(--fw-space-2) 20px;
+}
+
+.merge-dialog__column {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.merge-dialog__column p {
+  margin: 0;
+}
+
+.merge-dialog__column-label {
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-md);
+  font-weight: var(--fw-weight-strong);
+}
+
+/*
+ * Det nya värdet under sin mening: vad den sidan faktiskt skrev.
+ *
+ * Tre rader och sedan klipp — men klippet görs **här** och inte i texten, så
+ * hela meningen står kvar i DOM:en för den som lyssnar och för den som
+ * markerar den. En redaktör kan skriva en resultattext på tjugo rader, och en
+ * rad i en valruta ska inte bli tjugo.
+ */
+.merge-dialog__value {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-md);
+}
+
+/* Ingenting sagt av den här sidan — ett tecken, aldrig tomhet. */
+.merge-dialog__nothing {
+  color: var(--fw-text-muted, var(--fw-text-secondary));
+}
+
+.merge-dialog__resolved {
+  margin: 0;
+  font-size: var(--fw-font-size-md);
+  font-style: italic;
+}
+
+/*
+ * Valet får dubbel luft (Johans ja 20/9, efter mätning: 8/8 överallt).
+ * Rubriken och spalterna är beviset, knapparna är svaret — besläktat binds
+ * med halva avståndet till det som svarar på något annat (skillen). Radens
+ * `gap` är det vanliga; marginalen lägger en gång till, uppfinner inget tredje.
+ */
+.merge-dialog__pick {
+  display: flex;
+  gap: var(--fw-space-2);
+  margin-top: var(--fw-space-2);
+}
+
+.merge-dialog__dropped {
+  margin: 0;
+  color: var(--fw-text-secondary);
+}
+
+.merge-dialog__dropped[hidden] {
+  display: none;
+}
+
+.merge-dialog__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--fw-space-2);
+  margin: 0;
+}
+
+.merge-dialog__spacer {
+  flex: 1 1 auto;
+}
+
+/*
+ * K6: varje knapp i dialogen går att träffa med en tumme. Skalet ger 9 px
+ * vaddering, vilket blir ungefär 38 — nog för en muspekare, inte för ett
+ * finger.
+ *
+ * Rundade som --fw-radius-button (Johans beslut 20/9): pillformen gick
+ * tillbaka till 8px, som publiceringsdialogens knappar och alla andra i
+ * verktyget.
+ */
+button {
+  min-height: var(--fw-control-height);
+  border-radius: var(--fw-radius-button);
+}
+
+.merge-dialog__actions button:not(.merge-dialog__confirm) {
+  border-color: transparent;
+  background: transparent;
+}
+
+.merge-dialog__actions button:not(.merge-dialog__confirm):hover {
+  background: var(--fw-surface-subtle, var(--fw-bg));
+}
+
+/*
+ * Valet, som två knappar med ett gemensamt tillstånd. Den valda är fylld —
+ * och bär dessutom `aria-checked`, för färgen är aldrig ensam bärare (K3).
+ */
+.merge-dialog__pick-button {
+  padding: 0 var(--fw-space-4);
+  font-size: var(--fw-font-size-md);
+  white-space: nowrap;
+}
+
+.merge-dialog__pick-button[aria-checked="true"] {
+  border-color: var(--fw-primary-strong);
+  background: var(--fw-primary-strong);
+  color: var(--fw-surface);
+}
+
+.merge-dialog__confirm {
+  border-color: var(--fw-primary-strong);
+  background: var(--fw-primary-strong);
+  color: var(--fw-surface);
+}
+
+.merge-dialog__confirm[aria-disabled="true"] {
+  border-color: transparent;
+  background: var(--fw-surface-subtle, var(--fw-surface));
+  color: var(--fw-text-muted);
+  cursor: default;
+}
+
+@media (max-width: 560px) {
+  /*
+   * Under 560 px ryms inte två spalter med meningar i. De faller under
+   * varandra — och etiketten *Anna Andersson ändrade* står kvar över var och
+   * en, för det är den som gör spalten begriplig när den inte längre står
+   * bredvid sin motsats.
+   */
+  .merge-dialog__columns {
+    grid-template-columns: 1fr;
+    gap: var(--fw-space-2);
+  }
+}
+
+@media (max-width: 420px) {
+  /*
+   * Beslutet först, granskningen under — samma form som publiceringsdialogen.
+   * *Förhandsgranska från start* ligger först i DOM:en och därmed först i
+   * tabbordningen, vilket är ordningen handlingen har, även när den ritas
+   * sist.
+   */
+  .merge-dialog__actions {
+    flex-wrap: wrap;
+  }
+
+  .merge-dialog__actions button[data-action="preview-start"] {
+    order: 3;
+    flex: 1 1 100%;
+  }
+
+  .merge-dialog__actions button[data-action="cancel"],
+  .merge-dialog__actions .merge-dialog__confirm {
+    flex: 1 1 auto;
+  }
+
+  .merge-dialog__spacer {
+    display: none;
+  }
+}

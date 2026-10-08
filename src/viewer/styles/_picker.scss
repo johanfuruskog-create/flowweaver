@@ -1,0 +1,159 @@
+/**
+ * Väljarens ytor: rutan, listan och raden.
+ *
+ * ## Vad som bor här, och varför inte i komponenten
+ *
+ * `chip-picker` är den enda kontrollen som använder mixinet i dag —
+ * `lookup-field` slogs in i den 2026-08-31 (skälen: `docs/LOGG.md` samma
+ * datum). Mixinet står kvar ändå, av två skäl som båda är mätta och inte
+ * antagna:
+ *
+ * - **Formen glider isär på ett dygn.** När ytorna var skrivna två gånger fick
+ *   den ena avdelare mellan raderna och 44px höga rader medan den andra behöll
+ *   sina täta — inom samma dygn, i samma visare.
+ * - **Nästa prefix kommer.** Mixinet tar prefixet som argument just för att en
+ *   andra väljare med en annan datamodell inte ska behöva rita om rutan.
+ *
+ * Ett mixin med en anropare är alltså en gräns, inte en abstraktion i förväg:
+ * det säger vad som är FORM och vad som är beteende, och den gränsen var det
+ * enda av de tre argumenten för två kontroller som höll hela vägen.
+ *
+ * ## Vad en anropare ansvarar för
+ *
+ * Att markera rutan som ankare (`position: relative` på en förälder) och att
+ * lägga sina egna klasser i den ordning mixinet väntar sig. Allt annat —
+ * kanter, fokusring, skugga, radhöjd, avdelare — bor här.
+ */
+
+@use "./focus" as focus;
+
+@mixin fw-picker($prefix) {
+  /*
+   * Rutan: etiketterna och skrivfältet som EN kontroll.
+   *
+   * Ramen och fokusringen sitter här, inte på `<input>`. Två ramar innanför
+   * varandra är det som får en väljare att se hemmagjord ut, och etiketter
+   * ovanför en egen ruta är två saker som råkar stå nära varandra.
+   *
+   * `:focus-within` i stället för `:focus-visible` på fältet: den som ser
+   * bilden ska se att kontrollen är aktiv, och det som fokuseras ligger inuti.
+   */
+  .#{$prefix}__box {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--fw-space-2);
+
+    padding: var(--fw-space-2);
+
+    border: 1px solid var(--fw-border-control);
+    border-radius: var(--fw-radius-md, 8px);
+
+    background: var(--fw-surface);
+
+    /*
+     * The standard ring, at the standard offset — the same as a text field
+     * beside it (Astra 1/10, bilaga 10 punkt 7: *"den gemensamma
+     * fokusmixinen för text- och sökfält"*). It sat 1 px out, so the box,
+     * the stroke and the wash read as a double frame of its own (genomgången
+     * 30/9, V5) next to a text field that had only the browser's ring.
+     */
+    &:focus-within {
+      @include focus.ring;
+    }
+  }
+
+  /*
+   * Listan ligger OVANPÅ, inte i flödet.
+   *
+   * Annars sköt den ner allt under sig — i en smal panel hamnade nästa regel
+   * utanför skärmen för varje bokstav man skrev, och en lista som växer under
+   * fingret flyttar det man siktar på. Förankrad direkt under rutan, så den
+   * följer med när rutan växer i stället för att hamna bakom den.
+   */
+  .#{$prefix}__list {
+    position: absolute;
+    z-index: 5;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+
+    /*
+     * Ett tak, inte hela listan. Femtio poster tar över ytan; med en egen
+     * rullning står det man valt kvar medan man letar.
+     */
+    max-height: 260px;
+    overflow-y: auto;
+    margin: 0;
+    padding: 4px;
+
+    border: 1px solid var(--fw-border);
+    border-radius: var(--fw-radius-md, 8px);
+
+    background: var(--fw-surface);
+    /*
+     * Skuggan bär att listan ligger ovanpå. Djupare gjorde den tyngre än rutan
+     * den hänger under — den ska följa, inte konkurrera.
+     */
+    box-shadow: 0 6px 16px rgb(16 24 40 / 12%);
+
+    list-style: none;
+
+    &[hidden] {
+      display: none;
+    }
+  }
+
+  /*
+   * Alternativen är RADER, inte knappar.
+   *
+   * De var kantiga knappar i en panel i en ruta — tre ramar i varandra, vilket
+   * är det som får en väljare att se hemmagjord ut. En rullgardin har rader man
+   * pekar på, och markeringen räcker som besked om vad man är på; ramen runt
+   * listan säger redan var den slutar.
+   */
+  .#{$prefix}__option {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    /* 44px också som rad: en rullgardin på en pekskärm är fingermål. */
+    min-height: 44px;
+    padding: var(--fw-space-2) var(--fw-space-3);
+
+    border: 0;
+    border-radius: var(--fw-radius-sm, 6px);
+
+    background: transparent;
+    color: var(--fw-text-strong);
+    font: inherit;
+    font-size: 15px;
+    text-align: start;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--fw-primary-surface);
+    }
+
+    /*
+     * Ringen INNANFÖR raden, inte utanför: en rad ligger tätt mot nästa, och en
+     * ring med förskjutning skär in i grannen.
+     */
+    &:focus-visible {
+      @include focus.ring-inset(-2px);
+    }
+  }
+
+  /*
+   * Svaga avdelare MELLAN raderna, inte runt: en linje under den sista hade
+   * dubblerat listans egen ram. Samma färg som etikettens kant — kontrollen
+   * har en kantfärg, inte två.
+   *
+   * På listans BARN, oavsett vad de är. I den ena kontrollen är raden en
+   * `<button>` inuti en `<li>`, i den andra är `<li>` raden själv — en
+   * selektor som kände till formen träffade bara den ena, och det syntes
+   * som att den andra saknade avdelare.
+   */
+  .#{$prefix}__list > *:not(:last-child) {
+    border-bottom: 1px solid var(--fw-border);
+  }
+}

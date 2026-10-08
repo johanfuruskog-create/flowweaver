@@ -1,0 +1,71 @@
+/**
+ * Cursors we draw ourselves, instead of asking the system for one.
+ *
+ * The principle (Johan 30/9): our own gestures get our own cursors, the
+ * system's gestures keep the system's. Moving a node, panning the canvas,
+ * carrying a row, dragging the panel's edge — those are ours, and drawn here.
+ * The arrow, the pointing hand on links and buttons and the text cursor are
+ * never replaced: they carry the user's accessibility settings in Windows
+ * (a large cursor, a high-contrast scheme), and a drawn image would throw
+ * those away where they matter most.
+ *
+ * Why draw at all: Windows on Johan's machine sometimes draws a system cursor
+ * entirely white — no outline, invisible on the canvas and the panel alike.
+ * It happened to `grab` (the hand) while moving nodes in 8/2026 and to
+ * `col-resize` over the panel's handle in 9/2026 (photo, 30/9). The port's
+ * `crosshair` joined them on Johan's report and Astra's approval (30/9, E4):
+ * it is ours too — the start of a connection — and named in K19 as a bounded
+ * exception. Why the system's cursors come out white is still not
+ * established. The hit-test
+ * was measured and right; the fault is the system's drawing of the cursor. An
+ * image is drawn as colour graphics, not through the system cursor theme, so
+ * it cannot come out white.
+ *
+ * The price, taken knowingly (Johan 30/9): a drawn cursor does not follow the
+ * Windows cursor size. It stays 24 × 24 CSS px however large the user has set
+ * the system's. That is acceptable for these few, because each appears only
+ * mid-gesture over something the user already pointed at with their own
+ * cursor — and it is the reason the list above stops where it does.
+ *
+ * Each value keeps the keyword as the fallback: a browser that will not draw
+ * the image (Safari is reported not to take SVG cursors — not measured here)
+ * shows the system cursor instead, which is exactly what it showed before.
+ * 24 × 24 with the hotspot in the middle; Chrome refuses images over 32 px
+ * near the viewport's edge.
+ *
+ * The colours are literals because a cursor image is a separate document and
+ * cannot read custom properties. Dark ink (the value of `--fw-node-header`) with a
+ * 1 px white rim reads on a light surface and a dark one, in both themes. The
+ * hands are the other way round — white with a dark rim, like the system's
+ * own hand — on Johan's word (30/9); the arrows stay dark. On a light surface
+ * it is the rim that carries the hand. The
+ * arrows get the rim from `paint-order: stroke` — the 2 px stroke laid under
+ * the fill, so half of it shows. The hands are round-capped lines, so they are
+ * drawn twice instead: every rim line 2 px wider first, then every filled one
+ * on top, which leaves a 1 px gap in the rim's colour between neighbouring
+ * fingers the way the system's hand has one. The crosshair is four bars laid
+ * like the arrows, with the middle left open so the hotspot shows the surface
+ * it points at — the precise point, not a plus sign ("add"). Strokes are 2 px throughout, so all five read at
+ * the same weight. `#` is `%23` because a bare `#` would end the URI at a
+ * fragment.
+ *
+ * One value per cursor, here; a declaration is `cursor: cursors.$name;`.
+ */
+
+/* A vertical bar with an arrow either side — the motif of the system's own. */
+$col-resize: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cg fill='%231f2937' stroke='%23fff' stroke-width='2' stroke-linejoin='round' paint-order='stroke'%3E%3Cpath d='M2 12 7 7v4h3v2H7v4z'/%3E%3Cpath d='M22 12l-5-5v4h-3v2h3v4z'/%3E%3Crect x='11' y='4' width='2' height='16'/%3E%3C/g%3E%3C/svg%3E") 12 12, col-resize;
+
+/* Four arrows from one centre — the motif of the system's own. */
+$move: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%231f2937' stroke='%23fff' stroke-width='2' stroke-linejoin='round' paint-order='stroke' d='M12 2l4 4h-3v5h5V8l4 4-4 4v-3h-5v5h3l-4 4-4-4h3v-5H6v3l-4-4 4-4v3h5V6H8z'/%3E%3C/svg%3E") 12 12, move;
+
+/* An open hand, fingers up and the thumb out: "this can be picked up". */
+$grab: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cg stroke='%231f2937' stroke-width='4' stroke-linecap='round' fill='%231f2937'%3E%3Crect x='6.5' y='9' width='13' height='12.5' rx='4.5' stroke='none'/%3E%3Cpath d='M8.5 12 8.5 5'/%3E%3Cpath d='M11.5 12 11.5 3.5'/%3E%3Cpath d='M14.5 12 14.5 4.5'/%3E%3Cpath d='M17.5 12 17.5 6.5'/%3E%3Cpath d='M8.5 17 4.5 12.5'/%3E%3C/g%3E%3Cg stroke='%23fff' stroke-width='2' stroke-linecap='round' fill='%23fff'%3E%3Crect x='7.5' y='10' width='11' height='10.5' rx='3.5' stroke='none'/%3E%3Cpath d='M8.5 12 8.5 5'/%3E%3Cpath d='M11.5 12 11.5 3.5'/%3E%3Cpath d='M14.5 12 14.5 4.5'/%3E%3Cpath d='M17.5 12 17.5 6.5'/%3E%3Cpath d='M8.5 17 4.5 12.5'/%3E%3C/g%3E%3C/svg%3E") 12 12, grab;
+
+/* The same hand closed — only the knuckles show, the thumb tucked in:
+   "you are holding it". Same palm, same place, so the switch reads as the
+   hand closing, not as a different cursor. */
+$grabbing: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cg stroke='%231f2937' stroke-width='4' stroke-linecap='round' fill='%231f2937'%3E%3Crect x='6.5' y='9' width='13' height='12' rx='4.5' stroke='none'/%3E%3Cpath d='M8.5 12 8.5 9'/%3E%3Cpath d='M11.5 12 11.5 8.5'/%3E%3Cpath d='M14.5 12 14.5 8.5'/%3E%3Cpath d='M17.5 12 17.5 9.5'/%3E%3Cpath d='M8.5 16.5 6 14'/%3E%3C/g%3E%3Cg stroke='%23fff' stroke-width='2' stroke-linecap='round' fill='%23fff'%3E%3Crect x='7.5' y='10' width='11' height='10' rx='3.5' stroke='none'/%3E%3Cpath d='M8.5 12 8.5 9'/%3E%3Cpath d='M11.5 12 11.5 8.5'/%3E%3Cpath d='M14.5 12 14.5 8.5'/%3E%3Cpath d='M17.5 12 17.5 9.5'/%3E%3Cpath d='M8.5 16.5 6 14'/%3E%3C/g%3E%3C/svg%3E") 12 12, grabbing;
+
+/* Four bars round an open centre — the motif of the system's precision
+   cross. The port's: "a connection starts here". */
+$crosshair: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%231f2937' stroke='%23fff' stroke-width='2' stroke-linejoin='round' paint-order='stroke' d='M11 2h2v7h-2zM11 15h2v7h-2zM2 11h7v2H2zM15 11h7v2h-7z'/%3E%3C/svg%3E") 12 12, crosshair;

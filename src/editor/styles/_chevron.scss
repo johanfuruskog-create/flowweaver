@@ -1,0 +1,58 @@
+/**
+ * The chevron, drawn: two edges of a turned square.
+ *
+ * It was the glyph ⌄ (U+2304) — thin, and seated differently in every font,
+ * which is what the "lift 2px for optical centring" hack was compensating for.
+ * Johan 3/9: "ser lite simpla ut". Drawn, it is the same weight everywhere,
+ * and turns to point up while its menu is open. The toolbar's menus had it
+ * first; the rich-text field's chip and "Infoga svar" had the glyph until
+ * Johan's iPad 25/9 showed it sitting low (fynd b), so the shape lives here.
+ *
+ * Only the lower half of the turned square is drawn, so its ink sits below
+ * the box's centre — 3.2px below it, the turned box being 9px × √2 tall. The
+ * bottom margin lifts it back (a flex item moves half its margin) and the
+ * translate the last pixel, onto the middle of the x-height, where lowercase
+ * text has its weight; both flip when the chevron is turned over. Until fynd
+ * b it was the margin alone: measured in the field's test, that left the ink
+ * 1.2–1.4px under the x-height's middle, about where the glyph had been. The
+ * pixel is a translate, not a 5px margin, because it is optical, not layout
+ * — the spacing stays on the four-pixel scale the CSS ratchet counts.
+ */
+
+@mixin drawn {
+  display: inline-block;
+  flex: none;
+  width: 7px;
+  height: 7px;
+  /* Turned, the square reaches 2px past its box on each side. */
+  margin: 0 2px 3px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  content: "";
+  transform: translateY(-1px) rotate(45deg);
+  /* 140ms matches neither the decided 120ms duration — left as the value
+     this chevron already had (Johan's 120ms/en tid, 20/9). */
+  transition: transform 140ms ease;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+@mixin open {
+  margin-top: 3px;
+  margin-bottom: 0;
+  transform: translateY(1px) rotate(225deg);
+}
+
+/*
+ * A sized variant (`drawn-sized`/`open-sized`) lived here briefly
+ * (svarsalternativens vända 5, 28/9–29/9) for a 44px button's chevron
+ * that needed ~18–20 px visible instead of this mixin's ~10 px. Removed
+ * the same day: konceptbild 2 replaced it with a real SVG icon (the
+ * `.properties-panel__option-toggle` family in properties-panel.scss),
+ * matching the "Ta bort alternativ" trash icon's own stroke-width-2
+ * convention instead of a scaled CSS shape — consequence with the app's
+ * other icons, not a one-off. `drawn`/`open` above are unaffected either
+ * way; they were never touched.
+ */

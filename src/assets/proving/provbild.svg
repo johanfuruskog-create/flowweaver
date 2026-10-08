@@ -1,0 +1,44 @@
+<!-- The run's stand-in for a required picture: a wall with a door and a broken window, "PROVBILD" on a sign — story 065, drawn 2026-09-01. A photo of our own replaces it when there is one. width/height and not the viewBox alone: an SVG with only a ratio has no intrinsic size, and inside the marking canvas (which shrinks to fit its picture) it measured 0x0 — invisible, while the suite was green on the src being right. A photo brings its own pixels; a drawing has to say. -->
+<svg viewBox="0 0 520 340" width="520" height="340" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dbeafe"/><stop offset="1" stop-color="#eff6ff"/></linearGradient>
+        <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3f0e6"/><stop offset="1" stop-color="#e6e1d3"/></linearGradient>
+        <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#bfdbfe"/><stop offset="1" stop-color="#93c5fd"/></linearGradient>
+        <pattern id="bricks" width="40" height="20" patternUnits="userSpaceOnUse"><rect width="40" height="20" fill="none"/><path d="M0 10 H40 M20 0 V10 M0 10 V20 M40 10 V20" stroke="#d6d0c0" stroke-width="1"/></pattern>
+      </defs>
+      <rect width="520" height="340" fill="url(#sky)"/>
+      <!-- wall -->
+      <rect x="0" y="60" width="520" height="240" fill="url(#wall)"/>
+      <rect x="0" y="60" width="520" height="240" fill="url(#bricks)" opacity=".7"/>
+      <rect x="0" y="60" width="520" height="6" fill="#c9c2ae"/>
+      <!-- ground -->
+      <rect x="0" y="300" width="520" height="40" fill="#a8a29e"/><rect x="0" y="300" width="520" height="5" fill="#78716c"/>
+      <!-- door -->
+      <rect x="60" y="130" width="96" height="170" fill="#6b4f2a"/>
+      <rect x="66" y="136" width="84" height="164" fill="#8b6a3e"/>
+      <rect x="76" y="146" width="64" height="58" rx="2" fill="none" stroke="#6b4f2a" stroke-width="4"/>
+      <rect x="76" y="220" width="64" height="66" rx="2" fill="none" stroke="#6b4f2a" stroke-width="4"/>
+      <circle cx="140" cy="216" r="4" fill="#d6b35a"/>
+      <rect x="52" y="122" width="112" height="10" fill="#d6d0c0"/>
+      <!-- window -->
+      <rect x="290" y="120" width="150" height="120" fill="#e5e7eb"/>
+      <rect x="298" y="128" width="134" height="104" fill="url(#glass)"/>
+      <rect x="363" y="128" width="4" height="104" fill="#f3f4f6"/><rect x="298" y="178" width="134" height="4" fill="#f3f4f6"/>
+      <!-- missing pane (upper right) -->
+      <path d="M367 128 h65 v50 h-65 z" fill="#4b5563"/>
+      <path d="M367 128 h65 v50 l-22 -8 l-14 -18 l-29 -6 z" fill="#374151"/>
+      <!-- shards in the pane -->
+      <path d="M367 178 l14 -12 l6 12 z" fill="#bfdbfe"/><path d="M432 178 l-16 -4 l16 -12 z" fill="#93c5fd"/>
+      <!-- cracks in the lower right pane -->
+      <g stroke="#1e3a8a" stroke-width="1.6" fill="none" opacity=".8"><path d="M400 182 l-14 20 l-10 30"/><path d="M400 182 l18 16 l14 24"/><path d="M400 182 l-4 -4"/><path d="M386 202 l-16 4"/><path d="M418 198 l14 -6"/></g>
+      <rect x="284" y="240" width="162" height="10" fill="#d6d0c0"/>
+      <rect x="284" y="112" width="162" height="8" fill="#c9c2ae"/>
+      <!-- glass on the ground -->
+      <g fill="#bfdbfe"><path d="M330 302 l8 -4 l3 6 z"/><path d="M350 306 l10 -3 l-2 6 z"/><path d="M372 303 l6 -5 l4 7 z"/></g>
+      <!-- sign -->
+      <rect x="196" y="78" width="120" height="30" rx="4" fill="#ffffff" stroke="#c9c2ae" stroke-width="2"/>
+      <text x="256" y="98" text-anchor="middle" font-family="system-ui, sans-serif" font-size="13" font-weight="800" letter-spacing="1.4" fill="#3730a3">PROVBILD</text>
+      <circle cx="205" cy="93" r="2" fill="#a8a29e"/><circle cx="307" cy="93" r="2" fill="#a8a29e"/>
+      <!-- downpipe -->
+      <rect x="480" y="60" width="8" height="240" fill="#9ca3af"/>
+    </svg>

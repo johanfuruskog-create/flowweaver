@@ -1,0 +1,1563 @@
+@use "../../styles/cursors";
+@use "../../../viewer/styles/focus" as focus;
+
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.node-editor {
+  /* Named so the toolbar can ask how wide the canvas is (see its rules). */
+  container: node-editor / inline-size;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+
+  overflow: hidden;
+
+  border: 1px solid var(--fw-border);
+
+  background: var(--fw-canvas);
+}
+
+.node-editor__viewport {
+  position: absolute;
+  inset: 0;
+
+  overflow: auto;
+  scrollbar-width: none;
+
+  /*
+   * Studsen stannar i canvasen och kedjas inte vidare.
+   *
+   * **Löste inte det den sattes hit för.** Hypotesen var att ett svep nedåt i
+   * helskärm på iPad lämnade helskärmsläget för att scrollen nått sin gräns och
+   * kedjats vidare till sidan. Provat på enheten: gesten avbryter helskärmen
+   * ändå. Det är alltså inte kedjandet, och antagligen iPadOS egen utgångsgest,
+   * som varken går att avlyssna eller hindras av CSS.
+   *
+   * Raden står kvar för att den är riktig oavsett — en rullbar yta ska inte
+   * rulla sidan bakom sig när den tar slut — men den ska inte läsas som en fix
+   * för helskärmen. `contain` och inte `none`: `none` stänger också av studsen
+   * inuti, och den är en del av hur en yta känns under ett finger.
+   */
+  overscroll-behavior: contain;
+
+  /*
+   * Panorering åt webbläsaren, nyp åt oss.
+   *
+   * Utan det här är nypet en sidzoom: iPaden förstorar hela sidan i stället för
+   * att zooma grafen, och canvasens egen zoom går bara att nå från menyn.
+   * `pan-x pan-y` låter den nativa scrollen vara kvar — den är panoreringen —
+   * men tar bort webbläsarens nyp-zoom över ytan, så händelserna når oss och
+   * `setZoom` kan göra jobbet kring fingrarnas mittpunkt.
+   *
+   * `none` hade varit fel: då försvinner panoreringen också, och den är det enda
+   * sättet att flytta sig i en stor graf med ett finger.
+   */
+  /* Gesten är vår, hel.
+
+     `pan-x pan-y` lät webbläsaren behålla panoreringen, och då blev nypet bara
+     en skalning medan webbläsaren översatte — två mekanismer som kunde dra åt
+     olika håll. En tvåpunktstransform måste äga båda, så `none`, och
+     panoreringen med tröghet är skriven i node-editor.ts i stället. */
+  touch-action: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Vägen tillbaka när guiden hamnat utanför skärmen. Se node-editor.ts.
+
+   Mitt på ytan och inte i ett hörn: den som tappat bort guiden tittar mitt på
+   den tomma canvasen, inte i kanterna. Den syns bara när ingen nod är på
+   skärmen, så den är aldrig i vägen. */
+.node-editor__lost {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 4;
+  transform: translate(-50%, -50%);
+
+  /* 44 px höjd — en knapp som ska tryckas av ett finger i ett läge där inget
+     annat på skärmen fungerar. */
+  min-height: 44px;
+  padding: 0 20px;
+
+  border: 1px solid var(--fw-primary);
+  border-radius: var(--fw-radius-sm);
+  background: var(--fw-surface);
+  color: var(--fw-text);
+  font: inherit;
+  font-size: var(--fw-font-size-lg);
+  cursor: pointer;
+
+  /* Mätt på en iPad: fem tryck, `pointerdown` och `pointerup` varje gång med
+     `isTrusted` sant, och noll `click`. Knappen ligger utanför canvasens vy och
+     ärvde därför `touch-action: auto`, till skillnad från nodernas egna knappar
+     som sitter inuti vyn — och de fungerade. Med `auto` väntar WebKit in
+     dubbeltryck-zoom innan den bestämmer vad gesten var, och klicket blir kvar
+     i den väntan. `manipulation` stänger av just den gesten och behåller panorering
+     och nyp. Se node-editor.ts för reservvägen på pointerup. */
+  touch-action: manipulation;
+}
+
+.node-editor__lost:hover,
+.node-editor__lost:focus-visible {
+  background: var(--fw-primary);
+  color: var(--fw-surface);
+}
+
+.node-editor__lost:focus-visible {
+  @include focus.ring(3px);
+}
+
+.node-editor__empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px;
+  text-align: center;
+  pointer-events: none;
+
+  &[hidden] {
+    display: none;
+  }
+
+  /* Tonar in när ytan blir tom, i stället för att bara dyka upp. */
+  &:not([hidden]) {
+    animation: node-editor-empty-in 240ms ease both;
+  }
+}
+
+@keyframes node-editor-empty-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .node-editor__empty:not([hidden]) {
+    animation: none;
+  }
+}
+
+.node-editor__empty-title {
+  margin: 0;
+  color: var(--fw-text-strong);
+  font-size: var(--fw-font-size-2xl);
+  font-weight: 700;
+}
+
+.node-editor__empty-text {
+  margin: 0;
+  max-width: 34ch;
+  color: var(--fw-text-muted);
+  font-size: var(--fw-font-size-md);
+  line-height: 1.5;
+}
+
+.node-editor__workspace {
+  position: relative;
+
+  /*
+   * Startstorlek innan komponenten tar över med dynamisk expansion.
+   */
+  width: 2000px;
+  height: 1400px;
+
+  background-color: var(--fw-canvas);
+  background-image: radial-gradient(circle, var(--fw-border) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/*
+ * Innehållslagret som skalas vid zoom. Sizern (workspace) sätter
+ * scrollområdet till basmåtten × zoom; detta lager håller basmåtten och
+ * skalas visuellt via transform, med origo i övre vänstra hörnet så att
+ * klient→canvas-matematiken blir en ren multiplikation.
+ */
+.node-editor__scaled {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+/* -----------------------------
+   SVG
+------------------------------ */
+
+.node-editor__connections {
+  position: absolute;
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
+
+  overflow: visible;
+
+  z-index: 1;
+
+  pointer-events: auto;
+}
+
+/*
+ * Osynlig träffyta
+ */
+
+.node-editor__connection-hit {
+  fill: none;
+
+  stroke: rgb(0 0 0 / 0.001);
+
+  stroke-width: 20px;
+
+  pointer-events: stroke;
+
+  cursor: pointer;
+}
+
+/*
+ * Synlig linje
+ */
+
+/* Färgrutorna i kopplingsmenyn. Mellanrummet är räknat från ringen, inte från
+ * cirkeln: ringen växer 1,5px utåt i båda ändar, så 4px lämnade 1px synligt
+ * glapp och ringarna gick ihop till ett band i stället för sju egna kanter. */
+/*
+ * K6 (genomgången 30/9, E2): the swatches are a dense row, and a dense row
+ * holds a 44 px target in the editor. Measured before: 18 × 18 drawn AND
+ * hit, 8 px apart. The circle stays 18; the target is a 44 px pseudo-area
+ * round it (`::after` below, as the chip's cross does in `_chips.scss`).
+ *
+ * The numbers follow from that: 26 px between circles puts the centres 44
+ * apart, so two targets meet and never overlap; 13 px of padding round the
+ * row keeps each target inside it — off the menu's edge and off *Ta bort
+ * koppling* under it. The menu grows to fit the row (204 → 322 px).
+ */
+.node-editor__connection-colors {
+  display: flex;
+  /* The circle's size, once: the spacing is the target less the circle
+     (26 between, 13 round), so the two cannot drift apart. */
+  --swatch-size: 18px;
+
+  gap: calc(var(--fw-control-height) - var(--swatch-size));
+  padding: calc((var(--fw-control-height) - var(--swatch-size)) / 2);
+  border-bottom: 1px solid var(--fw-border-subtle);
+}
+
+/* Menyprefixet krävs. Menyns egen `button`-regel sätter `border: 0`,
+ * `background: transparent` och `width: 100%`, ligger senare i filen och väger
+ * (0,1,1) — utan prefixet vann den över rutorna, som blev kantlösa och
+ * utfällda. Standardrutan förlorade dessutom sin fyllning och blev helt
+ * osynlig mot menyn.
+ *
+ * Kanten är en ring i `--fw-text`, inte en fast ram: den färgen vänder med
+ * temat (#101828 ljust, #e6edf3 mörkt), så ringen blir mörk mot den vita menyn
+ * och ljus mot den mörka. En mellanton hade fått kompromissa åt båda hållen.
+ * Nedtonad med `color-mix` så den avgränsar utan att konkurrera med färgen den
+ * ringar in.
+ *
+ * Ringen ritas som skugga och inte som `border` för att fyllningen ska behålla
+ * hela cirkeln — en ram äter 2px av just det rutan finns till för att visa. */
+.node-editor__connection-menu .node-editor__connection-color {
+  width: var(--swatch-size);
+  height: var(--swatch-size);
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--fw-primary);
+  box-shadow: 0 0 0 1.5px color-mix(in oklab, var(--fw-text) 72%, transparent);
+  cursor: pointer;
+  position: relative;
+}
+
+.node-editor__connection-menu .node-editor__connection-color::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--fw-control-height);
+  height: var(--fw-control-height);
+  transform: translate(-50%, -50%);
+}
+
+.node-editor__connection-menu .node-editor__connection-color[data-color="content"] { background: var(--fw-node-content-ink); }
+.node-editor__connection-menu .node-editor__connection-color[data-color="rule"] { background: var(--fw-node-rule-ink); }
+.node-editor__connection-menu .node-editor__connection-color[data-color="calc"] { background: var(--fw-node-calc-ink); }
+.node-editor__connection-menu .node-editor__connection-color[data-color="service"] { background: var(--fw-node-service-ink); }
+.node-editor__connection-menu .node-editor__connection-color[data-color="end"] { background: var(--fw-node-end-ink); }
+.node-editor__connection-menu .node-editor__connection-color[data-color="danger"] { background: var(--fw-danger-text); }
+
+/* Hovern ligger på ringen, inte på fyllningen: fyllningen *är* det rutan säger,
+ * och en ruta som byter färg när muspekaren nuddar den ljuger om sitt eget val.
+ * Ringen tjocknar och går upp till full styrka i stället — samma rörelse på alla
+ * sju, oavsett om de har en egen färg. */
+.node-editor__connection-menu .node-editor__connection-color:hover {
+  box-shadow: 0 0 0 3px var(--fw-text);
+}
+
+.node-editor__connection-menu .node-editor__connection-color--selected {
+  outline: 2px solid var(--fw-text);
+  outline-offset: 2px;
+}
+
+.node-editor__connection-menu .node-editor__connection-color:focus-visible {
+  @include focus.ring;
+}
+
+/* Egna färger på kopplingar, för att hålla isär vägar i stora guider.
+ *
+ * Tonerna är nodfamiljernas `-ink`, inte nya värden: de har redan ett mörkt
+ * värde för ljus canvas och ett ljust för mörk, så en färgad guide är läsbar i
+ * båda lägena. Att de dessutom är samma färger som noderna gör att valet bär
+ * betydelse i stället för att bara vara dekor. */
+.node-editor__connection[data-color="content"] { stroke: var(--fw-node-content-ink); }
+.node-editor__connection[data-color="rule"] { stroke: var(--fw-node-rule-ink); }
+.node-editor__connection[data-color="calc"] { stroke: var(--fw-node-calc-ink); }
+.node-editor__connection[data-color="service"] { stroke: var(--fw-node-service-ink); }
+.node-editor__connection[data-color="end"] { stroke: var(--fw-node-end-ink); }
+.node-editor__connection[data-color="danger"] { stroke: var(--fw-danger-text); }
+
+.node-editor__connection {
+  fill: none;
+
+  stroke: var(--fw-primary);
+
+  stroke-width: 3px;
+
+  stroke-linecap: round;
+
+  pointer-events: none;
+
+  transition:
+    stroke 140ms ease,
+    stroke-width 140ms ease,
+    opacity 140ms ease;
+}
+
+/*
+ * Anteckningarnas lager: samma yta som kopplingarnas, men ovanför noderna.
+ * Utan träffyta — linjen ska ses, inte fångas.
+ */
+.node-editor__note-links {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  z-index: 4;
+  pointer-events: none;
+}
+
+/*
+ * Anteckningsnodens förankringslinje till sin målnod: streckad amber pil.
+ *
+ * Kappan (de två skuggorna) är en ljus kontur bakom linjen, som på
+ * kartetiketter. Skälet är att linjen numera ritas OVANFÖR noderna och därför
+ * korsar mörka nodhuvuden och blå flödeskurvor: utan kontur tappar den läsning
+ * just där, mätt i en tät graf. Färgen är `--fw-surface`, alltså ytans egen —
+ * i mörkt läge blir konturen mörk, vilket är rätt av samma skäl.
+ *
+ * Skugga provades och valdes bort: den lägger grått på varje yta linjen
+ * passerar och får en diskret hjälplinje att se upphöjd ut.
+ */
+.node-editor__annotation-link {
+  fill: none;
+  stroke: var(--fw-note-border);
+  stroke-width: 2px;
+  stroke-dasharray: 5 5;
+  stroke-linecap: round;
+  pointer-events: none;
+  /* Kappan: två svaga konturer i ytans egen färg. Se resonemanget ovan. */
+  filter:
+    drop-shadow(0 0 2.5px var(--fw-surface))
+    drop-shadow(0 0 2.5px var(--fw-surface));
+}
+
+.node-editor__note-arrow-marker path {
+  fill: context-stroke;
+  stroke: none;
+}
+
+/* Hover på den (osynliga) träffytan förstärker den synliga linjen bredvid. */
+/* Hover och markering visar sig i TJOCKLEK, inte i färg. Färgen på en koppling
+ * betyder numera något — den skiljer vägar åt i stora guider — så att byta ut
+ * den vid hover skulle radera just den informationen i det ögonblick man tittar
+ * på strecket. Stroke sätts därför bara när kopplingen saknar egen färg. */
+.node-editor__connection-hit:hover + .node-editor__connection {
+  stroke-width: 4px;
+}
+
+.node-editor__connection-hit:hover + .node-editor__connection:not([data-color]) {
+  stroke: var(--fw-primary-hover);
+}
+
+.node-editor__connection--selected {
+  stroke-width: 5px;
+}
+
+.node-editor__connection--selected:not([data-color]) {
+  stroke: var(--fw-primary-strong);
+}
+
+/* En nyskapad koppling pulsar en gång så man ser var länken hamnade. */
+.node-editor__connection--appear {
+  animation: connection-appear 480ms ease;
+}
+
+@keyframes connection-appear {
+  35% {
+    stroke: var(--fw-primary-hover);
+    stroke-width: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .node-editor__connection--appear {
+    animation: none;
+  }
+}
+
+.node-editor__connection--highlighted {
+  stroke: var(--fw-success);
+  stroke-width: 5px;
+}
+
+.node-editor__connection--dimmed {
+  opacity: 0.2;
+}
+
+.node-editor__connection--preview {
+  fill: none;
+
+  stroke: var(--fw-primary);
+
+  stroke-width: 3px;
+
+  stroke-dasharray: 8 6;
+
+  pointer-events: none;
+}
+
+.node-editor__connection--preview[data-visible="false"] {
+  display: none;
+}
+
+/* -----------------------------
+   Noder
+------------------------------ */
+
+.node-editor__nodes {
+  position: absolute;
+  top: 700px;
+  left: 1000px;
+  width: 0;
+  height: 0;
+
+  /*
+   * Ingen z-index och därmed ingen egen stackningskontext: varje nod ska
+   * kunna stå UNDER linjernas SVG (z 1), och ett barn kan aldrig lämna sin
+   * förälders kontext. Noderna bär tvåan själva i stället.
+   */
+
+  /*
+   * Viktigt!
+   * Containern ska inte fånga musen.
+   */
+  pointer-events: none;
+}
+
+/*
+ * Men själva noderna ska kunna klickas.
+ */
+
+.node-editor__nodes > flow-node {
+  pointer-events: auto;
+  /*
+   * Ingen z här: värdarnas :host bär en graderad skala (bas 2, sidbarn 3,
+   * anteckning 5) och en sidregel hade slagit ut den — mätt 2/9: lappen
+   * föll från 5 till 2 och lade sig under noden den pekade på.
+   */
+}
+
+/*
+ * "Är det inte bättre att göra linjen längre och sänka z-index på just det
+ * kortet?" (Johan 2/9). Jo: ett kort vars ringar står på den öppnade listan
+ * sänks under linjelagret, så den riktiga kurvan ritas ända fram till ringen
+ * — i sin egen färg och sin egen vinkel, utan stump och utan skarv. Priset:
+ * en annan linje som råkar korsa kortet ritas också ovanpå det.
+ */
+.node-editor__nodes > flow-node[data-ports-on-list] {
+  z-index: 0;
+}
+
+/* Handtagen som öppnar en kopplings meny. Se node-editor.ts. */
+.node-editor__connection-handles {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  /* Lagret ska inte fånga något — bara knapparna i det. Utan det här blir hela
+     arbetsytan otrycksbar, och panorering slutar fungera. */
+  pointer-events: none;
+}
+
+.node-editor__connection-handle {
+  position: absolute;
+  /* Vänster/topp är linjens mittpunkt, så knappen ska centreras på den och inte
+     hänga ned till höger om den. */
+  transform: translate(-50%, -50%);
+
+  /* 24 px är WCAG 2.5.8:s minsta målyta, mätt på det klickbara. */
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+
+  /* Kanten bär kontrasten, inte ytan.
+
+     Mätt mot canvasen bakom: --fw-border ger 1,41:1 i ljust och 2,14:1 i
+     mörkt, och --fw-surface som yta ger 1,05 respektive 1,10 — knappen fanns
+     alltså knappt. WCAG 1.4.11 kräver 3:1 för en kontrolls avgränsning.
+     --fw-primary mäter 6,01 och 6,34 mot samma bakgrund och klarar båda lägena
+     med marginal. Ytan får vara --fw-surface: den behövs för att dölja linjen
+     under glyfen, och glyfen mot den ligger på 17,75:1. */
+  border: 1px solid var(--fw-primary);
+  border-radius: 50%;
+  background: var(--fw-surface);
+  color: var(--fw-text);
+  font-size: var(--fw-font-size-base);
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+/* Syns exakt när den går att nå, vilket är hela regeln.
+
+   `display: none` tar elementet ur tabbordningen *och* gör det ohovrbart — så
+   `:hover` och `:focus-visible` som villkor för att visa den kan aldrig slå
+   till. Det var första försöket och det var verkningslöst.
+
+   Så synligheten styrs av samma två tillstånd som tabbordningen: kopplingen är
+   markerad (ett tryck på linjen räcker, vilket är hela vägen in för ett finger),
+   eller källnoden är den som bär canvasens tabbstopp. Då är knappen synlig
+   precis när den är fokuserbar, och aldrig ett osynligt fokusstopp. */
+.node-editor__connection-handle[data-show] {
+  display: inline-flex;
+}
+
+/* Fylld vid hovring — samma två tokens, bytta plats, så kontrasten är mätt åt
+   båda hållen och inget nytt token behöver hittas på. */
+.node-editor__connection-handle[data-show]:hover {
+  background: var(--fw-primary);
+  color: var(--fw-surface);
+}
+
+/* 3 px och samma token som noden och porterna, inte 2 px och något eget.
+
+   `--fw-focus` fanns inte alls — jag hittade på det, och reservvärdet var en
+   fast blå som inte hör hemma i mörkt läge. Tjockleken var dessutom tunnare än
+   canvasens övriga ringar, så knappen såg fokuserad ut på ett annat sätt än
+   allt annat i samma vy. Avståndet gör ringen läsbar som en ring och inte som
+   en tjockare kant.
+
+   Och ringen är `--fw-text`, inte `--fw-primary`: kanten är redan primary, så
+   en ring i samma färg läser som en tjockare kant snarare än som fokus. Mot
+   canvasen mäter `--fw-text` 16,96:1 i ljust och 16,02:1 i mörkt, mot primarys
+   6,01 och 6,34 — och skillnaden mot den egna kanten är hela poängen. */
+.node-editor__connection-handle:focus-visible {
+  @include focus.ring(3px);
+}
+
+/* Over the canvas, the minimap (3) and the canvas toolbar (sticky): an open
+ * menu is the one transient thing, tied to what opened it. The layer lies
+ * outside the scaled workspace since 28/9 (see `positionMenu`), so this
+ * z-index is compared with its siblings' at last. */
+.node-editor__connection-menu-layer {
+  position: absolute;
+  inset: 0;
+  z-index: var(--fw-z-popover);
+  pointer-events: none;
+}
+
+/*
+ * Samordnad med den godkända plusmenyn (`.menu` i rich-text-field.scss,
+ * facit i UPPDRAG-2026-09-28-ENHETLIGHET Del 2). Mätt innan ändringen:
+ * ramen (`--fw-border`) och typografin (16 px/400) var redan rätt här —
+ * bara yta, radie, padding, radhöjd och skuggan (literal, inte token)
+ * ändras. Ingen delad partial i `src/viewer/styles/` läser någon av
+ * menyerna (mätt), så reglerna kopieras hit i stället för facit.
+ */
+.node-editor__connection-menu {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  min-width: 170px;
+  transform: translateY(6px);
+  pointer-events: auto;
+
+  padding: 10px 6px;
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-xl);
+
+  background: var(--fw-surface-raised);
+  box-shadow: var(--fw-shadow-raised);
+
+  /* Undantaget gäller färgrutorna. Blocket är skrivet för menyns kommandon —
+   * helbred, vänsterställd text, hover som färgar hela ytan — och rutorna är
+   * inget av det. `:hover` här väger (0,2,1) och tog över fyllningen på den
+   * enda rutan utan `[data-color]`, alltså standardrutan, som blev blekrosa
+   * vid hover medan de sex andra behöll sin färg. */
+  button:not(.node-editor__connection-color) {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 46px;
+    padding: 0 var(--fw-space-3);
+    border: 0;
+    // 7px matchar ingen radie-token — samma literal som plusmenyns rader,
+    // se `.menu button` i rich-text-field.scss.
+    border-radius: 7px;
+    background: transparent;
+    color: var(--fw-text);
+    font: inherit;
+    cursor: pointer;
+    text-align: left;
+
+    &:hover {
+      background: var(--fw-primary-surface);
+      color: var(--fw-primary-hover);
+    }
+
+    &:focus-visible {
+      @include focus.ring(0px);
+    }
+  }
+
+  /*
+   * Rött betyder "det här tar bort något", och ingenting annat.
+   *
+   * Regeln ovan skrevs för kopplingsmenyn, vars enda post var *Ta bort
+   * koppling* — där var färgen rätt. När nodmenyn återanvände behållaren ärvde
+   * varje post den: *Vägar hit*, *Duplicera*, *Spara som mall*,
+   * *Exportera som mall*. Upptäckt i en bildruta ur filmen som ska lära någon
+   * bygga sin första guide.
+   *
+   * Två skador samtidigt: en ofarlig handling ser farlig ut, så en ny redaktör
+   * tvekar på fel ställe — och den enda post som verkligen förstör något syns
+   * inte längre bland de andra. Rött som betyder allt betyder ingenting.
+   *
+   * Del 7 (UPPDRAG-2026-09-28-ENHETLIGHET, 28/9, Ted mätte/Johan avgjorde):
+   * samma urvattning satt kvar i selektorn självt. `[data-action^="remove-"]`
+   * är ett PREFIX-match, så den träffade `remove-from-page` ("Lyft ut ur
+   * sidan") lika mycket som `remove-node`/`remove-connection` ("Ta bort
+   * nod"/"Ta bort koppling") — men att lyfta ut en nod ur en sida FÖRSTÖR
+   * ingenting (mätt: noden och all dess data finns kvar på canvasen, och
+   * ångra återställer exakt). Selektorn pekar nu bara på de två posterna
+   * som verkligen tar bort något; "Lyft ut ur sidan" är neutral, som
+   * `set-start-node` nedan.
+   *
+   * Del 2 (28/9): den allmänna radens hover ovan fick nu en textfärg också
+   * (`--fw-primary-hover`, för att matcha plusmenyn). Utan en egen färg HÄR
+   * hade den vunnit på specificitet och gjort just de här knapparna lila på
+   * hover — precis den urvattning kommentaren ovan varnar för. Färgen sätts
+   * därför uttryckligen kvar i båda lägena.
+   */
+  button[data-action="remove-node"],
+  button[data-action="remove-connection"] {
+    color: var(--fw-danger-text);
+
+    &:hover {
+      background: var(--fw-danger-surface);
+      color: var(--fw-danger-text);
+    }
+  }
+
+  button[data-action="set-start-node"] {
+    color: var(--fw-primary-strong);
+
+    &:hover {
+      background: var(--fw-primary-surface);
+      color: var(--fw-primary-strong);
+    }
+  }
+}
+
+.node-editor__viewport[data-pan-ready] {
+  cursor: cursors.$move;
+}
+
+.node-editor__viewport[data-panning] {
+  cursor: cursors.$move;
+  user-select: none;
+}
+
+.node-editor__viewport[data-panning] * {
+  cursor: cursors.$move !important;
+}
+
+.node-editor__viewport[data-node-dragging],
+.node-editor__viewport[data-node-dragging] * {
+  cursor: cursors.$move !important;
+}
+
+.node-editor__page-surface {
+  position: absolute;
+  width: 660px;
+  min-height: 300px;
+  box-sizing: border-box;
+  border: 2px dashed var(--fw-primary-muted);
+  border-radius: 20px;
+  background: color-mix(in oklab, var(--fw-primary-surface) 72%, transparent);
+  box-shadow: inset 0 0 0 1px rgb(79 70 229 / 8%);
+  pointer-events: none;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease,
+    height 160ms ease;
+}
+
+.node-editor__page-caption,
+.node-editor__page-drop-hint {
+  position: absolute;
+  right: 18px;
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.node-editor__page-caption {
+  top: 18px;
+}
+.node-editor__page-drop-hint {
+  top: 78px;
+}
+
+.node-editor__page-surface[data-drop-active] {
+  border-color: var(--fw-primary);
+  background: color-mix(in oklab, var(--fw-primary-surface-2) 92%, transparent);
+  box-shadow:
+    0 0 0 6px rgb(79 70 229 / 14%),
+    inset 0 0 0 1px rgb(79 70 229 / 20%);
+  transform: scale(1.012);
+}
+
+.node-editor__page-surface[data-drop-active] .node-editor__page-drop-hint {
+  color: var(--fw-primary-strong);
+  opacity: 1;
+}
+
+.node-editor__page-surface[data-snap-complete] {
+  animation: page-snap 340ms ease-out;
+}
+
+@keyframes page-snap {
+  45% {
+    box-shadow: 0 0 0 12px rgb(34 197 94 / 24%);
+    border-color: var(--fw-success);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .node-editor__page-surface {
+    transition: none;
+  }
+  .node-editor__page-surface[data-snap-complete] {
+    animation: none;
+    border-color: var(--fw-success);
+  }
+}
+
+.node-editor__page-insertion {
+  position: absolute;
+  top: var(--insertion-top, 112px);
+  left: var(--insertion-left, 20px);
+  width: var(--insertion-width, 620px);
+  height: 104px;
+  box-sizing: border-box;
+  border: 2px dashed var(--fw-primary);
+  border-radius: var(--fw-radius-lg);
+  background: rgb(79 70 229 / 9%);
+  box-shadow: 0 0 0 4px rgb(79 70 229 / 10%);
+  opacity: 0;
+  transform: scaleX(.8);
+  transition: opacity 120ms ease, transform 120ms ease, top 120ms ease;
+}
+
+.node-editor__page-surface[data-drop-active] .node-editor__page-insertion {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .node-editor__page-insertion { transition: none; }
+}
+
+/* Page is one white container; this layer only marks its inner drop area. */
+.node-editor__page-surface {
+  z-index: 2;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/*
+ * The field area's frame. Its top comes from `--page-content-top`, set on the
+ * surface by `renderNodes`, because it stood here as `214px` while the fields
+ * stood at 260 in TypeScript — two copies of one measurement, neither aware of
+ * the other.
+ */
+.node-editor__page-surface::before {
+  content: "";
+  position: absolute;
+  inset: calc(var(--page-content-top, 241px) - 10px) 12px 12px;
+  border: 2px dashed var(--fw-primary-border);
+  border-radius: var(--fw-radius-xl);
+  /* The tokens, not their light hex: measured 3 September in dark mode, the
+     field area was a pale grey slab on the dark page — rgb(238 242 255) is
+     --fw-primary-surface's LIGHT value written out, so it never followed. */
+  background: color-mix(in oklab, var(--fw-primary-surface) 55%, transparent);
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.node-editor__page-caption {
+  display: none;
+}
+
+/*
+ * The drop hint on the frame's top edge, like a field legend — not in a band
+ * of its own above the fields.
+ *
+ * That band was the air Johan saw: 34 px carrying a label and nothing else.
+ * The label stays (an empty page needs it), but it shares its place with the
+ * frame instead of demanding a row. The text sits to the right, where the
+ * page's own port rows end far above.
+ */
+.node-editor__page-drop-hint {
+  top: calc(var(--page-content-top, 241px) - 17px);
+}
+
+.node-editor__page-surface[data-drop-active] {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.node-editor__page-surface[data-drop-active]::before {
+  border-color: var(--fw-primary);
+  background: color-mix(in oklab, var(--fw-primary-surface-2) 92%, transparent);
+  box-shadow:
+    0 0 0 6px rgb(79 70 229 / 14%),
+    inset 0 0 0 1px rgb(79 70 229 / 20%);
+}
+
+.node-editor__page-surface[data-snap-complete] {
+  animation: none;
+}
+
+.node-editor__page-surface[data-snap-complete]::before {
+  animation: page-snap 340ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .node-editor__page-surface[data-snap-complete]::before {
+    animation: none;
+    border-color: var(--fw-success);
+  }
+}
+
+/*
+ * If it cannot be changed, no handles are drawn.
+ *
+ * The drop hint and the dashed frame promise a drag that cannot happen in
+ * read-only or translation mode. Measured on every-field-editor on 1 September:
+ * two drop hints stood on a surface where nothing could be dropped. The page is
+ * still drawn as a page — what shows is its content, not an invitation.
+ */
+:host([data-mode="readonly"]) .node-editor__page-drop-hint,
+:host([data-mode="translator"]) .node-editor__page-drop-hint {
+  display: none;
+}
+
+:host([data-mode="readonly"]) .node-editor__page-surface::before,
+:host([data-mode="translator"]) .node-editor__page-surface::before {
+  display: none;
+}
+
+/*
+ * A page drawing the visitor's view is not a drop area either.
+ *
+ * The surface is a layer of its own above the page node, and with the eye lit it
+ * lay across the drawn form: the fields showed through a tinted wash inside a
+ * dashed border, and the first radio group was cut off by the frame's top edge.
+ * Same rule as read-only above — what shows is the page's content, not an
+ * invitation — and with the eye lit there is nothing to drop into anyway,
+ * because the field cards are the ones the page is drawing itself.
+ */
+.node-editor__page-surface[data-visitor-view]::before,
+.node-editor__page-surface[data-visitor-view] .node-editor__page-drop-hint,
+.node-editor__page-surface[data-visitor-view] .node-editor__page-insertion,
+.node-editor__page-surface[data-visitor-view] .node-editor__page-empty {
+  display: none;
+}
+
+/*
+ * The plaque that names the mode. Top left of the canvas, outside the scaled
+ * layer so it does not shrink with the zoom — it labels the workspace, it is
+ * not part of the guide.
+ */
+.node-editor__mode-plaque {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 4;
+  margin: 0;
+  padding: 4px 10px;
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-pill, 999px);
+  background: var(--fw-surface);
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+/* -----------------------------
+   Provar guiden
+------------------------------ */
+
+/* The line that says a run of the guide is going on (story 065 point 2).
+
+   Across the top rather than in a corner: it is the one thing on the canvas
+   that is true of the whole canvas, and a corner badge beside the mode plaque
+   would read as another label rather than as a mode somebody is in. It is
+   centred, so a longer sentence in a translation grows both ways instead of
+   running off one edge.
+
+   `pointer-events` is off on the strip and on again inside it: the strip spans
+   the canvas, and a run must not stop somebody dragging a node under it. (An
+   edit ends the run — that is the answer, not a locked canvas.) */
+/* `display` on the class beats the user agent's `[hidden]` — third time this
+   trap bites (the palette, the proving ball, now the bar): the empty bar and
+   its buttons stood on a freshly loaded page. */
+.node-editor__proving[hidden] {
+  display: none;
+}
+
+.node-editor__proving {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  left: 12px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.node-editor__proving-text {
+  margin: 0;
+  padding: 6px 14px;
+  border: 1px solid var(--fw-primary);
+  border-radius: var(--fw-radius-pill, 999px);
+  background: var(--fw-surface);
+  color: var(--fw-text);
+  font-size: var(--fw-font-size-base);
+  font-weight: 700;
+  pointer-events: auto;
+}
+
+/* `--fw-primary` and not `--fw-border` on the edge: the divider token measures
+   2.14:1 against the surface and WCAG 1.4.11 asks 3:1 of a control's boundary
+   — the sweep in `guide-editor-boundary-contrast` caught exactly that here.
+   The same edge the way back out of a lost canvas uses. */
+.node-editor__proving-button {
+  padding: 6px 14px;
+  border: 1px solid var(--fw-primary);
+  border-radius: var(--fw-radius-pill, 999px);
+  background: var(--fw-surface);
+  color: var(--fw-text);
+  font: inherit;
+  font-size: var(--fw-font-size-base);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.node-editor__proving-button:hover {
+  background: var(--fw-primary);
+  color: var(--fw-on-primary);
+}
+
+.node-editor__proving-button:focus-visible {
+  @include focus.ring;
+}
+
+/* The trail: green and thicker, never green alone.
+
+   The colour is the same `--fw-success` a shown route already uses, and the
+   width the same 5 px — measured 2026-09-01 — because the two say the same
+   kind of thing and a second green would be a second vocabulary. What the
+   trail does NOT do is dim the rest: a shown route answers "what leads here"
+   and hides the rest to answer it, while a run has to leave the guide ahead
+   readable in its ordinary colour (story 065 point 5). */
+.node-editor__connection[data-trail] {
+  stroke: var(--fw-success);
+  stroke-width: 5px;
+}
+
+/* During a run only the trail is lit; the other lines fade with their nodes. */
+:host([data-proving]) .node-editor__connection:not([data-trail]) {
+  opacity: 0.25;
+}
+
+/* -----------------------------
+   Minikarta
+------------------------------ */
+
+/* Ligger i canvasens nedre högra hörn och skymmer alltid något. Den visas
+ * därför bara när innehållet inte får plats i viewporten — se `updateMinimap()`.
+ *
+ * Uppdrag 29/9, Del B (Astra §3): en egen behållare i zoomradens familj —
+ * samma yta, ram, 12 px radie och skugga. Förut var hela kartan 78 %
+ * genomskinlig tills pekaren kom dit; det tonade också ramen och prickarna,
+ * och Astra: "Opacitet får bara påverka fyllningen, inte dess kontur eller
+ * noderna under." Nu är bara det synliga områdets fyllning genomskinlig.
+ * Med genomskinligheten försvann också övergången — den var dekoration.
+ *
+ * `overflow: hidden` klipper kartans innehåll (prickarna och rutan, som kan
+ * sticka ut när vyn vandrat bort från guiden) inom den rundade inre ytan.
+ * Kartan är aria-hidden och tar aldrig fokus (se kommentaren i markupen),
+ * så det finns ingen fokusring för klippningen att äta. */
+.node-editor__minimap {
+  position: absolute;
+  z-index: 3;
+
+  overflow: hidden;
+
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-card);
+
+  background: var(--fw-surface-raised);
+  box-shadow: var(--fw-shadow-raised);
+
+  cursor: pointer;
+
+  /* Pekarhändelserna fångas av kartan själv; noderna i den ska inte ta emot
+   * dem, annars tappar dragningen målet så fort den passerar en prick. */
+  touch-action: none;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.node-editor__minimap-nodes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Kopplingarna (berättelse 142, Astras skiss 29/9): tunna neutrala kurvor
+ * bakom prickarna — lagret står före prickarna i markupen, så de ritas ovanpå
+ * utan z-index. Samma `inset: 0` som prickarna, och kartans `overflow:
+ * hidden` klipper det som når utanför. Ingen nodfärg: i kartan skulle den
+ * konkurrera med prickarna. Fångar inga pekarhändelser — klick och drag är
+ * kartans egna. `overflow: visible` så att SVG:ns egen klippning inte
+ * klipper snävare än kartans rundade ram. */
+.node-editor__minimap-links {
+  position: absolute;
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+
+  fill: none;
+  /* Tonad mer än prickarna (deras färg är blandad till 75 %): skissen har linjen
+   * ljusgrå och dämpad, tydligt svagare än prickarna. Ingen ljusare neutral
+   * token finns — `--fw-border` bär inte i mörkt (1.47:1 i ljust, #3f4a63
+   * försvann mot #252c3b) — så linjen är `--fw-border-control` tonad till
+   * hälften. Mätt 29/9 mot kartans yta: 1.97:1 i ljust (#b0b5c0), 2.24:1 i
+   * mörkt (#586170). 0.65 prövades och låg närmare den otonade tyngden än
+   * skissen i ljust. Bilderna i Teds rapport för berättelse 142. */
+  stroke: var(--fw-border-control);
+  stroke-opacity: 0.5;
+  stroke-width: 1;
+
+  pointer-events: none;
+}
+
+/* Prickarna bär nodfamiljens färg, samma indelning som rubrikerna på noderna.
+ * Utan den blir kartan en gråskala där man inte känner igen sin egen graf.
+ *
+ * Ogenomskinliga (Astra 29/9, berättelse 142): med `opacity: 0.75` syns
+ * kopplingslinjerna genom prickarna, och två radbyten över Granska-pricken i
+ * skadeanmälan gjorde kopplingarna svårtolkade. Samma färg som förut, men
+ * blandad i förväg mot kartans yta i stället för tonad mot det som ligger
+ * under. `in srgb` för att det är så webbläsaren komponerar en opacitet:
+ * uppmätt identiskt (±1 per kanal) med de gamla prickarna i båda teman,
+ * medan `in oklab` avvek upp till 16 (uträkning i ljust) och 43 (anteckning).
+ * Typreglerna nedan sätter bara `--dot-ink`. */
+.node-editor__minimap-node {
+  --dot-ink: var(--fw-node-content-ink);
+
+  position: absolute;
+
+  border-radius: 1px;
+
+  background: color-mix(in srgb, var(--dot-ink) 75%, var(--fw-surface-raised));
+}
+
+.node-editor__minimap-node[data-node-type="rule"] {
+  --dot-ink: var(--fw-node-rule-ink);
+}
+
+.node-editor__minimap-node[data-node-type="calculation"] {
+  --dot-ink: var(--fw-node-calc-ink);
+}
+
+.node-editor__minimap-node[data-node-type="service-call"] {
+  --dot-ink: var(--fw-node-service-ink);
+}
+
+.node-editor__minimap-node[data-ending] {
+  --dot-ink: var(--fw-node-end-ink);
+}
+
+.node-editor__minimap-node[data-node-type="annotation"] {
+  --dot-ink: var(--fw-note-border);
+}
+
+/* Rutan som visar vad man ser just nu. Fylld svagt i stället för enbart ramad —
+ * en tom ram försvinner mot prickarna när utsnittet är litet.
+ *
+ * Astra §2–3 (29/9): tunn `--fw-primary`-kontur, svag fyllning. Fyllningen
+ * är samma token blandad mot genomskinligt — projektets sätt att tona en
+ * token — så genomskinligheten ligger bara i bakgrunden: konturen är hel
+ * `--fw-primary`, och prickarna under syns genom 88 %. Båda följer en värd
+ * som skriver över `--fw-primary` lokalt. */
+.node-editor__minimap-viewport {
+  position: absolute;
+
+  border: 1px solid var(--fw-primary);
+  border-radius: var(--fw-radius-xs);
+
+  background: color-mix(in oklab, var(--fw-primary) 12%, transparent);
+
+  pointer-events: none;
+}
+
+/* -----------------------------
+   Släpskugga vid palettdrag
+------------------------------ */
+
+/* Ligger `fixed` mot fönstret, inte i canvasen. Hela poängen är att synas där
+ * canvasen klipper: noden är avklippt så länge pekaren är kvar över paletten,
+ * och skuggan är det enda beskedet om att man håller på att dra ut något. */
+.node-editor__drag-ghost {
+  position: fixed;
+  z-index: 40;
+
+  max-width: 200px;
+  padding: 6px 10px;
+
+  overflow: hidden;
+
+  border-radius: var(--fw-radius-sm);
+
+  background: var(--fw-node-content);
+  color: var(--fw-on-node);
+  box-shadow: 0 6px 18px rgb(16 24 40 / 28%);
+
+  font-size: var(--fw-font-size-base);
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+
+  /* Får aldrig fånga pekaren — den ligger under fingret hela tiden. */
+  pointer-events: none;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+/* Samma familjefärger som noderna, så skuggan säger vad man drar. */
+.node-editor__drag-ghost[data-node-type="rule"] { background: var(--fw-node-rule); }
+.node-editor__drag-ghost[data-node-type="calculation"] { background: var(--fw-node-calc); }
+.node-editor__drag-ghost[data-node-type="service-call"] { background: var(--fw-node-service); }
+.node-editor__drag-ghost[data-ending] { background: var(--fw-node-end); }
+
+/* En prick med problem sticker ut ur kartans färgschema. Kartan är aria-hidden
+   och bara en genväg — samma information finns utskriven i kontrollraden, så
+   färgen är inte ensam bärare här heller. */
+/* Full strength, the semantic tokens as they are — `background` on purpose,
+   past the 75 % mix the type dots get. A tinted warning dot was the same
+   colour as a service-call dot (197,125,70 both, Fia 30/9), and Astra,
+   closing 142: "problem behöver framträda tydligare än vanlig nodtyp". */
+.node-editor__minimap-node[data-severity="error"] {
+  background: var(--fw-danger-text);
+  outline: 1px solid var(--fw-surface);
+}
+
+.node-editor__minimap-node[data-severity="warning"] {
+  background: var(--fw-warning-text);
+}
+
+/* Anvisningen på en tom sida. Ligger centrerad på ytan, tar inga pekarhändelser
+   och försvinner så fort ett fält lagts till. Den är en anvisning, inte
+   innehåll: den sparas aldrig och syns aldrig i visaren. */
+.node-editor__page-empty {
+  position: absolute;
+  top: 60%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  margin: 0;
+
+  color: var(--fw-text-muted);
+  font-size: var(--fw-font-size-lg);
+  text-align: center;
+
+  pointer-events: none;
+}
+
+/* Under en dragning tar drop-hinten över — två anvisningar samtidigt är brus. */
+.node-editor__page-surface[data-drop-active] .node-editor__page-empty {
+  opacity: 0;
+}
+
+/* -----------------------------
+   Verktygsfältet på canvasen (Uppdrag 23/9, Del A punkt 2)
+------------------------------ */
+
+/* Samma "svävar ovanpå canvasen"-lager som minikartan (`--fw-z-sticky`,
+ * samma roll som andra huvuden och verktygsfält som ligger kvar medan
+ * innehållet rullar). Var den står: se placeringsreglerna nedan (Del C). */
+.node-editor__canvas-toolbar {
+  position: absolute;
+  z-index: var(--fw-z-sticky);
+
+  /*
+   * Uppdrag 29/9, Del A (Astra §1–2): one continuous raised surface, the
+   * buttons borderless on it, 4 px of air round the row; the content sets
+   * the width. 12 px corners are the card radius — the same family the
+   * minimap's frame takes.
+   */
+  display: flex;
+  align-items: center;
+
+  padding: var(--fw-space-1);
+
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-card);
+
+  background: var(--fw-surface-raised);
+  box-shadow: var(--fw-shadow-raised);
+  /* The bar's own ink, so its hidden "Zoomnivå" has one too: the canvas
+   * sets none, and the contrast gate measured the word black on the dark
+   * theme's surface (1.50:1, 29/9) — it counts clipped text as text. */
+  color: var(--fw-text);
+  /* The reading stays in body weight (Astra 29/9, on the side-by-side
+   * pictures: "100 %" in the strong weight dominated the bar; 400 is the
+   * more balanced). Whatever weight is chosen must sit on the bar, never on
+   * the reading alone: every width here is counted in `ch` — the reading's
+   * cell and the two-row width below — and `ch` follows the weight, so a
+   * heavier reading outgrew the two-row width and plus dropped to a third
+   * row (Fia 29/9, measured). The buttons carry no text; the tooltip sets
+   * its own weight. */
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+/*
+ * Uppdrag 29/9, Del C (Astra §4): the bar and the map share the canvas's
+ * bottom right, 16 px from its edges, and they follow the canvas — not the
+ * window — so a dragged panel (story 141) moves them with it. Every width
+ * below is the canvas's own (container query on .node-editor).
+ *
+ * Four arrangements, each because a measurement needed it (29/9):
+ *
+ *   ≥ 660  side by side: the bar 16 px left of the map, bottom edges on one
+ *          line. The row is the health badge (bottom left, guide-editor.scss,
+ *          ~140 px with its margin) + bar 267 + map ≤ 170 + 3 × 16 ≈ 630.
+ *   < 660  stacked: the bar keeps the corner, the map stands 12 px above it
+ *          (Astra: "minikartan ovanför zoomraden med 12 px mellanrum").
+ *   < 480  the badge and the bar no longer fit on one row (140 + 16 + 267 +
+ *          16 ≈ 440, measured 21 px of overlap at 402): the stack rises above
+ *          the badge's row — 12 + ~31 + 13 = 56 px, the same clearance the
+ *          23/9 field used when it floated over the same badge.
+ *   < 300  the bar itself no longer fits (267 + 2 × 16): it goes to two rows,
+ *          and the map is not drawn at all (Johan 29/9),
+ *          zoom above and the view pair below, rather than shrinking a button
+ *          or breaking the reading. Measured 29/9 at the smallest window the
+ *          editor serves (700 px, panel 380): 202 px of canvas, and the
+ *          single row stood 76 px outside it — the minus button unreachable.
+ *
+ * The bar's height is known without measuring (44 + 2 × 4 + 2 × 1 px), so the
+ * map needs no script to stand above it; --minimap-width comes from
+ * updateMinimap(), the only place the map's size is known.
+ */
+/*
+ * The controls' box (story 145, criterion 8): the canvas less what a host's
+ * open panel covers. `<guide-editor>` sets the insets on the box around the
+ * canvas while a panel lies over it, and they are inherited in here; without
+ * them the box is the canvas.
+ *
+ * It takes over the `node-editor` container name, so every rule below asks the
+ * box and not the whole canvas — an open 440 px panel over a 900 px canvas
+ * leaves 460, and the map and the bar stack as they would at 460. Physical
+ * left and right, for the same reason as the controls themselves (Astra 29/9).
+ * The box lets the pointer through; only the controls take it.
+ */
+.node-editor__controls {
+  container: node-editor / inline-size;
+  position: absolute;
+  z-index: var(--fw-z-sticky);
+  top: 0;
+  bottom: 0;
+  left: var(--fw-canvas-left-inset, 0px);
+  right: var(--fw-canvas-right-inset, 0px);
+  pointer-events: none;
+
+  > * {
+    pointer-events: auto;
+  }
+}
+
+.node-editor__canvas-toolbar,
+.node-editor__minimap {
+  --canvas-controls-edge: var(--fw-space-4);
+  --canvas-controls-floor: var(--fw-space-4);
+  --canvas-toolbar-block: calc(var(--fw-control-height) + var(--fw-space-1) * 2 + 2px);
+
+  /* Physical `right`, not `inset-inline-end`, on purpose (Astra 29/9): a
+   * geographic control for a flow surface does not mirror automatically in
+   * right-to-left. node-editor-canvas-toolbar.browser.test.ts, "höger-till-
+   * vänster", is the guardrail — it fails on inset-inline-end here. */
+  right: var(--canvas-controls-edge);
+  bottom: var(--canvas-controls-floor);
+}
+
+.node-editor__minimap:not([hidden]) ~ .node-editor__canvas-toolbar {
+  right: calc(var(--canvas-controls-edge) * 2 + var(--minimap-width, 170px));
+}
+
+@container node-editor (width < 660px) {
+  .node-editor__minimap:not([hidden]) ~ .node-editor__canvas-toolbar {
+    /* Same physical corner, same RTL decision as above. */
+    right: var(--canvas-controls-edge);
+  }
+
+  .node-editor__minimap {
+    bottom: calc(var(--canvas-controls-floor) + var(--canvas-toolbar-block) + var(--fw-space-3));
+  }
+}
+
+@container node-editor (width < 480px) {
+  .node-editor__canvas-toolbar,
+  .node-editor__minimap {
+    --canvas-controls-floor: 56px;
+  }
+}
+
+@container node-editor (width < 300px) {
+  .node-editor__canvas-toolbar,
+  .node-editor__minimap {
+    --canvas-toolbar-block: calc(var(--fw-control-height) * 2 + var(--fw-space-1) * 2 + 2px);
+  }
+
+  /* Minus, the reading and plus on the first row, the view pair under them,
+   * both to the right. The divider becomes the break itself — a full-width
+   * item of no height — so the rows part the two groups where the line did,
+   * and no width has to be guessed for the break to land after plus. Reading
+   * and focus order stay the DOM's. */
+  /* Exactly three cells wide, from the same numbers the cells are made of
+   * (the reading: 5.5ch and 4 px each side) — left to itself an absolutely
+   * placed box takes all the width it may, and stood 186 px wide against
+   * the canvas's left edge at 202 (measured 29/9). */
+  .node-editor__canvas-toolbar {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    inline-size: calc(var(--fw-control-height) * 2 + 5.5ch + var(--fw-space-1) * 2);
+  }
+
+  /* The map goes (Johan 29/9, via the uppdrag's question 1): no policy for
+   * small screens existed, and at this width the stack — two-row bar, then
+   * the map above it — stood 300 px tall and partly above a low canvas. The
+   * map is a shortcut; scroll, zoom and "Visa hela flödet" remain. Its
+   * `hidden` stays the script's (it still decides whether the map is
+   * wanted); this only keeps it from being drawn here. */
+  .node-editor__minimap {
+    display: none;
+  }
+
+  /* Through the bar: the divider's own rule stands later in the file. */
+  .node-editor__canvas-toolbar .node-editor__canvas-toolbar-divider {
+    flex-basis: 100%;
+    block-size: 0;
+    margin: 0;
+  }
+}
+
+.node-editor__canvas-toolbar-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-sizing: border-box;
+
+  inline-size: var(--fw-control-height);
+  block-size: var(--fw-control-height);
+  padding: 0;
+
+  /*
+   * No border at rest, on purpose: the icons are glyph-identified, and a
+   * "transparent" border is still a border to ikonkontrastbrott, which
+   * measures the shape and refuses a colour it cannot compose. Hover and
+   * pressed are the text field's tool row (`.tool` in rich-text-field.scss),
+   * the editor's one pattern for a row of icon buttons: a whole `border`
+   * inside the same box (border-box), so the button never grows a pixel.
+   */
+  border: 0;
+  border-radius: var(--fw-radius-button);
+
+  background: transparent;
+  color: var(--fw-text-secondary);
+
+  font: inherit;
+
+  cursor: pointer;
+
+  &:hover {
+    border: 1px solid var(--fw-primary);
+    background: var(--fw-primary-surface);
+  }
+
+  /* Fullscreen on: the same pressed state as the tool row's. */
+  &[aria-pressed="true"] {
+    border: 2px solid var(--fw-text-strong);
+    background: var(--fw-primary-surface);
+    color: var(--fw-primary-strong);
+  }
+
+  &:focus-visible {
+    @include focus.ring;
+  }
+
+  svg {
+    inline-size: 20px;
+    block-size: 20px;
+  }
+}
+
+/* The one divider, after plus (Astra §1): 1 × 24, centred, 8 px each side.
+ *
+ * A border, not a background fill — measured 29/9 (Siv) under Windows high
+ * contrast (`forced-colors: active`): a plain `background-color` box with no
+ * border is one of the properties the mode forces to `Canvas` (white),
+ * leaving it the same colour as the toolbar behind it — invisible. A
+ * `border-style` other than `none` is the one forced-colors *keeps* and
+ * repaints in the system's own ink, so `inline-size: 0` plus a 1 px
+ * `border-inline-start` renders the identical 1 px line in both themes and
+ * survives high contrast without a media query or a literal system colour. */
+.node-editor__canvas-toolbar-divider {
+  flex-shrink: 0;
+  inline-size: 0;
+  block-size: var(--fw-space-5);
+  margin-inline: var(--fw-space-2);
+
+  border-inline-start: 1px solid var(--fw-border);
+}
+
+.node-editor__canvas-toolbar-zoom-cell {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.node-editor__visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Talet, inte en knapp: det finns inget att trycka på i en procentsats när
+ * minus och plus redan gör jobbet.
+ *
+ * Mätt 23/9 i 900 px med sidopanelen öppen (Johan): flexraden krympte
+ * spannet och "100 %" bröt vid mellanrummet. Därför bryts det aldrig,
+ * krymper aldrig, och har fast plats för det längsta värdet ("150 %",
+ * ZOOM_MAX) i `ch` — tabellsiffror gör varje siffra en `ch` bred, så platsen
+ * är densamma vid 25 som vid 150 och knapparna står still. 5.5ch och 4 px på
+ * var sida mäter 64 px i editorns typsnitt, Astras utgångspunkt (29/9); i
+ * `ch` och inte i px så att platsen följer med om typsnittet byts. */
+.node-editor__canvas-toolbar-zoom {
+  display: block;
+  inline-size: 5.5ch;
+  padding-inline: var(--fw-space-1);
+
+  color: var(--fw-text);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* The shared tooltip — the answer cards' look (properties-panel.scss,
+ * `.properties-panel__option-tooltip`): above the bar, over its button. */
+.node-editor__canvas-toolbar-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  z-index: var(--fw-z-popover);
+
+  margin-bottom: var(--fw-space-2);
+  padding: var(--fw-space-1) var(--fw-space-2);
+
+  border-radius: var(--fw-radius-sm);
+
+  background: var(--fw-text);
+  color: var(--fw-surface);
+  box-shadow: var(--fw-shadow-raised);
+
+  font-size: var(--fw-font-size-xs);
+  font-weight: var(--fw-weight-text);
+  white-space: nowrap;
+
+  &[hidden] {
+    display: none;
+  }
+}

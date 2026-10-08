@@ -1,0 +1,690 @@
+/*
+ * Väljaren på sidan där guiden ligger hos värden — form C (berättelse 124,
+ * andra tillägget, Johans val 18/9).
+ *
+ * Raden sitter i editorns egen övre rad, genom slotten som redan fanns
+ * (`slot="context"`). Det som stod i en egen rad ovanför editorn och i en panel
+ * vid sidan är borta: en rad ovanför försvann i helskärm, och panelen täckte
+ * arbetsytan man skulle jämföra med.
+ *
+ * Tokens är sajtens, som allt annat här — inget av det följer med i biblioteket.
+ */
+@use "../../viewer/styles/focus" as focus;
+
+@use "./demo-tokens.scss";
+
+/* ── Sidan ────────────────────────────────────────────────────────────── */
+
+/*
+ * Sidans marginal i sidled — samma 20 px som resten av sajten.
+ *
+ * Den här sidan hade ingen alls, så remsans högra kant låg mot fönsterkanten
+ * och fokusringen på *Logga ut* (3 px ring, 2 px offset) ritades utanför
+ * viewporten. Samma sak gällde *Tillbaka till start* till vänster och hade
+ * gjort det sedan sidan skrevs; det syntes först när något annat än en länk
+ * hamnade i kanten.
+ *
+ * På `main` och inte på `body`: `main.has-editor` räknar sin höjd som
+ * `100dvh - 64px` ur bodys lodräta vaddering (`style.scss`), och en vaddering
+ * på body hade gjort det talet fel.
+ */
+main.has-editor {
+  padding-inline: 20px;
+}
+
+/* ── Sidans remsa ─────────────────────────────────────────────────────── */
+
+/*
+ * Vägen tillbaka till vänster, vem du är till höger (berättelse 126, flyttad
+ * hit 18/9 kväll).
+ *
+ * Här och inte i editorns rad, av två skäl. Det första är vad saker handlar
+ * om: radens ärende är guiden, remsans är sidan. Det andra är mätt — Johans
+ * skärmbild visade historikpopovern liggande över raden med namnet avklippt
+ * till "m Johan Furuskog". Popovern hänger under sin knapp nere i editorn och
+ * kan inte nå hit upp.
+ *
+ * `align-items: baseline` så länken och namnet står på samma skriftlinje trots
+ * att knappen bredvid har sin egen höjd, och `wrap` så att en lång titel eller
+ * ett långt namn tar en rad till i stället för att klippas.
+ */
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+  min-width: 0;
+}
+
+/* Bakåtlänken bär sin egen marginal; remsan äger avståndet i stället. */
+.strip .demo-back {
+  margin-bottom: 0;
+}
+
+.strip__who {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  /* Column-gap 12, not 10: off the 4px scale, rounded up. */
+  gap: 4px 12px;
+  min-width: 0;
+  color: var(--fw-text-secondary);
+  font-size: 0.85rem;
+}
+
+/*
+ * Gömt betyder ingen plats. `display: inline-flex` ovan vinner annars över
+ * `hidden` — PRAXIS 36, och fjärde gången samma fälla i den här sidan.
+ */
+.strip__who[hidden] {
+  display: none;
+}
+
+/*
+ * *Logga ut* som textknapp och inte som piller: det är en handling man gör
+ * sällan, och remsan ska inte tävla med editorns rad om uppmärksamheten.
+ */
+.strip__button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: var(--fw-weight-strong);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.strip__button:hover {
+  color: var(--fw-primary);
+}
+
+.strip__button:focus-visible {
+  @include focus.ring;
+  /* 4px matches no radius role (button/field 8, card 12, dialog 16) — this is
+     a focus-ring corner on a text link, not a pressable shape, so it is kept
+     literal rather than guessed onto one. */
+  border-radius: 4px;
+}
+
+/* ── Raden ────────────────────────────────────────────────────────────── */
+
+/*
+ * Variant B — "Tyst rad": Apple-städat i stället för CMS-tätt.
+ *
+ * Namnet får bära vikten själv; brickan är ett ord och en prick, ingen ram.
+ * Handlingarna är text tills en av dem betyder något (Publicera), och hela
+ * meningen om läget ligger på en egen rad under — aldrig avklippt. Johans
+ * smak (18/9): "fler rader ser snyggast ut", och ingenting här ska se
+ * genererat ut.
+ */
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding-block: 2px;
+}
+
+.row__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  /* Column-gap 20, not 18: off the 4px scale, rounded up. */
+  gap: 8px 20px;
+  width: 100%;
+  min-width: 0;
+}
+
+.row__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  /* 8px, not 9: 9 matches no scale step and sits closest to 8. */
+  gap: 8px;
+  min-width: 0;
+}
+
+.row__name {
+  max-width: 16rem;
+  margin: 0;
+  overflow: hidden;
+  font-size: 1.1rem;
+  /* A heading is 700, whatever its size (Johan 20/9) — this is the guide's
+     own <h1>. */
+  font-weight: var(--fw-weight-heading);
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/*
+ * Brickan: ordet, tecknet och färgen säger samma sak. Ingen av dem bär det
+ * ensam — K3. Här bär ingen av dem en ram eller en yta heller: en prick och
+ * ett ord i samma färg, tystare än en pill men lika läsbar — texten är alltid
+ * det som identifierar tillståndet, färgen bekräftar.
+ */
+.row__badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  /* 4px, not 6: the mark and its own word are a tight pair, one step down
+     the scale from the row's other gaps. */
+  gap: 4px;
+  font-size: 0.82em;
+  font-weight: var(--fw-weight-heading);
+  white-space: nowrap;
+}
+
+.row__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 8px;
+  height: 8px;
+  line-height: 0;
+  border-radius: 50%;
+}
+
+/*
+ * Ikonen tystas, ordet bär det ensamt tillsammans med färgen. K3 är ändå
+ * hållet: ordet — "Arbetskopia", "Publicerad", "Version 3 · skrivskyddad" —
+ * är alltid annorlunda mellan tillstånden, oavsett om någon ser prickens
+ * färg. Prickens jobb här är bara att hittas snabbare i en rad med mycket
+ * annat i sig, inte att själv bära betydelsen.
+ */
+.row__mark svg {
+  display: none;
+}
+
+.row[data-state="clean"] .row__badge {
+  color: var(--fw-success-text);
+}
+
+.row[data-state="clean"] .row__mark {
+  background: var(--fw-success-text);
+}
+
+.row[data-state="draft"] .row__badge {
+  color: var(--fw-warning-text);
+}
+
+.row[data-state="draft"] .row__mark {
+  background: var(--fw-warning-text);
+}
+
+.row[data-state="readonly"] .row__badge,
+.row[data-state="locked"] .row__badge {
+  color: var(--fw-info-text);
+}
+
+.row[data-state="readonly"] .row__mark {
+  background: var(--fw-info-text);
+}
+
+/*
+ * Hänglåset, och det enda märket som faktiskt ritas (berättelse 129).
+ *
+ * De andra är prickar — se kommentaren ovan. Hänglåset är värt sin plats för
+ * att det betyder samma sak i Word och i Sitevision: *någon annan håller den
+ * här*. Ordet *Läsläge* står kvar bredvid (K3); ikonen är en genväg för ögat.
+ */
+.row[data-state="locked"] .row__mark {
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: none;
+  color: var(--fw-info-text);
+}
+
+.row[data-state="locked"] .row__mark svg {
+  display: block;
+}
+
+.row__status {
+  min-width: 0;
+  margin: 0;
+  max-width: 52rem;
+  color: var(--fw-text-secondary);
+  font-size: 0.9em;
+  line-height: var(--fw-line-body);
+  /* Aldrig avklippt — hela meningen får plats, på en rad till om den behöver. */
+  white-space: normal;
+}
+
+/*
+ * Arbetsanteckningen (berättelse 130): någons egna ord, under beskedet.
+ *
+ * Kursiv och dämpad, som UX valde 18/9 — den är en röst och inte sidans egen
+ * text, och den ska gå att läsa förbi när man vet vad som står där. Egen rad
+ * och inte hängd på statusraden: en mening på samma rad wrappar, och då
+ * flyttar allt under sig varje gång någon skriver en längre anteckning.
+ */
+.row__note {
+  margin: 4px 0 0;
+  max-width: 52rem;
+  color: var(--fw-text-secondary);
+  font-size: 0.9em;
+  font-style: italic;
+  line-height: var(--fw-line-body);
+  /* Ett diarienummer eller en adress mitt i meningen ska brytas, inte skjuta
+     raden utanför sidan. */
+  overflow-wrap: anywhere;
+}
+
+.row__note[hidden] {
+  display: none;
+}
+
+/*
+ * Det som inte hann sparas, och frågan om det (berättelse 129).
+ *
+ * Under statusraden. Frågan på sin rad, valen på nästa — sida vid sida när det
+ * får plats, under varandra när det inte gör det. Egen yta och egen kant: det
+ * är en fråga som väntar på svar, inte ett besked som bleknar, och en rad utan
+ * ram hade sjunkit in i den under.
+ */
+/*
+ * Räddningsraden är bildbedömd 19–20/9 (LOGG 20/9 förmiddag) och lämnas
+ * med flit utanför den här sveparbetsomgången: `padding: 10px 12px` (10
+ * matchar ingen skalsteg, skalan vill 12) och `border-radius: 10px`
+ * (matchar ingen radie-roll, rollen vill 12) är off-scale men rörda inte
+ * — se svepets rapport.
+ */
+.row__rescue {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  max-width: 52rem;
+  border: 1px solid var(--fw-warning-border, var(--fw-border));
+  border-radius: 10px;
+  background: var(--fw-warning-surface, var(--fw-surface-subtle, var(--fw-bg)));
+  color: var(--fw-text);
+  font-size: 0.9em;
+  line-height: var(--fw-line-body);
+}
+
+.row__rescue-text {
+  margin: 0;
+  max-width: 46rem;
+}
+
+/* Valen bredvid varandra, och i en kolumn när bredden inte räcker — det är
+   `wrap` som avgör, inte en brytpunkt som gissar var raden tar slut.
+
+   Bildbedömt som resten av räddningsraden: `gap: 10px 20px` — 10 matchar
+   inget skalsteg (skalan vill 12) — rört inte. */
+.row__rescue-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+}
+
+/* Ett val är knappen och dess pris, i den ordningen och i samma kolumn: priset
+   hör till knappen ovanför och får aldrig hamna bredvid fel knapp. */
+.row__rescue-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin: 0;
+  max-width: 24rem;
+}
+
+.row__rescue-choice[hidden] {
+  display: none;
+}
+
+.row__rescue-cost {
+  color: var(--fw-text-secondary);
+  font-size: 0.95em;
+  /* 1.4 is body copy that drifted off `--fw-line-body` (measured 20/9,
+     `_tokens-mixins.scss`) — folded back onto the role. */
+  line-height: var(--fw-line-body);
+}
+
+/* Knapparna i frågan är lägre än radens: de står inne i en ruta, inte i en
+   verktygsrad — men aldrig under 44 px höga (K6).
+
+   Och de får bryta raden. Radens egna knappar håller `white-space: nowrap` för
+   att en verktygsrad inte ska hoppa i höjd; här står ett namn i knappen —
+   *Börja från Johan Furuskogs version* — och i en telefon är rutan smalare än
+   den meningen. En knapp som inte får brytas skjuter i stället ut ur rutan.
+
+   Bildbedömt som resten av räddningsraden: `padding: 8px 14px` — 14 matchar
+   inget skalsteg (skalan vill 16) — rört inte. */
+.row__rescue .row__button {
+  padding: 8px 14px;
+  max-width: 100%;
+  white-space: normal;
+}
+
+.row__rescue[hidden] {
+  display: none;
+}
+
+/* Handlingarna till höger, alltid på samma plats. */
+.row__actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  margin-inline-start: auto;
+}
+
+/*
+ * Knapparna är text tills något behöver väga tyngre. Historik och … har
+ * ingen egen yta i vila — samma grepp som verktygsfältets ovanför, så raden
+ * inte lägger fem lådor bredvid varandra ovanpå en redan full editor.
+ */
+.row__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* K6: en yta som går att träffa med en tumme. */
+  min-height: var(--fw-control-height);
+  padding: 0 16px;
+  border: 1px solid transparent;
+  /* Piller tillbaka till 8px (Johan 20/9): en knapp är en knapp, pillformen
+     är kvar för chips och brickor. */
+  border-radius: var(--fw-radius-button);
+  background: transparent;
+  color: var(--fw-text-strong, inherit);
+  font: inherit;
+  font-weight: var(--fw-weight-strong);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--fw-motion-duration) var(--fw-motion-ease), border-color var(--fw-motion-duration) var(--fw-motion-ease);
+}
+
+.row__button:hover {
+  background: var(--fw-surface-subtle, var(--fw-bg));
+}
+
+.row__button--primary {
+  border-color: transparent;
+  background: var(--fw-primary);
+  color: var(--fw-on-primary);
+}
+
+.row__button--primary:hover {
+  background: var(--fw-primary-hover, var(--fw-primary));
+}
+
+/*
+ * Det tysta valet: en knapp som syns som knapp, utan att väga lika tungt som
+ * det fyllda.
+ *
+ * Den stod utan ram till 19/9 och Johan mätte den i mörkt tema: *"ingen ram,
+ * ingen bakgrund, lös text på egen rad"*. En text är inte en knapp — den som
+ * inte vet att den går att trycka på trycker inte.
+ *
+ * Kanten är `--fw-border-control` och inte `--fw-border`: den senare är gjord
+ * för att dela av och mäter 1.4:1 mot räddningsrutans gula yta. WCAG 1.4.11
+ * vill ha 3:1 mot det som ligger bakom, och kontrolltoken mäter 4.8:1 i ljust
+ * och 5.7:1 i mörkt läge — grinden står i
+ * `styles/guide-storage-rescue.browser.test.ts`.
+ */
+.row__button--quiet {
+  border-color: var(--fw-border-control);
+  background: var(--fw-surface);
+}
+
+.row__button--quiet:hover {
+  background: var(--fw-surface-subtle, var(--fw-bg));
+}
+
+.row__button--more {
+  min-width: var(--fw-control-height);
+  padding: 0 12px;
+  font-size: 1.1em;
+  /* 1 matches neither line-height role — a deliberate zero-leading trick so
+     the "…" glyph does not push the button taller than its neighbours. */
+  line-height: 1;
+}
+
+/* Knappen syns som aktiv medan dess popover står öppen. */
+.row__button[data-open="true"] {
+  background: var(--fw-primary-surface, var(--fw-surface-subtle));
+  color: var(--fw-primary-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row__button {
+    transition: none;
+  }
+}
+
+/*
+ * Och de göms när de göms: `display` på en klass slår webbläsarens egen
+ * `[hidden] { display: none }`. Tredje gången det felet uppstår i den här
+ * kodbasen — bandet, statusradens knappar, den stängda dialogen.
+ */
+.row__button[hidden] {
+  display: none;
+}
+
+.row__button:focus-visible,
+.pop__older:focus-visible {
+  @include focus.ring;
+}
+
+/* ── Menyn bakom … ────────────────────────────────────────────────────── */
+
+.row__menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.row__menu-list {
+  position: absolute;
+  inset-inline-end: 0;
+  top: calc(100% + 8px);
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  min-width: 12rem;
+  /* 8px, not 6: off the 4px scale, rounded up. */
+  padding: 8px;
+  border: 1px solid var(--fw-border-subtle);
+  /* var(--fw-radius-xl) is 12px, exactly the card role — repointed, zero
+     visible difference. */
+  border-radius: var(--fw-radius-card);
+  background: var(--fw-surface);
+  /* A y=12 dropdown menu moves to `raised` in the sweep (`_tokens-mixins.scss`
+     — role decides, not the number it happened to carry). */
+  box-shadow: var(--fw-shadow-raised);
+}
+
+.row__menu-list[hidden] {
+  display: none;
+}
+
+.row__menu-list button {
+  min-height: var(--fw-control-height);
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--fw-radius-sm);
+  background: none;
+  color: var(--fw-text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.row__menu-list button:hover {
+  background: var(--fw-surface-subtle, var(--fw-bg));
+}
+
+.row__menu-list button[hidden] {
+  display: none;
+}
+
+/* ── Historiken ───────────────────────────────────────────────────────── */
+
+/*
+ * Hänger 8 px under sin knapp, med koordinaterna satta i koden.
+ *
+ * `position: fixed` för att den varken ska klippas av editorns `overflow` eller
+ * försvinna i helskärm: den ligger kvar i slotten, alltså inuti det element som
+ * går i helskärm, men ritas mot fönstret.
+ */
+.pop {
+  position: fixed;
+  z-index: 90;
+  box-sizing: border-box;
+  width: min(30rem, calc(100vw - 24px));
+  max-height: min(70vh, 34rem);
+  /*
+   * 14px, inte mer: `guide-versions.scss` har bara fyra pixlars marginal
+   * mellan namnkolumnen och brickan (kommentaren där, 18/9) — mer vaddering
+   * här stjäl precis de pixlarna och *Version 3* blir *Versio…*.
+   *
+   * Off-scale (skalan vill 16) och lämnat med flit i det här svepet: hela
+   * namn/bricka-budgeten (den här paddningen, `.pop`s telefon-`calc` nedan,
+   * `guide-versions.scss`s `:host`-paddning, dess `thead`/`tbody`-paddning
+   * och `.badge`-paddning) hör ihop, och att flytta ett av talen utan att
+   * mäta om marginalen håller är att gissa — se svepets rapport.
+   */
+  padding: 14px;
+  overflow-y: auto;
+  border: 1px solid var(--fw-border-subtle);
+  /* 18px matchar ingen radie-roll (dialog-rollen är 16) — kept literal,
+     samma beslut som dialogskalets egna 14/22 mot 16. */
+  border-radius: 18px;
+  background: var(--fw-surface);
+  /*
+   * Bifynd: hårdkodad, följde aldrig mörkt läge (samma bugg dialogskalet
+   * hade, `_dialog-shell.scss`). Pekad om mot `--fw-shadow-floating` — den
+   * här ytan är en dialogliknande panel (fokus, `role="dialog"`), inte en
+   * meny, så den hör till floating-rollen och inte till y=12-mönstret.
+   */
+  box-shadow: var(--fw-shadow-floating);
+}
+
+.pop[hidden] {
+  display: none;
+}
+
+.pop:focus-visible {
+  @include focus.ring-inset(-3px);
+}
+
+.pop__head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  /* 8px, not 6: off the 4px scale, rounded up. */
+  margin-bottom: 8px;
+}
+
+.pop__title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: var(--fw-weight-heading);
+  letter-spacing: var(--fw-tracking-heading);
+}
+
+.pop__count {
+  color: var(--fw-text-secondary);
+  font-size: 0.9em;
+}
+
+.pop__head .row__button {
+  min-height: 36px;
+  margin-inline-start: auto;
+  /* 12px, not 10: off the 4px scale, rounded up. */
+  padding: 0 12px;
+  font-size: 1.1em;
+  line-height: 1;
+}
+
+/*
+ * Raden under rubriken, alltid. Den svarar på frågan innan den ställs — vad
+ * händer med det publicerade om jag rör en gammal version — och den kostar två
+ * rader en gång mot en felaktig återställning som kostar en publicering.
+ */
+.pop__note {
+  /* 12px, not 10: off the 4px scale, rounded up. */
+  margin: 0 0 12px;
+  color: var(--fw-text-secondary);
+  font-size: 0.88em;
+  line-height: var(--fw-line-body);
+}
+
+.pop__older {
+  width: 100%;
+  min-height: var(--fw-control-height);
+  /* 12px, not 10: off the 4px scale, rounded up. */
+  margin-top: 12px;
+  border: 1px solid transparent;
+  /* Piller tillbaka till 8px (Johan 20/9), samma beslut som `.row__button`. */
+  border-radius: var(--fw-radius-button);
+  background: var(--fw-surface-subtle, var(--fw-bg));
+  color: var(--fw-text-strong, inherit);
+  font: inherit;
+  font-weight: var(--fw-weight-strong);
+  cursor: pointer;
+}
+
+.pop__older:hover {
+  border-color: var(--fw-primary);
+}
+
+.pop__older[hidden] {
+  display: none;
+}
+
+/* ── Telefonen ────────────────────────────────────────────────────────── */
+
+@media (max-width: 639px) {
+  /*
+   * Popovern blir ett ark nerifrån. Samma innehåll, en form som går att nå med
+   * en tumme — och en som inte behöver räkna ut om den får plats under en knapp
+   * som ligger nära skärmkanten.
+   */
+  .pop {
+    inset: auto 0 0 0;
+    width: 100%;
+    max-height: 80dvh;
+    border-width: 1px 0 0;
+    /* Matches the dialog role exactly (16px) — repointed, zero visible
+       difference. */
+    border-radius: var(--fw-radius-dialog) var(--fw-radius-dialog) 0 0;
+    /* 14px, samma tal och samma skäl som `.pop`s egen `padding` ovan — rört
+       inte, del av samma namn/bricka-budget. */
+    padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /*
+   * Namnet och beskedet ger vika, knapparna behåller sin bredd: det som går
+   * att läsa igen med ett ögonkast är det som ska krympa.
+   *
+   * **Mätt 18/9, och det motsäger vad som stod här:** raden håller sig INTE på
+   * en rad på 390. Editorns huvudkolumn ger den 251 px, och där får
+   * `.row__head` inte plats med namn, bricka och tre knappar — handlingarna
+   * hamnar på en egen textrad av ren geometri (`.row__head` 251×80,
+   * `.row__foot` 251×36, hela raden 125). Meningen om en rad ärvdes från den
+   * enradiga formen före variant B och stämde aldrig här.
+   *
+   * Det är accepterat och inte en skuld: editorn är gjord för skrivbord och
+   * visas inte i mobilläge (Johan 15/9), och editorns egen egenskapspanel
+   * ligger ändå över raden på den bredden. `smoke:guide-storage` mäter därför
+   * det som fortfarande betyder något här — träffytorna och att sidan inte
+   * rullar i sidled — och inte längre en höjd.
+   */
+  .row__name {
+    max-width: 8rem;
+  }
+
+  .row__status {
+    flex: 1 1 4rem;
+  }
+}

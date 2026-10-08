@@ -1,0 +1,2251 @@
+@use "../../styles/cursors";
+@use "../../../viewer/styles/tick-boxes";
+@use "../../../viewer/styles/focus" as focus;
+@use "../../styles/select";
+@use "../../styles/chevron";
+
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--fw-surface);
+}
+
+.properties-panel {
+  display: flex;
+  flex-direction: column;
+
+  height: 100%;
+  min-height: 0;
+
+  border-left: 1px solid var(--fw-border);
+  background: var(--fw-surface);
+  overflow: hidden;
+}
+
+.properties-panel__header {
+  flex: 0 0 auto;
+
+  padding: var(--fw-space-4);
+  border-bottom: 1px solid var(--fw-border-subtle);
+
+  h2 {
+    margin: 0;
+    font-size: var(--fw-font-size-xl);
+    /* A heading is 700, whatever its size (Johan 20/9). */
+    font-weight: var(--fw-weight-heading);
+    color: var(--fw-text);
+  }
+}
+
+/*
+ * UPPDRAG-2026-09-28-SVARSALTERNATIV, 1e (Siv, mätt 28/9): every section
+ * heading in the form — "Guiden", "För besökaren", "Språk", "Visartexter",
+ * "Villkor", "Avancerat" (six call sites in properties-panel.ts, one bare
+ * `<h3>` each) — had no `color` rule anywhere. The three scoped blocks
+ * further down only ever set `margin`/`display`; `editor.properties.
+ * validation-heading`'s section had no rule at all. All six leaked an
+ * unrelated ambient colour straight through the shadow boundary and drew
+ * literal `rgb(0, 0, 0)` in dark theme (measured directly: `--fw-text`
+ * itself carried the right dark value the whole way up, nothing ever read
+ * it into `color`) — 1.22:1 against the panel's surface, against a
+ * required 3:1 for this size. One rule, file-wide: every `<h3>` in this
+ * component IS a section heading, the same role `.properties-panel__header
+ * h2` already plays one level up — same token.
+ */
+h3 {
+  color: var(--fw-text);
+}
+
+.properties-panel__content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--fw-space-4);
+  scrollbar-gutter: stable;
+}
+
+.properties-panel__empty {
+  margin: 0;
+  color: var(--fw-text-muted);
+  line-height: var(--fw-line-body);
+}
+
+/* -------------------------
+   Form
+------------------------- */
+
+/*
+ * A node's form is a column of groups, and a group a column of fields
+ * (Astra 1/10 2026, docs/GRAFISK-PROFIL.md *Panelens grupper*): 24 between
+ * groups, 12 inside one — the profile's "mellan avsnitt" and "inom samma
+ * avsnitt" for the panel. Each distance is one gap. It was 20 everywhere,
+ * so nothing said which fields belonged together, and the validation
+ * heading's browser margin stacked on the gap to 39 px (Fia 1/10, B7).
+ *
+ * The guide's own settings (`__guide` below) are not in a form and keep
+ * their spacing.
+ */
+.properties-panel__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-space-5);
+}
+
+.properties-panel__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-space-3);
+  min-width: 0;
+}
+
+/* The validation group is the one with a heading in its column: heading →
+   content is the profile's 24, which here is the group's 12 and this 12.
+   `margin: 0` above it — the browser's h3 margins were the 19 px that
+   stacked to 39 (B7). */
+.properties-panel__section > h3 {
+  margin: 0 0 var(--fw-space-3);
+}
+
+/* *Validering* and *Avancerat* are one heading level, 15 / 700 (Astra 1/10,
+   bilaga 12). Both were the browser's h3, 1.17em of the panel's 16 = 18.72,
+   which no role in the profile has. */
+.properties-panel__section > h3,
+.properties-panel__advanced > summary h3 {
+  font-size: var(--fw-font-size-lg);
+  font-weight: var(--fw-weight-heading);
+}
+
+/* Guide-inställningarna (Språk/Visartexter) saknade avstånd mellan fälten, så
+   varje fälts etikett hamnade tätt inpå föregående textfält. */
+.properties-panel__guide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-space-4);
+
+  h3 {
+    margin: 0;
+  }
+}
+
+.properties-panel__guide + .properties-panel__guide {
+  margin-top: var(--fw-space-5);
+}
+
+/* The viewer's texts fold under their heading: the heading is the summary,
+   the marker says it opens. A details puts its content in a box of its own,
+   so the section's flex gap never reaches the fields — they get their own
+   column (Johan, from the phone 3/9: labels glued to the field above). */
+.properties-panel__guide > summary {
+  cursor: pointer;
+
+  h3 {
+    display: inline;
+  }
+}
+
+.properties-panel__guide-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-space-4);
+}
+
+/* The technical fields fold at the bottom of a node's form — variabelnamnet,
+   dess etikett, CSS-klasserna. Same shape as the viewer texts above (the
+   heading is the summary, the marker says it opens), but its own class: this
+   one lives inside `.properties-panel__form`, whose gap already spaces it, and
+   must not take `__guide`'s section margin on top of that.
+
+   Like a `details` anywhere, the content sits in a box of its own, so the
+   form's gap never reaches the fields — they get their own column, exactly as
+   `__guide-fields` does next door. */
+/*
+ * The chevron is the drawn one every other fold in the panel has (Astra
+ * 1/10, bilaga 12) — the formula help's row: the words at the left, the
+ * chevron at the right, pointing right closed and up open, in
+ * `currentColor`, which is the summary's `--fw-text`. It was the browser's
+ * disclosure marker, and the summary had no colour of its own: the marker
+ * took the page's ambient text colour through the shadow boundary, the
+ * light theme's dark ink on the dark theme's panel — 1.1:1, measured. A
+ * flex summary drops the marker; the webkit pseudo is for Safari.
+ */
+.properties-panel__advanced > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fw-space-3);
+  cursor: pointer;
+  /* K6 is a visitor's requirement and the editor is exempt (docs/KRAV.md), but
+     a summary is one line with nothing beside it on the row: the padding that
+     brings it to the package's own target costs no layout at all. */
+  min-height: var(--fw-control-height);
+  box-sizing: border-box;
+  padding-block: var(--fw-space-3);
+  border-radius: var(--fw-radius-sm);
+  color: var(--fw-text);
+  list-style: none;
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+
+  &::after {
+    @include chevron.drawn;
+    transform: rotate(-45deg);
+  }
+
+  h3 {
+    margin: 0;
+  }
+
+  &:focus-visible {
+    @include focus.ring;
+  }
+}
+
+.properties-panel__advanced[open] > summary::after {
+  @include chevron.open;
+}
+
+/* 12 inside the group like every other group's. The summary's own 12 px
+   of padding (the click target above) plus this 12 is the profile's 24
+   from heading to content, the same as under *Validering*. The fold is not
+   a `__group` itself: a details' content is a box of its own, and the
+   group's gap between summary and that box stacked to 36 (measured, B7). */
+.properties-panel__advanced-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-space-3);
+  padding-top: var(--fw-space-3);
+}
+
+/* Sidans råd is a group of its own: the form's gap is its distance to the
+   page's title. The paragraph's browser margin stacked on that gap to 36
+   (Fia 1/10 measured 40 with her mock, B7). */
+[data-page-advice] {
+  margin: 0;
+}
+
+.properties-panel__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-space-2);
+}
+
+/*
+ * `:where(:not(.properties-panel__select))`: rullistans wrapper (29/9,
+ * `_select.scss`) är ett span inne i fältet, och den här regeln hade gjort
+ * det versalt, fett och dämpat — vilket rullistan ärver via `font: inherit`
+ * (mätt: "Kryssrutor" hade blivit KRYSSRUTOR). Wrappern är en låda, inte en
+ * etikett. `:where`, inte bara `:not`: ett naket `:not(.klass)` hade höjt
+ * regelns specificitet från (0,1,1) till (0,2,1) och slagit ut de
+ * meningsstilsregler längre ned som med flit står strax över (0,1,1) —
+ * mätt: reglagets etikett blev versal och dämpad igen. `:where` väger noll.
+ */
+.properties-panel__field label,
+.properties-panel__field span:where(:not(.properties-panel__select)) {
+  font-size: var(--fw-font-size-sm);
+  /* Not a heading, but 700 is exactly --fw-weight-heading's value — the same
+     token, not a third role. */
+  font-weight: var(--fw-weight-heading);
+  text-transform: uppercase;
+  /* 0.04em matches neither tracking role (--fw-tracking-caps is 0.06em,
+     Johan's decision 20/9); left as the value this caps label already had. */
+  letter-spacing: 0.04em;
+  color: var(--fw-text-muted);
+}
+
+/*
+ * A switch's label is a sentence, not a caption (Astra 29/9, story 138): the
+ * text beside a toggle says what turning it on does — *Varje upprepning ska
+ * välja olika*, *Villkorsstyrd synlighet*, *Obligatoriskt fält* — and in the
+ * field caption's capitals it read as a heading. One rule for every switch a
+ * node's properties draw, so a toggle has one form. Measured before: both
+ * uppercase, 700, 12px, muted; the option cards' own *Villkorsstyrd
+ * synlighet* was already sentence case at the base size. The size and
+ * weight are the option cards' field labels': 14px, strong.
+ *
+ * Two classes, and the span too: the caption rule above reaches a span
+ * directly, and at (0,1,1) it would win over a label rule that only
+ * inherits. *Ny rad före* sits outside a field, where nothing competes, and
+ * is reached by the class alone (the lead's yes 29/9: every switch one form).
+ */
+.properties-panel__field .properties-panel__switch,
+.properties-panel__field .properties-panel__switch span,
+label.properties-panel__switch,
+label.properties-panel__switch span {
+  /* The option cards' field labels' size and weight (the lead 29/9) —
+     `--fw-font-size-md`, not the base size the cards' own toggle had. */
+  font-size: var(--fw-font-size-md);
+  font-weight: var(--fw-weight-strong);
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--fw-text);
+}
+
+/*
+ * UPPDRAG-2026-09-28-SVARSALTERNATIV, 1b (Siv, mätt 28/9): the help text
+ * under a field — "Regeln gäller när följande villkor uppfylls:"s
+ * neighbours, the calculation's variable hint, the rule branches'
+ * "Reglerna kontrolleras uppifrån..." — had no `color` rule anywhere in
+ * this file. It inherited the demo site's own body text literal straight
+ * through the shadow boundary (`--fw-text` itself carried the right dark
+ * value the whole way up; nothing ever read it into `color`). Measured
+ * 1.12:1 against the panel's dark surface — effectively invisible; it only
+ * ever read correctly in light theme because that literal happens to equal
+ * `--fw-text`'s own light value. Body copy, so the body token.
+ */
+.properties-panel__help {
+  color: var(--fw-text);
+}
+
+/*
+ * UPPDRAG-2026-09-28-SVARSALTERNATIV, 1e (Siv, mätt 28/9): "Ny rad före"
+ * (the layout section's own checkbox, `data-layout-break-before`) is the
+ * one checkbox label in this file not nested inside a `.properties-panel__
+ * field` — every other checkbox's text is, and inherits that rule's
+ * colour, whatever its own weight. This one had none, same fault as the
+ * two above: 16px/400/normal-case body text (measured), leaking the
+ * ambient literal at 1.03:1 in dark. The body token, matching its own
+ * weight rather than the field caption's muted/uppercase one.
+ */
+.properties-panel__checkbox span {
+  color: var(--fw-text);
+}
+
+/*
+ * Not the tick boxes. `width: 100%` on a checkbox stretches it across the panel:
+ * measured at **311×13 px**, a box wider than the label beside it and shorter
+ * than the 24px WCAG 2.5.8 asks of anything a finger has to hit. The viewer had
+ * it right all along next door — an 18px control inside a 45px label.
+ *
+ * Intent rather than enforcement: the explicit size further down is what holds
+ * the box at 18px, and removing this exception changes nothing a test can see —
+ * checked, because leaving a rule nobody is holding is how this codebase gets
+ * surprised. It stays because a selector that says which controls it means is
+ * worth more than one that hits everything and is corrected afterwards.
+ */
+/*
+ * Alternativets villkor delar samma fältstil som panelens övriga (konceptbild
+ * 3, punkt 3: "fältväljaren tar hela bredden") — mätt 29/9: `.properties-
+ * panel__option-visibility` är ingen `.properties-panel__field`, så dess
+ * `<select>`/`<input>` ärvde ingen bredd, ram, radie eller storlek alls
+ * (webbläsarens egen krympta standardbredd). Samma regel, en selector till —
+ * inte en parallell stil att hålla i synk.
+ */
+.properties-panel__field input:not([type="checkbox"]):not([type="radio"]),
+.properties-panel__field textarea,
+.properties-panel__field select,
+.properties-panel__option-visibility input:not([type="checkbox"]):not([type="radio"]),
+.properties-panel__option-visibility select {
+  width: 100%;
+  padding: var(--fw-space-3);
+
+  font: inherit;
+  /*
+   * Ett fält tar aldrig sin storlek från sin etikett.
+   *
+   * `font: inherit` ensamt gjorde det: rubriken över fältet är satt i 12px, och
+   * kontrollen ärvde den. iOS zoomar in hela sidan när ett fält med mindre text
+   * än 16px får fokus, och zoomar inte ut igen — editorn står kvar förstorad
+   * med canvasen halvt utanför bild, och man får nypa tillbaka den för varje
+   * fält man rör. Guider byggs på en iPad.
+   *
+   * Familjen och stilen ärvs fortfarande; storleken och vikten är fältets egna.
+   *
+   * Vikten av samma skäl som storleken (mätt 30/9, GRAFISK-PROFIL *Hierarkin
+   * — roller*): ett fält inne i en versal etikett ritade det redaktören
+   * skrivit i etikettens 700 — tjänsteanropets rader, betygsstegen,
+   * inlämningens kolumnrubriker, 46 fält i fem exempelguider. Det man själv
+   * har skrivit är 400.
+   */
+  font-size: var(--fw-font-size-xl);
+  font-weight: var(--fw-weight-text);
+  color: var(--fw-text);
+
+  border: 1px solid var(--fw-border-control);
+  border-radius: var(--fw-radius-sm);
+
+  background: var(--fw-surface);
+
+  box-sizing: border-box;
+}
+
+/*
+ * Astra via Johan 29/9: select-fälten i textrutornas form med en ritad
+ * chevron — se `_select.scss` för varför pilen ligger på en wrapper och inte
+ * på fältet. Wrappern läggs i mallen runt varje enskild rullista (aldrig
+ * runt `select[multiple]`); den ärver fältets bredd och lägger inget till.
+ */
+.properties-panel__select {
+  @include select.wrap;
+}
+
+.properties-panel__field input:focus,
+.properties-panel__field textarea:focus,
+.properties-panel__field select:focus,
+.properties-panel__option-visibility input:focus,
+.properties-panel__option-visibility select:focus {
+  outline: none;
+  border-color: var(--fw-primary);
+  /* A focus glow, not an elevation shadow — none of low/raised/floating name
+     this, and its 15% alpha doesn't match --fw-focus-ring's 35% either
+     (flow-node.scss carries the same shape at 22/28%, also unswept). */
+  box-shadow: 0 0 0 3px rgb(79 70 229 / 15%);
+}
+
+.properties-panel__field textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.properties-panel__field input:disabled,
+.properties-panel__field textarea:disabled,
+.properties-panel__field select:disabled,
+.properties-panel__option-visibility input:disabled,
+.properties-panel__option-visibility select:disabled {
+  background: var(--fw-surface-muted);
+  color: var(--fw-text-muted);
+  cursor: not-allowed;
+}
+
+.properties-panel__source {
+  display: block;
+  margin-top: var(--fw-space-2);
+  color: var(--fw-text-muted);
+  font-size: var(--fw-font-size-sm);
+  font-style: italic;
+}
+
+.properties-panel__locales {
+  display: grid;
+  gap: var(--fw-space-2);
+  margin: var(--fw-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * A language and what is known about it, on one line.
+ *
+ * The rows became a bulleted list with the boxes indented when the control
+ * changed from add/remove to checkboxes: the markup moved and the rules did
+ * not. Found in a screenshot, which is the only way a missing rule shows up —
+ * the page had no error, the class simply matched nothing.
+ */
+.properties-panel__locale {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--fw-space-1) var(--fw-space-3);
+}
+
+.properties-panel__locale-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fw-space-2);
+  font-size: var(--fw-font-size-md);
+  color: var(--fw-text-strong);
+
+  input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+  }
+
+  /* The source cannot be unticked; saying so quietly beats a tooltip. */
+  input:disabled + span {
+    color: var(--fw-text-secondary);
+  }
+}
+
+.properties-panel__locale-note {
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-sm);
+}
+
+/*
+ * Story 010, criterion 8. The host has not registered viewer texts for this
+ * locale, so the resident meets Swedish buttons. It gets its own line rather
+ * than sitting beside the field count, because it is a different kind of gap:
+ * the count is the editor's work, this is the host's setup.
+ */
+.properties-panel__locale-warning {
+  display: block;
+  flex-basis: 100%;
+  margin-top: 2px;
+  font-size: var(--fw-font-size-sm);
+  color: var(--fw-danger-text);
+}
+
+.properties-panel__locale-option {
+  display: flex;
+  align-items: center;
+  gap: var(--fw-space-2);
+  font-size: var(--fw-font-size-md);
+  color: var(--fw-text-strong);
+
+  input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+  }
+
+  input:disabled + * {
+    color: var(--fw-text-muted);
+  }
+}
+
+.properties-panel__translation-banner {
+  display: grid;
+  gap: var(--fw-space-1);
+  margin-bottom: var(--fw-space-4);
+  padding: var(--fw-space-3) var(--fw-space-4);
+  border: 1px solid var(--fw-primary);
+  border-left-width: 4px;
+  border-radius: var(--fw-radius-md);
+  background: var(--fw-primary-surface);
+
+  strong {
+    color: var(--fw-primary-strong);
+    font-size: var(--fw-font-size-base);
+  }
+
+  span {
+    color: var(--fw-text-secondary);
+    font-size: var(--fw-font-size-sm);
+    /* 1.4 is body copy that drifted off --fw-line-body (measured 20/9,
+       _tokens-mixins.scss) — folded back onto the role. */
+    line-height: var(--fw-line-body);
+  }
+}
+
+.properties-panel__field p {
+  margin: 0;
+  line-height: var(--fw-line-body);
+  color: var(--fw-text-strong);
+}
+
+.properties-panel__field code {
+  display: inline-block;
+  padding: var(--fw-space-1) var(--fw-space-2);
+
+  border-radius: var(--fw-radius-xs);
+
+  background: var(--fw-bg);
+
+  font-size: var(--fw-font-size-sm);
+  color: var(--fw-text-strong);
+}
+
+/* -------------------------
+   Definition list
+------------------------- */
+
+.properties-panel__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.properties-panel__options {
+  display: grid;
+  gap: var(--fw-space-3);
+}
+
+.properties-panel__option {
+  position: relative;
+  display: grid;
+  gap: var(--fw-space-3);
+  padding: var(--fw-space-3);
+  border: 1px solid var(--fw-border-subtle);
+  border-radius: var(--fw-radius-sm);
+  background: var(--fw-surface-subtle);
+  transition:
+    opacity var(--fw-motion-duration) var(--fw-motion-ease),
+    border-color var(--fw-motion-duration) var(--fw-motion-ease),
+    box-shadow var(--fw-motion-duration) var(--fw-motion-ease),
+    transform var(--fw-motion-duration) var(--fw-motion-ease);
+
+  label {
+    display: grid;
+    gap: var(--fw-space-1);
+    font-size: var(--fw-font-size-sm);
+    /* Not a heading, but 700 is exactly --fw-weight-heading's value — the
+       same token, not a third role. */
+    font-weight: var(--fw-weight-heading);
+    color: var(--fw-text-muted);
+  }
+
+  input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: var(--fw-space-2) var(--fw-space-3);
+    border: 1px solid var(--fw-border-control);
+    border-radius: var(--fw-radius-sm);
+    font: inherit;
+    color: var(--fw-text);
+    background: var(--fw-surface);
+
+    &:focus {
+      border-color: var(--fw-primary);
+      @include focus.ring(0px);
+    }
+  }
+}
+
+.properties-panel__annotation-canvas {
+  position: relative;
+  margin-bottom: var(--fw-space-3);
+  overflow: hidden;
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-sm);
+  background: var(--fw-surface-subtle);
+  touch-action: none;
+
+  img {
+    display: block;
+    width: 100%;
+    height: auto;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+}
+
+.properties-panel__annotation-pin {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  transform: translate(-50%, -50%);
+  /* Ring deliberately literal white, both themes — it cuts against the
+   * annotation imagery, which does not flip in dark mode. */
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--fw-primary);
+  color: var(--fw-on-primary);
+  font-size: var(--fw-font-size-sm);
+  /* Not a heading, but 700 is exactly --fw-weight-heading's value — the pin's
+     number is the panel's boldest text, same token as a heading. */
+  font-weight: var(--fw-weight-heading);
+  cursor: cursors.$grab;
+  touch-action: none;
+  /* Deliberately literal black, both themes, same reasoning as the ring above:
+     it cuts against the annotation photo, which never flips in dark mode, so
+     it cannot follow --fw-shadow-low into the dark swap. */
+  box-shadow: 0 1px 5px rgb(0 0 0 / 35%);
+
+  &:active {
+    cursor: cursors.$grabbing;
+  }
+
+  &:focus-visible {
+    @include focus.ring;
+  }
+}
+
+.properties-panel__annotations {
+  display: grid;
+  gap: var(--fw-space-3);
+  margin-bottom: var(--fw-space-3);
+}
+
+.properties-panel__annotation {
+  display: grid;
+  gap: var(--fw-space-2);
+  padding: var(--fw-space-3);
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-sm);
+  background: var(--fw-surface);
+}
+
+.properties-panel__annotation-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  /*
+   * UPPDRAG-2026-09-28-SVARSALTERNATIV, 1e (Siv, mätt 28/9): the same fault
+   * as `.properties-panel__option-header strong` — a row's own number, no
+   * `color` rule anywhere, 1.03:1 in dark (broad sweep over
+   * `viewer-coverage-graph`'s annotated image). Same role, same token.
+   */
+  strong {
+    color: var(--fw-text-secondary);
+  }
+}
+
+.properties-panel__annotation-pos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fw-space-2);
+
+  label {
+    display: flex;
+    align-items: center;
+    gap: var(--fw-space-1);
+    font-size: var(--fw-font-size-sm);
+    font-weight: var(--fw-weight-strong);
+    color: var(--fw-text-muted);
+    text-transform: none;
+  }
+
+  input[type="number"],
+  select {
+    width: 64px;
+  }
+}
+
+/*
+ * Lokal tilläggshandling (GRAFISK-PROFIL, Visuell hierarki; B3, Astra 30/9):
+ * primary outline, the plus as an icon (`renderAddButton`), never filled —
+ * filled is the view's main action. The collection's width, 44 px,
+ * `--fw-radius-button`. One form for every *Lägg till …* in the panel; it
+ * replaced a dashed neutral box, an outline with the character "+" at 37 px
+ * and radius 6, and an outline without a plus (GENOMGANG E6).
+ */
+.properties-panel__add-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fw-space-2);
+  width: 100%;
+  min-height: var(--fw-control-height);
+  padding: var(--fw-space-2) var(--fw-space-4);
+
+  border: 1px solid var(--fw-primary);
+  border-radius: var(--fw-radius-button);
+
+  background: transparent;
+  color: var(--fw-primary-strong);
+
+  font: inherit;
+  font-weight: var(--fw-weight-strong);
+
+  cursor: pointer;
+
+  svg {
+    flex: none;
+    width: 18px;
+    height: 18px;
+  }
+
+  &:hover {
+    background: var(--fw-primary-surface);
+  }
+
+  &:focus-visible {
+    @include focus.ring;
+  }
+}
+
+/*
+ * Right after the rows it adds to, at the collection's own gap — the space
+ * between the cards (`--fw-space-3`), not the field's (`--fw-space-2`) — so
+ * the button reads as the collection's next part (Var tilläggshandlingen
+ * står, E7). The field's gap is already there; this adds the difference.
+ */
+.properties-panel__options + .properties-panel__add-option {
+  margin-top: calc(var(--fw-space-3) - var(--fw-space-2));
+}
+
+/*
+ * The sign in *Lägg till …* and the bin in *Ta bort …* are spans, and the
+ * field's caption rule (`.properties-panel__field span`) made them 12 px,
+ * uppercase and muted — a small grey plus and a grey bin beside the button's
+ * own words (measured 29/9; bild 03 draws both in the button's colour). They
+ * are the button's, so they take the button's type and colour.
+ */
+.properties-panel__field .properties-panel__add-option > span,
+.properties-panel__field .properties-panel__option-remove > span {
+  display: inline-flex;
+  color: inherit;
+  font: inherit;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.properties-panel__remove-option {
+  justify-self: end;
+  padding: var(--fw-space-2) var(--fw-space-2);
+  border: 0;
+  border-radius: var(--fw-radius-sm);
+  background: transparent;
+  color: var(--fw-danger-text);
+  font: inherit;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--fw-danger-surface);
+  }
+
+  &:focus-visible {
+    @include focus.ring(0px);
+  }
+}
+
+/* -------------------------
+   Rule builder
+------------------------- */
+
+/*
+ * A rating's words (story 115): one row per step, and the row is a ROW.
+ *
+ * The answer options are boxes because each of them holds three things — a
+ * label, a value, sometimes a switch. A step holds one word, so stacking the
+ * grip, the field and the arrows would make a ten-step scale ten tall boxes
+ * to scroll past for ten short words. Grip, field, arrows: one line.
+ */
+.properties-panel__rating-steps {
+  display: grid;
+  gap: var(--fw-space-2);
+}
+
+.properties-panel__rating-step {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: end;
+  gap: var(--fw-space-2);
+}
+
+.properties-panel__rating-step-label {
+  display: grid;
+  gap: 2px;
+  /* A grid child does not shrink below its content on its own. */
+  min-width: 0;
+}
+
+.properties-panel__option-header {
+  display: flex;
+  align-items: center;
+  gap: var(--fw-space-2);
+
+  /*
+   * UPPDRAG-2026-09-28-SVARSALTERNATIV, 1b (Siv, mätt 28/9): "Rad 1"/
+   * "Regel 1" etc. had no `color` rule here at all — text-color inherited
+   * straight through every shadow boundary from the demo site's own body
+   * text (a literal, not a token: `--fw-text` itself DID carry the right
+   * dark value the whole way up, `getComputedStyle` confirmed it at every
+   * ancestor, but nothing ever READ it into `color`). In light theme the
+   * leaked literal (#101828) happens to equal `--fw-text`'s own light
+   * value, so it read fine there and nowhere else caught it. Measured
+   * 1.12:1 against the option's dark surface (`--fw-surface-subtle`) —
+   * effectively invisible. This is a row's own sub-heading, the same role
+   * `--fw-text-secondary` already plays elsewhere in this file.
+   */
+  strong {
+    color: var(--fw-text-secondary);
+  }
+}
+
+/*
+ * Lysknappen som säger att alternativet står ensamt (berättelse 062) har
+ * reglagens gemensamma form, `properties-panel__switch` — raden är knappens
+ * namn och står BREDVID den, inte en rubrik över ett fält. Den egna regeln
+ * (13 px, vikt 400) struken när alla reglage blev en form (ledaren 29/9);
+ * kortets två reglage följs åt, som `properties-panel-answer-option-fit`
+ * kräver.
+ */
+
+/*
+ * Alternativets *visas bara om* (berättelse 134) — fältets brytare en nivå ner.
+ *
+ * Avgränsad uppåt med en linje, för den ligger INUTI alternativets ruta och
+ * måste ändå läsas som en egen sak: ovanför står etikett och värde, som är vad
+ * alternativet ÄR, under står villkoret för när det visas.
+ *
+ * Brytarens rad är knappens namn och inte en rubrik över ett fält. Den har
+ * reglagens gemensamma form, `properties-panel__switch` (ledaren 29/9: alla
+ * reglage en form) — en egen regel här gav den 13 px och vikt 400.
+ */
+.properties-panel__option-visibility {
+  display: grid;
+  gap: var(--fw-space-2);
+
+  margin-top: var(--fw-space-2);
+  padding-top: var(--fw-space-2);
+  border-top: 1px solid var(--fw-border);
+}
+
+.properties-panel__option-drag-handle {
+  display: grid;
+  place-items: center;
+
+  // 30 → 44px (Del 4, 28/9): K6:s golv för en tät rad ikonknappar, och
+  // samma höjd som de nya flytta-upp/ned-knapparna bredvid — se kommentaren
+  // vid `.properties-panel__option-order`.
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  padding: 0;
+
+  border: 0;
+  border-radius: var(--fw-radius-sm);
+
+  background: transparent;
+  color: var(--fw-text-muted);
+
+  font: inherit;
+  font-size: var(--fw-font-size-xl);
+  /* 1 matches neither line-height role — a deliberate zero-leading trick so
+     the grip glyph does not push the handle taller than its row. */
+  line-height: 1;
+
+  cursor: cursors.$grab;
+  user-select: none;
+  touch-action: none;
+
+  /*
+   * The glyph's own size, not the handle's.
+   *
+   * `.properties-panel__field span` (further up this file) sets every span
+   * inside a field to caption size — meant for a field's own labels, not for
+   * an aria-hidden icon three levels of markup away. Same specificity, so it
+   * was winning on nothing but coming later never mattering: this button's
+   * `font-size` above landed on the button, and the icon inside it quietly
+   * inherited the caption's 12px instead. Measured with `getBoundingClientRect`
+   * at 900 px against the version list's own grip (22/9): the glyph read as
+   * a smudge, not a match. `inherit` here beats that rule outright — one more
+   * class in the selector, not a source-order gamble.
+   */
+  span[aria-hidden] {
+    font-size: inherit;
+  }
+
+  &:hover {
+    background: var(--fw-bg);
+    color: var(--fw-text-strong);
+  }
+
+  &:active {
+    cursor: cursors.$grabbing;
+  }
+
+  &:focus-visible {
+    @include focus.ring(0px);
+  }
+}
+
+/*
+ * Del 4 (UPPDRAG-2026-09-28-ENHETLIGHET, 28/9): flytta upp/ned vid ett
+ * alternativ (bild 75, 81, 107 i bildinventeringen) var omärkta
+ * `<button>`-element utan en enda egen regel — mätt: 22.7×21px, webbläsarens
+ * egen 3D-kant (`2px outset`), grå UA-bakgrund. Långt under K6:s 44px-golv
+ * för en tät rad ikonknappar, och synligt en annan sak än resten av
+ * editorn. Samma familj som greppet bredvid (`.properties-panel__option-
+ * drag-handle` nedan): kvadratisk, transparent, `--fw-text-muted`, samma
+ * hover/fokus. Greppet växer med, från 30 till 44px av samma skäl — tre
+ * kontroller i samma rad med samma jobb (ordna om) ska inte ha tre olika
+ * höjder, och `reorder-gesture.ts` rörs inte: det här är bara greppets
+ * TRÄFFYTA, inte dragbeteendet.
+ */
+.properties-panel__option-order {
+  display: flex;
+  gap: var(--fw-space-1);
+
+  button {
+    display: grid;
+    place-items: center;
+
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    padding: 0;
+
+    border: 0;
+    border-radius: var(--fw-radius-sm);
+
+    background: transparent;
+    color: var(--fw-text-muted);
+
+    font: inherit;
+    font-size: var(--fw-font-size-xl);
+    line-height: 1;
+
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      background: var(--fw-bg);
+      color: var(--fw-text-strong);
+    }
+
+    &:focus-visible {
+      @include focus.ring(0px);
+    }
+
+    &:disabled {
+      color: var(--fw-text-disabled);
+      cursor: default;
+    }
+  }
+}
+
+/* Den burna raden lyfts, den bleknar inte.
+   Att tona ner det man håller i säger "det här är på väg bort"; ett lyft säger
+   "det här är i din hand". Samma språk som versionslistan, med flit — en
+   redaktör ska inte behöva lära sig att ordna en lista två gånger. */
+.properties-panel__option[data-dragging] {
+  position: relative;
+  /* A row lifted within its own box (WYSIWYG drag), the exact case
+     --fw-z-raised names. */
+  z-index: var(--fw-z-raised);
+  background: var(--fw-surface);
+  box-shadow: var(--fw-shadow-md);
+  cursor: cursors.$grabbing;
+}
+
+/*
+ * Etapp 2 (UPPDRAG-2026-09-28-SVARSALTERNATIV, 28/9): svarsalternativens
+ * kompakta, utfällbara rader. Konceptbilden styr strukturen, tokensystemet
+ * färg/ram/fokus/skugga (Johans ord 28/9): raden själv `--fw-surface` +
+ * `--fw-border`, den öppna radens ram `--fw-primary`, huvudet
+ * `--fw-surface-subtle`, knapparna Del 4:s 44px-familj, chipen monospace
+ * på `--fw-surface-subtle`.
+ *
+ * `--answer` skiljer den här formen från `.properties-panel__option`s äldre,
+ * alltid-utfällda bas — som host-uppslagets egen lista (`mockItems`, "Egen
+ * lista") fortfarande använder rakt av och alltså aldrig ser något av det
+ * här. Utfällningen är Teds gränssnittstillstånd: `[data-option-open]` på
+ * raden och `hidden` på kroppen är attribut han sätter direkt i DOM:en,
+ * inte ett tillstånd den här filen känner till. Ingen `overflow: hidden` på
+ * raden — den skulle klippa `[data-dragging]`s lyft-skugga ovan; huvudets
+ * övre hörn rundas i stället för hand, till samma radie som raden.
+ */
+.properties-panel__option--card {
+  gap: 0;
+  padding: 0;
+  /* Risk 6 (ledarens avgörande 28/9): en grid-rad krymper annars aldrig
+     under sitt eget innehålls bredd (auto-golvet) — en lång, obruten
+     token i chipen eller etiketten hade då tryckt hela raden bredare än
+     380 px-panelen i stället för att radbryta i den. */
+  min-width: 0;
+  border-color: var(--fw-border);
+  border-radius: var(--fw-radius-md);
+  background: var(--fw-surface);
+
+  /* Open: no coloured frame. Bild 03/05 (Astra 29/9, the lead's call the
+     same day) mark an open card by its light head band alone — the head's
+     `--fw-surface-subtle` over the body's surface — for all three kinds,
+     answer options included, so the three stay one card. */
+}
+
+/*
+ * Konceptbild 2 (Johans mått, 29/9 — ersätter variant a/b och allt om
+ * kontroller på en egen rad): huvudet är EN rad, flex i stället för grid
+ * — grepp → namn → flytta upp → flytta ned → chevron, alla direkta
+ * flex-barn. Namnet äger resten av bredden (`flex: 1 1 auto` +
+ * `min-width: 0` på `.properties-panel__option-heading`), knapparna sitt
+ * fasta 44px var; ingen radbrytning möjlig eftersom namnet klipper med
+ * ellipsis i stället för att växa i höjd (se `.properties-panel__option-
+ * title` nedan) — samma huvudhöjd oavsett textlängd eller öppet/stängt
+ * läge, uppmätt.
+ */
+.properties-panel__option--card > .properties-panel__option-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--fw-space-1);
+  min-width: 0;
+  padding: var(--fw-space-2) var(--fw-space-1);
+  border-radius: var(--fw-radius-md);
+  background: var(--fw-surface-subtle);
+}
+
+/*
+ * Astras vända 5, punkt 2: stängda kort såg "avbrutna" ut vid nederkanten.
+ * Mätt (getComputedStyle): kroppen bidrar 0 höjd stängd (`display: none`),
+ * så huvudet FYLLER nästan hela kortet men bar bara sin gamla, alltid-
+ * topprundade radie. Huvudets radie växlar därför med [data-option-open]
+ * — men INTE huvudets egen höjd eller padding: konceptbild 2 kräver
+ * uttryckligen samma kompakta huvudhöjd i båda lägena, så avdelarlinjen
+ * mot kroppen sitter numera på KROPPEN (`.properties-panel__option-body`,
+ * `border-top`, bara relevant när den visas ändå), aldrig på huvudet.
+ */
+.properties-panel__option--card[data-option-open] > .properties-panel__option-header,
+.properties-panel__option--card[data-rule-case-open] > .properties-panel__option-header,
+.properties-panel__option--card[data-assignment-open] > .properties-panel__option-header {
+  border-radius: var(--fw-radius-md) var(--fw-radius-md) 0 0;
+}
+
+.properties-panel__option-heading {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/*
+ * Namnet: en rad, ellipsis, aldrig radbrytning — konceptbild 2, uttryckligt
+ * mot etapp 2:s tidigare "radbryt i stället för klipp" (den gällde
+ * kortets löptext i öppet läge, som fortfarande radbryter fritt i sitt
+ * eget fält; det här är rubrikraden i STÄNGT läge, en annan yta med ett
+ * annat krav). `title`-attributet ger en enkel, alltid fungerande
+ * hovertooltip för musen; `.properties-panel__option-tooltip` (nedan) är
+ * den rikare, byggda varianten Ted kopplar till fokus/hover.
+ *
+ * Färgen: `--fw-text`, inte `--fw-text-strong` — se motiveringen vid
+ * `--fw-text`-fyndet i git-historiken (Astras vända 5, punkt 3): den
+ * senare är trots namnet panelens DÄMPADE roll.
+ */
+.properties-panel__option--card .properties-panel__option-title {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--fw-text);
+  font-size: var(--fw-font-size-md);
+  font-weight: var(--fw-weight-heading);
+  text-transform: none;
+}
+
+/*
+ * Positionen ("Alternativ N") är inte längre synlig text i huvudet
+ * (konceptbild 2) — bara läst. Samma klipp-teknik som `guide-versions__
+ * announce` (`clip-path`, inte `display: none`, som en skärmläsare
+ * hoppar rakt över). Tomt här med flit: Ted/Siv fyller texten, samordnat
+ * med `{label}`-namngivningen Siv redan byggt på kontrollernas egna namn.
+ */
+.properties-panel__visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/*
+ * Tooltipen: statisk och stängd (`hidden`) här — samma delning som varje
+ * annan utfällning i den här filen, Ted kopplar den faktiska visningen
+ * (bara vid trunkering, hover på raden, fokus/blur på chevronen) och
+ * mäter klippning mot panelkanten. Inget färdigt tooltip-mönster hittades
+ * att återanvända i guide-versions.ts eller på annat håll i editorn —
+ * mätt (grep) innan den här byggdes: varje träff på ordet "tooltip" i
+ * kodbasen är antingen en kommentar om `--fw-z-popover`s framtida
+ * användare eller ett beslut att UNDVIKA en tooltip (`title`, som bara
+ * musen når). Byggd här i stället, med panelens egna popover-tokens
+ * (`--fw-z-popover`, `--fw-shadow-raised`) och en invänd yta (mörk på
+ * ljust, ljus på mörkt) — samma princip som en tooltip nästan alltid
+ * använder för att stå ut mot vilken bakgrund som helst.
+ */
+.properties-panel__option-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: var(--fw-space-2);
+  z-index: var(--fw-z-popover);
+  max-width: calc(100% - var(--fw-space-4));
+  margin-bottom: var(--fw-space-2);
+  padding: var(--fw-space-1) var(--fw-space-2);
+  border-radius: var(--fw-radius-sm);
+  background: var(--fw-text);
+  color: var(--fw-surface);
+  font-size: var(--fw-font-size-xs);
+  font-weight: var(--fw-weight-text);
+  text-transform: none;
+  box-shadow: var(--fw-shadow-raised);
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+/* Same 44px family the grip already used (Del 4, 28/9) — every icon-only
+   control on this row reads as one family, not three different heights. */
+.properties-panel__option-move,
+.properties-panel__option-toggle {
+  display: grid;
+  place-items: center;
+  flex: 0 0 44px;
+
+  width: 44px;
+  height: 44px;
+  padding: 0;
+
+  border: 0;
+  border-radius: var(--fw-radius-sm);
+
+  background: transparent;
+  color: var(--fw-text-muted);
+
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--fw-bg);
+    color: var(--fw-text-strong);
+  }
+
+  &:focus-visible {
+    @include focus.ring(0px);
+  }
+
+  &:disabled {
+    color: var(--fw-text-disabled);
+    cursor: default;
+  }
+}
+
+/*
+ * Konceptbild 2 (Johans mått, 29/9): "Tydliga SVG-ikoner för ↑ ↓ ⌄ i samma
+ * storlek (~20 px), samma linjetjocklek som övriga gränssnittsikoner" —
+ * ersätter både tecknen (↑ ↓) och den förra vändans ritade CSS-chevron
+ * (`chevron.drawn-sized`, af6948df) med riktiga SVG:er i samma familj som
+ * "Ta bort alternativ"s papperskorg längre ner i den här filen: 24×24
+ * viewBox, stroke-width 2, rundade ändar — konsekvens med appens egna
+ * ikoner, inte ett särfall. `_chevron.scss`s `drawn-sized`/`open-sized`
+ * (förra vändan) är därmed oanvända; borttagna i samma commit som den
+ * här, för att inte lämna död kod ledaren skulle behöva mäta bort senare.
+ */
+.properties-panel__option-move svg,
+.properties-panel__option-chevron {
+  width: 20px;
+  height: 20px;
+  transition: transform var(--fw-motion-duration) var(--fw-motion-ease);
+}
+
+.properties-panel__option-toggle[aria-expanded="true"] .properties-panel__option-chevron {
+  transform: rotate(180deg);
+}
+
+.properties-panel__option-body {
+  min-width: 0;
+
+  /* Varje barn i kroppen är ett rutnätsbarn med samma villkor: en label
+     med ett textfält har min-content = fältets egen bredd (453 px mätt),
+     och utan `min-width: 0` rinner den ut ur kortet fast kroppen krympt. */
+  > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  input[type="text"],
+  textarea {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  display: grid;
+  gap: var(--fw-space-3);
+  padding: var(--fw-space-3);
+  /*
+   * Konceptbild 2 (29/9): huvudet håller samma höjd öppet och stängt, så
+   * avdelaren mot huvudet flyttade hit — bara relevant när kroppen ändå
+   * syns (öppen), aldrig ett mått på huvudets egen box.
+   */
+  border-top: 1px solid var(--fw-border);
+
+  /*
+   * Utan den här raden vinner `display: grid` ovan över webbläsarens egna
+   * `[hidden] { display: none }` — författarens ursprung slår alltid
+   * UA-arket, oavsett specificitet. Mätt direkt (skärmdump 29/9): varje rad
+   * visade sig fullt utfälld trots `hidden` på kroppen.
+   */
+  &[hidden] {
+    display: none;
+  }
+}
+
+/*
+ * Konceptbild 3 (29/9, Johan: "det är viktigt att det ser ut som på
+ * bilden"): "Svarsalternativ" och "Lagringsvärde" ska stå i fetstil,
+ * meningsstil, mörk text — som bilden — inte panelens vanliga versala
+ * bildtextkonvention (`.properties-panel__field label`, rad ~163). Mätt med
+ * `getComputedStyle` (29/9): de ÄRVER den konventionen i dag, för hela
+ * svarsalternativ-listan ligger inne i en egen `.properties-panel__field`
+ * högre upp — den regeln är en förfader här, inte panelens fältetikett för
+ * just den här optionen.
+ *
+ * Scopat till `.properties-panel__option--card` (den nya, kompakta
+ * kortformen) och bara DIREKTA barn av kroppen, `:not(...-exclusive)` för
+ * att inte råka ta med "Utesluter andra val" (egen, redan korrekt regel
+ * ovanför) — reglagets egen etikett är aldrig ett direkt barn här och
+ * berörs inte. Tre klasser + typ (0,3,1) slår båda de äldre reglerna
+ * oavsett filordning; ingen av panelens ÖVRIGA fält rörs.
+ *
+ * Etiketten är `--fw-weight-strong` (Astras granskning av vända 1, bilaga
+ * 2, 29/9: "en bildgenererad fet etikett ska inte göra varje fältetikett
+ * lika tung som en rubrik" — mätt före: 700, samma som kortets rubrik).
+ * Fältets eget värde ("Företag"/"foretag") ärvde etikettens vikt via
+ * `font: inherit` — Astra via Johan 29/9: "normal textvikt på valt värde".
+ * Det rättades här för korten först; sedan 30/9 är det fältregelns egen
+ * vikt, för varje fält i panelen, och inget undantag behövs här.
+ */
+.properties-panel__option--card .properties-panel__option-body > label:not(.properties-panel__option-exclusive) {
+  font-size: var(--fw-font-size-md);
+  font-weight: var(--fw-weight-strong);
+  color: var(--fw-text);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/*
+ * Svarsalternativets textfält är nu en textarea som växer i höjd
+ * (konceptbild 2, 29/9) i stället för ett en-radigt `<input>` — samma
+ * fältram/radie/padding som panelens övriga textfält (den delade
+ * `.properties-panel__field input`-familjen), bara höjden skiljer.
+ * `resize: none` + `rows="1"` (markupet) ger en rimlig startform; Ted
+ * bygger den faktiska auto-höjden (`field-sizing: content` räcker i
+ * moderna webbläsare men är inte ett beslutat golv än).
+ */
+.properties-panel__option-body textarea {
+  /* `.properties-panel__field textarea` (above) sets `resize: vertical` +
+     `min-height: 80px` for the description field's own, deliberately
+     roomy convention — wrong here: a one-word label ("Ja") would open an
+     oversized empty box. `min-height` matches the panel's own single-line
+     control height instead, the same floor every other field in this
+     card already has.
+     No `font` property here on purpose: `.properties-panel__field
+     textarea`'s own `font: inherit` + explicit `font-size: var(--fw-font-
+     size-xl)` is exactly the anti-iOS-zoom fix that rule's own comment
+     describes — a second `font: inherit` here, same specificity but later
+     in the file, would win the cascade and silently undo it. Caught by
+     panel-zoom.browser.test.ts, sett falla mot the redundant declaration
+     before it was removed.
+
+     Ledarens fynd (29/9): texten i den här textarean såg mindre/fetare ut
+     än fältet under, trots identisk getComputedStyle (uppmätt: samma
+     font-size, weight, family, line-height, padding, ner till pixeln).
+     Den verkliga orsaken var en annan — `rows="1"` gav en 43px hög låda,
+     men en radbruten etikett behöver mer (mätt: scrollHeight 81px mot
+     clientHeight 43px, andra raden genuint klippt av webbläsarens egen
+     textarea-scroll). Två rader klämda in bakom en enda rads klipphöjd
+     LÄSTES som mindre/tätare text, fast typsnittet aldrig ändrats.
+     `field-sizing: content` (stöds i moderna Chromium, degraderar till
+     den fasta höjden där den inte gör det) löser klippningen direkt utan
+     att vänta på Teds JS — och löser därmed synintrycket i samma veva. */
+  resize: none;
+  min-height: var(--fw-control-height);
+  field-sizing: content;
+}
+
+/*
+ * Reglagens etiketter i öppet läge ska ha samma stil: "Utesluter andra val"
+ * står som text direkt i sin label, "Villkorsstyrd synlighet" i en span som
+ * `.properties-panel__field span` (rad 163) gör versal och fet — bilden
+ * visade två stilar bredvid varandra (Fable 28/9 kväll). Samma undantag som
+ * bildtexten och chipen redan gör mot den regeln.
+ *
+ * Efterföljare (`label`), inte enbart barn (`>`): konceptbild 3 (29/9) la
+ * villkorets tre kontroller en nivå djupare, inne i
+ * `.properties-panel__option-visibility-conditions`. Reglagets egen span
+ * (fortfarande direkt barn) och villkorets tre — nu två nivåer ner — ska ha
+ * samma sentensstil, så själva djupet får inte avgöra.
+ */
+.properties-panel__option-visibility label > span {
+  font-size: inherit;
+  font-weight: var(--fw-weight-text);
+  text-transform: none;
+  /* Konceptbild 3: reglagets etikett i vanlig textfärg som "Utesluter andra
+     val", inte dämpad — i Fias bild 29/9 ärvde den en grå ton (Fable). */
+  color: var(--fw-text);
+}
+
+/*
+ * Konceptbild 3 (UPPDRAG-2026-09-28-SVARSALTERNATIV, 29/9): villkors-
+ * redigeringen samlad i en egen, diskret yta direkt under reglaget — bildens
+ * facit för det här kortet (Johan 29/9: "det är viktigt att det ser ut som
+ * på bilden"). Samma ytnivå, ram och radie som panelens övriga fält
+ * (`--fw-surface-subtle`, `--fw-border`, `--fw-radius-sm`); ingen egen färg
+ * uppfunnen. Bara den här grupperingen — fältets egen "visas om"
+ * (`renderVisibility`) har ingen sådan yta i bilden och lämnas orörd.
+ */
+.properties-panel__option-visibility-conditions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-space-3);
+
+  padding: var(--fw-space-4);
+
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-sm);
+
+  background: var(--fw-surface-subtle);
+}
+
+/* The heading over the condition's labels, so never smaller than they are
+   (they took the card's label style from bild 03, 29/9). */
+.properties-panel__option-visibility-heading {
+  margin: 0;
+  color: var(--fw-text);
+  font-size: var(--fw-font-size-md);
+  font-weight: var(--fw-weight-heading);
+}
+
+/*
+ * A condition (uppdrag 29/9 Del B, Astra §3–§5) — the same group in a rule,
+ * a field's "visas om" and an option's. Three stacked, full-width controls
+ * with visible labels; a discreet grouping on the roles' own tokens
+ * (`--fw-surface-subtle`, `--fw-border`), no coloured edge and no number
+ * column. `--bare`: a lone condition inside the option's own framed surface,
+ * which is already its frame.
+ */
+.properties-panel__conditions {
+  display: grid;
+  gap: var(--fw-space-3);
+  min-width: 0;
+}
+
+.properties-panel__condition {
+  display: grid;
+  gap: var(--fw-space-3);
+  min-width: 0;
+  padding: var(--fw-space-3);
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-sm);
+  /* Bild 03 (Astra 29/9): the group is the card's own surface, its heading
+     a band across the top — see `.properties-panel__condition-heading`. */
+  background: var(--fw-surface);
+
+  &--bare {
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+}
+
+/*
+ * The labels read as labels, in the sentence case of the option card
+ * (konceptbild 3), not as the panel's uppercase captions; the controls keep
+ * the field's normal weight. Two classes deep, so the panel's caption rule
+ * (`.properties-panel__field label/span`) and the card's label rule lose
+ * whatever the file order.
+ */
+.properties-panel__conditions .properties-panel__condition > label,
+.properties-panel__conditions .properties-panel__condition-combine {
+  display: grid;
+  gap: var(--fw-space-1);
+  min-width: 0;
+  /* Bild 03: the three labels in the card's own label style, as
+     *Regelns namn* above them — not a smaller one for being inside a group,
+     and not a heavier one either (bilaga 2: labels strong, headings heading). */
+  color: var(--fw-text);
+  font-size: var(--fw-font-size-md);
+  font-weight: var(--fw-weight-strong);
+  text-transform: none;
+  letter-spacing: normal;
+
+  > span:first-child {
+    color: inherit;
+    font: inherit;
+    text-transform: none;
+    letter-spacing: normal;
+  }
+
+  select,
+  input:not([type="checkbox"]):not([type="radio"]) {
+    font-weight: var(--fw-weight-text);
+  }
+}
+
+/* "Villkor 1" — the name an error message can point at. Bild 03: a band
+   across the top of its group, edge to edge (the group's padding given back
+   as negative margin), on the card head's own surface. Two classes: the
+   body's paragraph rule sets `margin: 0` and would win otherwise (measured). */
+.properties-panel__condition > .properties-panel__condition-heading {
+  margin: calc(-1 * var(--fw-space-3)) calc(-1 * var(--fw-space-3)) 0;
+  padding: var(--fw-space-2) var(--fw-space-3);
+  border-radius: var(--fw-radius-sm) var(--fw-radius-sm) 0 0;
+  background: var(--fw-surface-subtle);
+  color: var(--fw-text);
+  font-size: var(--fw-font-size-md);
+  font-weight: var(--fw-weight-heading);
+}
+
+/* OCH / ELLER: a still word between the groups, not a button — bild 03
+   centres it between two thin lines. */
+.properties-panel__condition-join {
+  display: flex;
+  align-items: center;
+  gap: var(--fw-space-3);
+  margin: 0;
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-sm);
+  font-weight: var(--fw-weight-text);
+
+  &::before,
+  &::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--fw-border);
+  }
+}
+
+.properties-panel__condition-combine-value {
+  margin: 0;
+  font-size: var(--fw-font-size-md);
+  font-weight: var(--fw-weight-text);
+}
+
+/* "Låst struktur" — a mark, not a control: the panel's own border and text.
+   Two classes: it is a span inside a field, and the field's caption rule
+   (uppercase, muted) would otherwise win — measured in the picture 29/9. */
+.properties-panel__conditions .properties-panel__locked-tag {
+  display: inline-block;
+  margin-inline-start: var(--fw-space-2);
+  padding: 0 var(--fw-space-2);
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-sm);
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-xs);
+  font-weight: var(--fw-weight-text);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.properties-panel__option-remove {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  justify-self: stretch;
+  gap: var(--fw-space-1);
+  /*
+   * Konceptbild 3 (29/9, Johan: "det ska se ut som på bilden"): en tunn
+   * avdelare ovanför den destruktiva raden, som bilden har — samma recept
+   * som `.properties-panel__option-visibility` (margin-top +
+   * padding-top + border-top) använder för sin egen avdelare mot fälten
+   * ovanför, inte en ny sorts linje.
+   *
+   * Avdelaren är knappens egen border-top, så knappen måste spänna hela
+   * kortets bredd (`justify-self: stretch`) och bara runda de nedre
+   * hörnen: mätt i 3x-skärmbild (29/9) gav `justify-self: start` + radie
+   * på alla hörn en linje bara så bred som texten, med nedböjda ändar —
+   * en halv ram runt "Ta bort alternativ", inte bildens avdelare kant
+   * till kant.
+   */
+  margin-top: var(--fw-space-2);
+  padding: var(--fw-space-3) var(--fw-space-3) var(--fw-space-2);
+  border: 0;
+  border-top: 1px solid var(--fw-border);
+  border-radius: 0 0 var(--fw-radius-sm) var(--fw-radius-sm);
+  background: transparent;
+  color: var(--fw-danger-text);
+  font: inherit;
+  /*
+   * K6 (Siv, mätt 29/9 uppdrag Del A/B/D): the comment below has claimed a
+   * 44px click area "inherited from the body's fields" since Astras vända
+   * 5, but no rule anywhere gives `.properties-panel__option-body`'s
+   * children a min-height — `getBoundingClientRect` on "Ta bort regeln"/
+   * "Ta bort alternativet"/"Ta bort uträkningen" measured 40px, both
+   * themes. `.properties-panel__condition-remove` right below (same
+   * family, same row) already codes the floor explicitly; this one gets
+   * it the same way rather than by an inheritance that was never there.
+   */
+  min-height: var(--fw-control-height);
+  /*
+   * Astras vända 5, punkt 3: mätt mot editorns andra destruktiva rader —
+   * `.properties-panel__remove-option` (den delade knappen för regel-
+   * villkor, tjänstesvar, kolumner) och node-editor-menyns "Ta bort nod"/
+   * "Ta bort koppling" — ingen av dem sätter en egen `font-weight`; båda
+   * ärver sin omgivnings normalvikt. Bold här var min egen tillagda
+   * betoning, inte ett mönster andra destruktiva kontroller delar. Text,
+   * ikon, klickyta (44px min-height ärvd av kroppens fält) och
+   * `--fw-danger-text` står kvar — bara vikten normaliseras.
+   */
+  cursor: pointer;
+
+  /* 18: the profile's icon box (11. Ikoner, beslut 8), the same bin in the
+     node templates and on the visitor's repeated page (B3). */
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  &:hover:not(:disabled) {
+    background: var(--fw-danger-surface);
+  }
+
+  &:focus-visible {
+    @include focus.ring(0px);
+  }
+
+  &:disabled {
+    color: var(--fw-text-disabled);
+    cursor: default;
+  }
+}
+
+/*
+ * *Ta bort villkoret* belongs to its group (Astra §5): the same text, bin and
+ * danger colour as the card's last row, but no divider — the group's own
+ * frame already ends it — and only as wide as its words.
+ */
+.properties-panel__condition-remove {
+  justify-self: start;
+  min-height: 44px;
+  margin-top: 0;
+  padding: var(--fw-space-2);
+  border-top: 0;
+  border-radius: var(--fw-radius-sm);
+}
+
+/*
+ * The one explanation of a locked structure (Logik off), above the rule
+ * list — the panel's own framed note, not a warning colour: nothing is
+ * wrong, a part is just not editable here.
+ */
+.properties-panel__rule-locked {
+  margin: 0;
+  padding: var(--fw-space-3);
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-sm);
+  background: var(--fw-surface-subtle);
+  color: var(--fw-text);
+  font-size: var(--fw-font-size-sm);
+}
+
+/* The section heading of *Svarsalternativ*, *Regler* and *Uträkningar* —
+   one role, one rule (Astras granskning av vända 1, bilaga 2, punkt 1). */
+.properties-panel__options-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--fw-space-2);
+
+  /*
+   * Ledarens andra vända (28/9): "Svarsalternativ" i sektionsrubrikens
+   * egen stil (webbläsarens h3, fet, 1.17em) — men färgen sätts explicit
+   * här och ärvs aldrig. Panelens delade `h3` saknar en egen `color`-regel
+   * (samma familj bugg som Sivs 1b-fynd i regeleditorn, f5a3bc39): utan
+   * den här raden hade rubriken läckt en obesläktad literal i mörkt tema
+   * i stället för att följa temat.
+   */
+  h3 {
+    margin: 0;
+    color: var(--fw-text);
+  }
+}
+
+.properties-panel__options-count {
+  /* `small`, inte `span` — `.properties-panel__field span` (längre upp i
+     den här filen) tvingar versaler på varje span i sektionen, och
+     konceptets "3 alternativ" är normal gemen text. Samma bugg och samma
+     fix som `.properties-panel__option-caption`. */
+  color: var(--fw-text-muted);
+  font-size: var(--fw-font-size-xs);
+  font-weight: var(--fw-weight-text);
+  text-transform: none;
+}
+
+.properties-panel__options-hint {
+  margin: 0;
+  color: var(--fw-text-muted);
+  /* Bild 03 (Astra 29/9): the still help lines above the rules and the
+     calculations, and *Annars*' "När ingen regel uppfylls", read at nearly
+     the labels' size — 11 px stood as a footnote under them. */
+  font-size: var(--fw-font-size-base);
+}
+
+/*
+ * The rule list (uppdrag 29/9 Del A): the cards' own container, then
+ * *Annars*, at the list's rhythm. Annars is outside the container because
+ * the drag gesture re-appends the cards into it (see
+ * `renderRuleCasesProperty`).
+ */
+.properties-panel__card-list {
+  display: grid;
+  gap: var(--fw-space-3);
+}
+
+/*
+ * *Annars* has a head with nothing to press — no grip, no arrows, no
+ * chevron — so the heading takes the grip's place and the head keeps the
+ * cards' 44 px row. Its body is always shown, so the head's lower corners
+ * are square, as an open card's are.
+ */
+.properties-panel__rule-otherwise > .properties-panel__option-header {
+  /* Bild 03: *Annars* is a heading in the card, not a band over it — it has
+     nothing to press, so it has no head row to set apart. */
+  padding: var(--fw-space-3) var(--fw-space-3) 0;
+  background: transparent;
+}
+
+.properties-panel__rule-otherwise > .properties-panel__option-body {
+  padding-top: var(--fw-space-1);
+  border-top: 0;
+}
+
+/* Bild 03, 04, 05: the variable name is the formula's word, so it stands in
+   the formula's face. Three classes: the panel's field rule sets
+   `font: inherit` on every text input and won at two (measured). */
+.properties-panel__option--card .properties-panel__option-body input[data-assignment-property="variableName"] {
+  font-family: var(--fw-font-mono);
+}
+
+/* The empty collection's variant (graphic profile, Astra 30/9): the add
+   button tinted, never filled — filled is the main action. The instruction
+   above it reads as help, not metadata, so it takes body size. */
+.properties-panel__add-option--empty {
+  border-color: var(--fw-primary-border);
+  background: var(--fw-primary-surface);
+  color: var(--fw-primary-strong);
+
+  /* The tint is the ordinary button's hover surface, so hovering the tinted
+     one changed nothing (Fia 30/9, measured in both themes). The edge takes
+     the ordinary button's --fw-primary instead: the same family, one step. */
+  &:hover {
+    border-color: var(--fw-primary);
+  }
+}
+
+.properties-panel__empty-hint {
+  margin: 0;
+  font-size: var(--fw-font-size-md);
+  line-height: var(--fw-line-body);
+  color: var(--fw-text-secondary);
+}
+
+.properties-panel__format-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fw-space-2);
+
+  button {
+    padding: var(--fw-space-2);
+    border: 1px solid var(--fw-border-control);
+    border-radius: var(--fw-radius-sm);
+    background: var(--fw-surface-subtle);
+    color: var(--fw-text-strong);
+    font: inherit;
+    font-size: var(--fw-font-size-sm);
+    /* Not a heading, but 700 is exactly --fw-weight-heading's value — the
+       same token, not a third role. */
+    font-weight: var(--fw-weight-heading);
+    cursor: pointer;
+  }
+
+  button:hover {
+    border-color: var(--fw-primary);
+    background: var(--fw-primary-surface);
+    color: var(--fw-primary-strong);
+  }
+
+  button:focus-visible {
+    @include focus.ring(1px);
+  }
+}
+
+.properties-panel__warnings {
+  display: grid;
+  gap: var(--fw-space-2);
+  padding: var(--fw-space-3);
+  border: 1px solid var(--fw-warning-border);
+  border-radius: var(--fw-radius-md);
+  background: var(--fw-warning-surface);
+
+  p {
+    margin: 0;
+    color: var(--fw-warning-text);
+    font-size: var(--fw-font-size-base);
+    line-height: var(--fw-line-body);
+  }
+}
+
+.properties-panel__order-buttons {
+  display: flex;
+  gap: var(--fw-space-2);
+
+  button {
+    flex: 1;
+    padding: var(--fw-space-2) var(--fw-space-3);
+    border: 1px solid var(--fw-border-control);
+    border-radius: var(--fw-radius-sm);
+    background: var(--fw-surface-subtle);
+    color: var(--fw-text-strong);
+    font: inherit;
+    font-size: var(--fw-font-size-base);
+    font-weight: var(--fw-weight-strong);
+    cursor: pointer;
+  }
+
+  button:hover:not(:disabled) {
+    border-color: var(--fw-primary);
+    background: var(--fw-primary-surface);
+    color: var(--fw-primary-strong);
+  }
+
+  button:focus-visible {
+    @include focus.ring(1px);
+  }
+
+  button:disabled {
+    color: var(--fw-text-disabled);
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+}
+/* Besked om varför panelen är låst. Ligger överst så det läses innan man
+   hinner klicka på något som inte svarar. */
+.properties-panel__mode-notice {
+  margin: 0 0 var(--fw-space-3);
+  padding: var(--fw-space-3);
+
+  border: 1px solid var(--fw-border);
+  border-left-width: 4px;
+  border-radius: var(--fw-radius-md);
+
+  background: var(--fw-surface-muted, var(--fw-surface));
+  color: var(--fw-text-muted);
+
+  font-size: var(--fw-font-size-base);
+  line-height: var(--fw-line-body);
+
+  strong {
+    display: block;
+    color: var(--fw-text-strong);
+  }
+}
+
+.properties-panel__mode-notice[data-mode-notice="translator"] {
+  border-left-color: var(--fw-primary);
+}
+
+/* Låsta fält tonas ned, så det syns att de är låsta och inte trasiga. */
+[data-mode-locked] {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/*
+ * The try-it box, set apart from the settings above it.
+ *
+ * It is not a setting — nothing typed here is saved — and it would be read as
+ * one if it sat flush with the rest. The line above it is the whole signal.
+ */
+/* 24 from the last rule to the line: the group's 12 and this 12 (Astra
+   1/10, B7: 24 px före *Pröva ett värde*). */
+.properties-panel__tryout {
+  margin-top: var(--fw-space-3);
+  padding-top: var(--fw-space-3);
+  border-top: 1px dashed var(--fw-border);
+}
+
+.properties-panel__tryout-verdict {
+  margin: var(--fw-space-2) 0 0;
+  font-size: var(--fw-font-size-base);
+  /* 1.4 is body copy that drifted off --fw-line-body (measured 20/9,
+     _tokens-mixins.scss) — folded back onto the role. */
+  line-height: var(--fw-line-body);
+
+  /* Empty until something is typed, and taking no room while it is. */
+  &:empty {
+    display: none;
+  }
+
+  &[data-state="ok"] {
+    color: var(--fw-success-text);
+  }
+
+  /*
+   * Colour is not the message. The verdict is a sentence either way — see K3 —
+   * so this only reinforces what the words already say.
+   */
+  &[data-state="fel"] {
+    color: var(--fw-danger-text);
+  }
+}
+
+/*
+ * The size and the paint live in `styles/_tick-boxes.scss` now, included at the
+ * end of this file — one drawing of a tick box for the whole tool rather than
+ * one per component. What stays here is the row, which is this panel's layout
+ * and nobody else's.
+ */
+.properties-panel label:has(> input[type="checkbox"]),
+.properties-panel label:has(> input[type="radio"]) {
+  display: flex;
+  gap: var(--fw-space-2);
+  align-items: center;
+  /* The row is the target, so it has to clear 24px on its own. */
+  min-height: 24px;
+}
+
+@include tick-boxes.fw-tick-boxes;
+@include tick-boxes.fw-switch;
+
+/* Startvyn (kartfrågan): ett besked och två knappar, inte ett inmatningsfält. */
+.properties-panel__map-start-status {
+  margin: var(--fw-space-1) 0 var(--fw-space-2);
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-sm);
+}
+
+.properties-panel__map-start-actions {
+  display: flex;
+  gap: var(--fw-space-2);
+
+  button {
+    min-height: 32px;
+    padding: var(--fw-space-1) var(--fw-space-3);
+    border: 1px solid var(--fw-border-control);
+    border-radius: var(--fw-radius-md);
+    background: var(--fw-surface);
+    color: var(--fw-text-strong);
+    font: inherit;
+    font-size: var(--fw-font-size-sm);
+    cursor: pointer;
+  }
+
+  button:hover {
+    border-color: var(--fw-primary);
+    background: var(--fw-primary-surface);
+  }
+}
+
+/*
+ * Mottagarlistans etiketter.
+ *
+ * Krysset är 24×24 px: WCAG 2.5.8 kräver det, och mitt första försök mätte 21 —
+ * fångat av ett test som läser rutan i stället för att lita på ögat.
+ */
+/*
+ * Chipsen och väljaren i EN ram, som en pillbox.
+ *
+ * Utseendet är Select2:s; beteendet är fortfarande två inbyggda kontroller —
+ * en lista med knappar och en `<select>`. Det är med flit: en riktig
+ * kombinationsruta med sökning kräver att hela tangentbordsmodellen skrivs för
+ * hand (`combobox` + `listbox`, piltangenter, Escape, aria-activedescendant),
+ * och det är den sortens komponent som oftast blir otillgänglig.
+ */
+[data-recipient-group] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fw-space-2);
+  padding: var(--fw-space-2);
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-md, 8px);
+  background: var(--fw-surface);
+}
+
+[data-recipient-group]:focus-within {
+  border-color: var(--fw-focus-ring, rgb(79 70 229 / 55%));
+  box-shadow: 0 0 0 3px var(--fw-focus-ring, rgb(79 70 229 / 25%));
+}
+
+/* Väljaren tar resten av raden och tappar sin egen ram — den är inte längre ett
+   eget fält utan pillboxens sista plats. */
+[data-recipient-group] select {
+  flex: 1 1 12ch;
+  min-width: 12ch;
+  border: 0;
+  background: none;
+  padding: 2px var(--fw-space-1);
+}
+
+[data-recipient-group] select:focus-visible {
+  outline: none;
+}
+
+/* Statusraden hör till fältet, inte till rutan: hela bredden, under ramen. */
+[data-recipient-group] .properties-panel__status {
+  flex: 1 0 100%;
+  margin: 2px 2px 0;
+}
+
+.properties-panel__status {
+  margin: var(--fw-space-2) 0 0;
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-sm);
+  min-height: 1em;
+}
+
+/* Villkorets värde: `chip-picker` bär kontrollen, det här är luften runt den. */
+.properties-panel__rule-values {
+  display: grid;
+  gap: var(--fw-space-2);
+}
+
+/*
+ * Variabelknappen och dess lista.
+ *
+ * Knappen bär formateringsknapparnas utseende — den gör samma sorts sak, och
+ * två utseenden för "sätt något i texten" vore två saker att lära sig. Rutan
+ * runt den är ankaret listan hänger under; listan ligger ovanpå, för en lista
+ * som knuffar fältet nedåt flyttar det man siktade på.
+ */
+.properties-panel__field-row {
+  display: flex;
+  align-items: center;
+  gap: var(--fw-space-2);
+
+  /* Fältet tar resten; knappen behåller sin bredd. */
+  > input {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.properties-panel__variable {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.properties-panel__variable-toggle {
+  /* 34px hög, inte 44: K6 (WCAG 2.5.5, 44×44) gäller inte editorn — den är
+     en skrivbordsyta (Johan 15/9) — så knappen får vara mindre än
+     besökarens minsta träffyta. Höjden hålls liten med flit: tecknen är
+     små, ytan ska matcha dem snarare än se stor ut. */
+  min-width: 40px;
+  min-height: 34px;
+  padding: var(--fw-space-2);
+  font-family: var(--fw-font-mono, ui-monospace, "SFMono-Regular", "Menlo", monospace);
+  /* -0.02em matches neither tracking role (heading is -0.01em) — a mono
+     glyph's own tightening, left as the value it already had. */
+  letter-spacing: -0.02em;
+  border: 1px solid var(--fw-border-control);
+  border-radius: var(--fw-radius-sm);
+  background: var(--fw-surface-subtle);
+  color: var(--fw-text-strong);
+  font: inherit;
+  font-size: var(--fw-font-size-sm);
+  /* Not a heading, but 700 is exactly --fw-weight-heading's value — the same
+     token, not a third role. */
+  font-weight: var(--fw-weight-heading);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.properties-panel__variable-toggle:hover,
+.properties-panel__variable-toggle[aria-expanded="true"] {
+  border-color: var(--fw-primary);
+  background: var(--fw-primary-surface);
+  color: var(--fw-primary-strong);
+}
+
+.properties-panel__variable-toggle:focus-visible {
+  @include focus.ring(1px);
+}
+
+.properties-panel__variable-list {
+  position: absolute;
+  /* A menu tied to its trigger, dismissable — exactly --fw-z-popover. */
+  z-index: var(--fw-z-popover);
+  top: calc(100% + 4px);
+  right: 0;
+  max-height: 280px;
+  min-width: 220px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-sm);
+  background: var(--fw-surface);
+  box-shadow: var(--fw-shadow-md);
+  list-style: none;
+}
+
+.properties-panel__variable-list[hidden] {
+  display: none;
+}
+
+/* Samma avdelare som väljarnas rader, av samma skäl: raderna ska gå att skilja
+   åt utan att listan blir randig. */
+.properties-panel__variable-list > *:not(:last-child) {
+  border-bottom: 1px solid var(--fw-border);
+}
+
+.properties-panel__variable-list button {
+  display: flex;
+  align-items: center;
+  gap: var(--fw-space-3);
+  width: 100%;
+  /* 44px: WCAG 2.5.5. Panelen används på surfplatta. */
+  min-height: var(--fw-control-height);
+  padding: var(--fw-space-2) var(--fw-space-3);
+  border: 0;
+  background: none;
+  color: var(--fw-text-strong);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.properties-panel__variable-list button:hover,
+.properties-panel__variable-list button:focus-visible {
+  background: var(--fw-primary-surface);
+  outline: none;
+}
+
+/*
+ * Två klasser, inte en: `.properties-panel__field span` (0,1,1) sätter
+ * VERSALER på panelens egna etiketter, och en ensam klass (0,1,0) förlorar mot
+ * den hur långt ned i filen den än står. Variabelnamnet är en mening någon
+ * skrivit — "Vad heter du?" — och ska läsas som en.
+ */
+.properties-panel__variable-list .properties-panel__variable-label {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fw-font-size-md);
+  font-weight: var(--fw-weight-text);
+  text-transform: none;
+}
+
+.properties-panel__variable-list code {
+  color: var(--fw-text-muted);
+  font-size: var(--fw-font-size-sm);
+  white-space: nowrap;
+}
+
+/*
+ * The formula help under a calculation's formula (uppdrag 29/9 Del D, Astra
+ * §10): a quiet framed fold on the roles' own surface and border, closed
+ * from the start. Its summaries get the panel's control height and focus
+ * ring, as *Avancerat*'s does; the formula text is mono (`--fw-font-mono`),
+ * and an example is selected whole by a click, ready to copy.
+ */
+.properties-panel__formula-help {
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-sm);
+  background: var(--fw-surface-subtle);
+  color: var(--fw-text);
+  font-size: var(--fw-font-size-md);
+  font-weight: var(--fw-weight-text);
+
+  /*
+   * Bild 03/04 (Astra 29/9): a full-width row, the words at the left in the
+   * card's label weight, the chevron at the right — pointing right closed,
+   * up open. A flex summary drops the disclosure marker, so the chevron is
+   * the one drawn in `_chevron.scss`, turned.
+   */
+  summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--fw-space-3);
+    min-height: var(--fw-control-height);
+    box-sizing: border-box;
+    padding: var(--fw-space-2) var(--fw-space-4);
+    border-radius: var(--fw-radius-sm);
+    font-weight: var(--fw-weight-heading);
+    list-style: none;
+    cursor: pointer;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &::after {
+      @include chevron.drawn;
+      transform: rotate(-45deg);
+    }
+
+    &:focus-visible {
+      @include focus.ring;
+    }
+  }
+
+  &[open] > summary {
+    border-radius: var(--fw-radius-sm) var(--fw-radius-sm) 0 0;
+    /* Bild 04: the open head is a band a step deeper than the help's body. */
+    background: var(--fw-bg);
+  }
+
+  details[open] > summary::after,
+  &[open] > summary::after {
+    @include chevron.open;
+  }
+
+  /* The card's label size (Etikett, Formel), the lead's reading of bild 04. */
+  > summary {
+    font-size: var(--fw-font-size-md);
+  }
+
+  h4,
+  p,
+  dl,
+  dd {
+    margin: 0;
+  }
+
+  h4 {
+    font-size: var(--fw-font-size-xl);
+    font-weight: var(--fw-weight-heading);
+  }
+
+  /* Bild 04: formula text in the running text is the mono face alone, not a
+     chip of its own; the strips below are the only boxes. */
+  code {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font-family: var(--fw-font-mono);
+    /* `.properties-panel__field code` sets the small size for every code in
+       the panel; in the help the formula text is read at the text's size. */
+    font-size: inherit;
+    overflow-wrap: anywhere;
+  }
+}
+
+.properties-panel__formula-help-body {
+  display: grid;
+  gap: var(--fw-space-3);
+  padding: var(--fw-space-4);
+
+  section {
+    display: grid;
+    gap: var(--fw-space-1);
+  }
+
+  /* *Fler funktioner* and *Datum och ålder*: rows between thin lines, each
+     with its chevron at the right, as the help's own head. */
+  details {
+    border-top: 1px solid var(--fw-border);
+
+    &:last-of-type {
+      border-bottom: 1px solid var(--fw-border);
+    }
+
+    > summary {
+      padding-inline: 0;
+    }
+
+    &[open] > summary {
+      background: transparent;
+    }
+
+    > p {
+      padding-bottom: var(--fw-space-3);
+    }
+  }
+}
+
+/* Bild 04: the operators, and an example, as a strip of formula text. */
+.properties-panel__formula-strip {
+  padding: var(--fw-space-2) var(--fw-space-3);
+  border-radius: var(--fw-radius-sm);
+  background: var(--fw-bg);
+
+  code {
+    word-spacing: 0.6em;
+  }
+
+  code[data-formula-example] {
+    word-spacing: normal;
+  }
+}
+
+/* Bild 04: a function's syntax on one line, what it does on the next, a thin
+   line above each. */
+.properties-panel__formula-functions {
+  display: grid;
+
+  > div {
+    display: grid;
+    gap: var(--fw-space-1);
+    padding-block: var(--fw-space-2);
+    border-top: 1px solid var(--fw-border-subtle);
+  }
+}
+
+.properties-panel__formula-help-note {
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-sm);
+}
+
+.properties-panel__formula-help code[data-formula-example] {
+  user-select: all;
+}

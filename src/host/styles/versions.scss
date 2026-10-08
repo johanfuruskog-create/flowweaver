@@ -1,0 +1,492 @@
+/* The versions example: a list, the editor it belongs to, and what a visitor
+   would be getting while you work. Tokens and air — the page is an argument
+   about behaviour, so nothing here should compete with the controls. */
+@use "../../viewer/styles/focus" as focus;
+
+@use "./demo-tokens.scss";
+
+body {
+  margin: 0;
+  background: var(--fw-bg);
+  color: var(--fw-text);
+  font: 15px/1.6 system-ui, sans-serif;
+}
+
+.ex {
+  max-width: 78rem;
+  margin: 0 auto;
+  padding: 24px 20px 64px;
+}
+
+.ex h1 {
+  font-size: 1.5rem;
+  margin: 0 0 8px;
+}
+
+.ex h2 {
+  font-size: 1rem;
+  margin: 28px 0 8px;
+}
+
+.ex__lead {
+  max-width: 62ch;
+  color: var(--fw-text-secondary);
+}
+
+/* What just happened, in one line. It is a receipt rather than a log: the page
+   is about whether the model reads right, and a scrolling history of one's own
+   clicks answers a different question. */
+.ex__status {
+  margin: 16px 0;
+  padding: var(--fw-space-3) var(--fw-space-4);
+  border: 1px solid var(--fw-border);
+  border-inline-start: 3px solid var(--fw-primary);
+  border-radius: var(--fw-radius-field);
+  background: var(--fw-surface);
+  color: var(--fw-text-secondary);
+  min-height: 1.6em;
+}
+
+/* The editor and the visitor's view, side by side — because the point being
+   made is that they are not the same thing. They stack on a narrow screen,
+   editor first: it is where the work is. */
+.ex__stage {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  /*
+   * Named rows, so the two boxes line up with each other and the two headings
+   * with each other.
+   *
+   * The visitor's card used to start level with the *word* "The editor" rather
+   * than with the editor, because its own heading sat inside it while the
+   * left-hand heading sat above. Two boxes an inch out of line read as a
+   * mistake even when nobody can say which one moved.
+   *
+   * Areas rather than source order: the markup stays heading-then-its-content,
+   * which is what a screen reader follows, while the grid puts the headings on
+   * one row and the boxes on the next.
+   */
+  grid-template-areas:
+    "editor-heading live-heading"
+    "editor         live";
+  column-gap: 20px;
+  row-gap: 8px;
+  margin-top: 28px;
+  align-items: start;
+}
+
+.ex__stage-heading {
+  grid-area: editor-heading;
+  /* The row gap owns the space now; a margin here would be counted twice. */
+  margin: 0;
+}
+
+/*
+ * Utfällaren står där den högra rubriken stod, alltså i linje med "Editorn".
+ * Den ÄR rubriken numera, så typografin är densamma och `summary` bär läget.
+ */
+.ex__stage-heading--live {
+  grid-area: live-heading;
+  cursor: pointer;
+  list-style: none;
+}
+
+.ex__stage-heading--live::-webkit-details-marker {
+  display: none;
+}
+
+/* Egen pil, för den inbyggda triangeln varierar mellan webbläsare och sitter
+   fel mot en rubrik i den här storleken. */
+.ex__stage-heading--live::before {
+  content: "";
+  display: inline-block;
+  width: 0.42em;
+  height: 0.42em;
+  margin-right: 0.5em;
+  border-right: 2px solid currentcolor;
+  border-bottom: 2px solid currentcolor;
+  transform: translateY(-0.12em) rotate(-45deg);
+  /* 160ms matchar inte den beslutade 120ms-tiden — literal, orörd. */
+  transition: transform 160ms ease;
+}
+
+[open] > .ex__stage-heading--live::before {
+  transform: translateY(-0.22em) rotate(45deg);
+}
+
+/* Rörelsen är en artighet, inte en effekt — samma regel som sidhuvudet följer. */
+@media (prefers-reduced-motion: reduce) {
+  .ex__stage-heading--live::before {
+    transition: none;
+  }
+}
+
+.ex__stage-heading--live:focus-visible {
+  /* 6 matchar ingen roll (button 8) — literal, orörd. */
+  border-radius: 6px;
+  @include focus.ring;
+}
+
+#editor {
+  grid-area: editor;
+}
+
+.ex__stage:has(> .ex__live:not([open])) {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+@media (max-width: 60rem) {
+  .ex__stage {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* En spalt: då står rutan under editorn och behöver ingen egen rad-spann. */
+  .ex__live {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
+
+guide-editor {
+  display: block;
+  height: 62vh;
+  min-height: 26rem;
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-field);
+  overflow: hidden;
+}
+
+/*
+ * Rutan äger hela högerspalten, inte bara sin rad: `summary` sitter i toppen
+ * och innehållet under, så en hopfälld ruta inte lämnar ett tomrum där den
+ * stod. Och när den är hopfälld krymper spalten till rubrikens bredd —
+ * annars vore en tredjedel av sidan reserverad åt något som inte syns.
+ */
+.ex__live {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-field);
+  background: var(--fw-surface);
+  padding: 16px;
+}
+
+.ex__live-note {
+  margin: 0 0 12px;
+  color: var(--fw-text-secondary);
+  font-size: 0.92em;
+}
+
+/* Which version you are typing into, inside the editor's own chrome so it goes
+   with it into full screen. Above the toolbar it would vanish at exactly the
+   moment somebody is deepest in the work and likeliest to forget where they
+   are writing. */
+.ex__open {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--fw-text-secondary);
+}
+
+.ex__open strong {
+  color: var(--fw-text);
+}
+
+/* The same mark the row wears, in the same words. A mark that changes its name
+   between two places is two marks to learn. */
+.ex__pill {
+  padding: 1px 8px;
+  border: 1px solid var(--fw-success-border);
+  border-radius: var(--fw-radius-chip);
+  background: var(--fw-success-surface);
+  color: var(--fw-success-text);
+  font-size: 0.85em;
+  font-weight: var(--fw-weight-strong);
+}
+
+.ex__reset {
+  margin-top: 28px;
+  padding: var(--fw-space-2) 12px;
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-sm);
+  background: var(--fw-surface);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ex__reset:hover {
+  border-color: var(--fw-primary);
+}
+
+/* An invitation, not instructions: three short moves that end with the thing
+   the page is trying to say. Numbered because they are a sequence — the third
+   only means anything after the second. */
+.ex__try {
+  max-width: 62ch;
+  margin: 0 0 8px;
+  padding-inline-start: 1.4em;
+  color: var(--fw-text-secondary);
+}
+
+.ex__try li {
+  margin-bottom: var(--fw-space-2);
+}
+
+.ex__try strong {
+  color: var(--fw-text);
+}
+
+/* For a different reader, and dressed as such: the editor this page is written
+   for has already got what they came for by the time they reach it. */
+.ex__aside {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--fw-border);
+  font-size: 0.94em;
+}
+/* Below: the workbench's own furniture. It runs the same module as the example
+   pages, and carries a running log and a debug lead instead of a status line
+   and a visitor's view. Tokens are imported once, at the top of this file. */
+
+body {
+  margin: 0;
+  background: var(--fw-bg);
+  color: var(--fw-text);
+  font: 15px/1.6 system-ui, sans-serif;
+}
+
+.dev {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 24px 20px 64px;
+}
+
+.dev h1 { font-size: 1.4rem; margin: 0 0 4px; }
+.dev h2 { font-size: 1rem; margin: 28px 0 8px; }
+
+.dev__lead,
+.dev__note {
+  max-width: 64ch;
+  color: var(--fw-text-secondary);
+}
+
+.dev__note {
+  margin-top: 28px;
+  padding: 12px 16px;
+  border-inline-start: 3px solid var(--fw-primary);
+  background: var(--fw-surface);
+}
+
+/*
+ * Frågorna efter uppgiften.
+ *
+ * Hopfällda och sist, så att de inte syns medan någon arbetar — en fråga i
+ * synfältet gör att man börjar formulera svar i stället för att bygga.
+ */
+.dev__after {
+  max-width: 64ch;
+  margin-top: 40px;
+  padding: 12px 16px;
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-field);
+  background: var(--fw-surface);
+
+  > summary {
+    cursor: pointer;
+    font-weight: var(--fw-weight-strong);
+    color: var(--fw-text-strong);
+  }
+
+  .dev__note {
+    margin-top: 16px;
+  }
+}
+
+.dev__questions {
+  max-width: 64ch;
+  margin: 16px 0 0;
+  padding-inline-start: var(--fw-space-5);
+  color: var(--fw-text-secondary);
+
+  > li + li {
+    margin-top: 12px;
+  }
+
+  strong {
+    color: var(--fw-text-strong);
+  }
+}
+
+.dev__send {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--fw-space-3);
+  margin-top: 20px;
+}
+
+.dev__button {
+  padding: 8px var(--fw-space-4);
+  border: 1px solid var(--fw-primary);
+  border-radius: var(--fw-radius-sm);
+  background: var(--fw-primary);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--fw-primary-hover);
+    border-color: var(--fw-primary-hover);
+  }
+
+  &:focus-visible {
+    @include focus.ring;
+  }
+}
+
+.dev__send-note {
+  flex: 1 1 24ch;
+  color: var(--fw-text-secondary);
+  font-size: 0.9em;
+}
+
+.dev__log {
+  margin: 16px 0 0;
+  padding: 12px var(--fw-space-4);
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-field);
+  background: var(--fw-surface);
+  font: 12px/1.6 ui-monospace, monospace;
+  white-space: pre-wrap;
+  min-height: 5rem;
+}
+
+.dev__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.dev__row input {
+  flex: 1 1 16rem;
+  padding: var(--fw-space-2) var(--fw-space-3);
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-sm);
+  font: inherit;
+}
+
+.dev__row button {
+  padding: var(--fw-space-2) 12px;
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-sm);
+  background: var(--fw-surface);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.dev__row button:hover { border-color: var(--fw-primary); }
+
+guide-editor {
+  display: block;
+  height: 60vh;
+  min-height: 24rem;
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-field);
+  overflow: hidden;
+}
+
+/* Vilken version man redigerar, där man tittar när man skriver — inte i listan,
+   som svarar på vilka som finns. */
+/* Slottad in i editorns egen chrome, så den följer med i helskärm. Färgerna är
+   editorns tokens — värden ritar innehållet, men det ska inte se ut som en
+   främmande sak inne i verktyget. */
+.dev__open {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--fw-text-secondary);
+}
+
+.dev__open strong {
+  color: var(--fw-text);
+}
+
+.dev__open strong[data-published="true"]::after {
+  content: " · publicerad";
+  color: var(--fw-success-text);
+  font-weight: var(--fw-weight-strong);
+}
+
+
+
+/* Osparat sägs, det varnas inte om. Någon mitt i en mening har inte ett problem. */
+.dev__draft {
+  margin: 0 0 8px;
+  color: var(--fw-warning-text);
+  font-weight: var(--fw-weight-strong);
+}
+
+/* Ångran ligger i kvittensen, inte i en meny. Den gäller det som just hände och
+   ingenting annat — därför står den bara medan den betyder något. */
+
+
+/* Samma märken som raden bär, med samma ord. Ett märke som byter namn mellan två
+   ställen är två märken att lära sig. */
+.dev__pill {
+  padding: 1px 8px;
+  border: 1px solid var(--fw-success-border);
+  border-radius: var(--fw-radius-chip);
+  background: var(--fw-success-surface);
+  color: var(--fw-success-text);
+  font-size: 0.85em;
+  font-weight: var(--fw-weight-strong);
+}
+
+.dev__pill--draft {
+  border-color: var(--fw-warning-border);
+  background: var(--fw-warning-surface);
+  color: var(--fw-warning-text);
+}
+
+/* Unsaved is said, not warned about. Somebody mid-sentence does not have a
+   problem, and a mark that shouts turns every ordinary act into an incident. */
+.ex__pill--draft {
+  border-color: var(--fw-warning-border);
+  background: var(--fw-warning-surface);
+  color: var(--fw-warning-text);
+}
+
+/*
+ * Bandet över en gammal version (berättelse 124, tillägget).
+ *
+ * Det ska läsas som ett läge och inte som en rad prosa: en ram i sidans
+ * sekundärfärg, kontrollerna i samma rad som orden, och ingen egen färgsignal
+ * — vad man tittar på står i klartext, och K3 vill inte att en färg bär ett
+ * fakta ensam.
+ */
+.ex__banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  padding: 12px 16px;
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-field);
+  background: var(--fw-surface);
+  color: var(--fw-text-secondary);
+  font-weight: var(--fw-weight-strong);
+}
+
+/*
+ * `display: flex` på en klass slår webbläsarens egen `[hidden] {
+ * display: none }`, så bandet ritades tomt på varje sida som inte tittade på
+ * en gammal version — mätt i en skärmbild på 390 px, där två knappar stod i en
+ * ram utan text. En regel som gömmer måste sägas när en regel som visar finns.
+ */
+.ex__banner[hidden] {
+  display: none;
+}

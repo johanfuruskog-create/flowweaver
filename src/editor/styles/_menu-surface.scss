@@ -1,0 +1,14 @@
+/*
+ * The raised surface a menu or a picker opens on: the plus menu's (`.menu` in
+ * rich-text-field.scss, Astras spec 28/9 — the reasoning per token stands
+ * there) and the searchable field picker's (story 143). One mixin so the two
+ * cannot drift apart. Padding and corner are each surface's own: the plus
+ * menu's rows sit 6 px in with a 12 px corner, the picker's zones run edge
+ * to edge with an 8 px corner (Astras skiss 1).
+ */
+@mixin surface {
+  box-sizing: border-box;
+  border: 1px solid var(--fw-border);
+  background: var(--fw-surface-raised);
+  box-shadow: var(--fw-shadow-raised);
+}

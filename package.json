@@ -1,0 +1,41 @@
+{
+  "name": "flowweaver",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "prepare": "git config core.hooksPath tools/git-hooks",
+    "build": "tsc && npm run build:lib",
+    "build:lib": "npm run build:lib:viewer && npm run build:lib:editor && npm run build:lib:pro && npm run build:lib:tokens && npm run build:lib:types",
+    "build:lib:pro": "node scripts/build-lib-pro.mjs",
+    "build:lib:viewer": "LIB_TARGET=viewer vite build --config vite.lib.config.ts",
+    "build:lib:editor": "LIB_TARGET=editor vite build --config vite.lib.config.ts",
+    "build:lib:tokens": "sass --no-source-map --style=compressed src/viewer/styles/tokens.scss dist-lib/tokens.css",
+    "build:lib:types": "tsc -p tsconfig.lib.json && node scripts/fix-lib-type-imports.mjs",
+    "test": "vitest --project unit",
+    "test:run": "vitest run --project unit",
+    "test:all": "vitest",
+    "test:all:run": "vitest run",
+    "test:browser": "vitest --project browser",
+    "test:browser:run": "vitest run --project browser",
+    "test:coverage": "vitest run --coverage",
+    "smoke": "node e2e/editor-smoke.mjs",
+    "smoke:lib": "node e2e/lib-consumer-smoke.mjs",
+    "smoke:released": "node e2e/released-bundle-smoke.mjs",
+    "smoke:storage": "node integrations/reference-receiver/test/storage-smoke.mjs",
+    "smoke:login": "node e2e/login-smoke.mjs",
+    "bff": "node tools/mock-bff.mjs",
+    "receiver": "node integrations/reference-receiver/server.mjs",
+    "serve:demo": "node tools/serve-demo.mjs"
+  },
+  "devDependencies": {
+    "@types/leaflet": "^1.9.22",
+    "@vitest/browser-playwright": "^4.1.10",
+    "@vitest/coverage-v8": "^4.1.10",
+    "leaflet": "^1.9.4",
+    "sass": "^1.101.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.1.1",
+    "vitest": "^4.1.10"
+  }
+}

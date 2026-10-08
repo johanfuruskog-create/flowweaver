@@ -1,0 +1,159 @@
+/**
+ * Valda saker som borttagbara etiketter, delat av alla som visar sådana.
+ *
+ * ## Varför den här filen finns
+ *
+ * För att etiketterna hann bli tre: uppslagsfältets, flervalslistans (story
+ * 057, när ctrl-klicket togs bort) och editorns mottagarlista (story 056). Tre
+ * kopior av samma sak är den här kodbasens vanligaste fel — det står i
+ * `CLAUDE.md` — och den här gången hann de glida isär innan de var en dag
+ * gamla: krysset var **44px i den ena och 24px i den andra, i samma visare**.
+ * Ett mått var fel, och ingenting sa vilket.
+ *
+ * De första två är samma kontroll sedan 2026-08-31; mottagarlistan i editorn
+ * är fortfarande sin egen, och nästa lista som visar valda saker blir en
+ * anropare till. Remsan bor därför här och inte i någon av dem: visa vad som
+ * valts, kunna ta bort ett, och göra båda begripliga för den som inte ser den
+ * — samma uppdelning som `reorder-gesture.ts` gjorde för omordning.
+ *
+ * ## Måtten: ritad liten, träffad stor
+ *
+ * `$visual` är hur stort krysset SYNS, `$target` hur stort det är att träffa.
+ * De var samma sak först, och då blev etiketten klumpig: ett 44px kryss bredvid
+ * ett kort landsnamn gör pillen mest till kryss. Ytan läggs nu på med ett
+ * pseudoelement, så bilden får vara nätt medan fingret får sitt mått.
+ *
+ * `$target` är 44px i visaren och 24px i editorn, och skillnaden är avsiktlig.
+ * 24 är WCAG 2.2 AA:s golv (2.5.8) och rätt för ett verktyg vid ett
+ * tangentbord. Visaren möts av fingrar, och krysset är den enda vägen tillbaka
+ * från ett felval — sitter det trångt bredvid nästa etikett tar man bort fel
+ * sak. Måttet är en parameter och inte två stilmallar, så att skillnaden är
+ * ett synligt val och inte en glidning.
+ *
+ * Ytan sträcker sig ut i mellanrummet mellan etiketterna. Det är avsiktligt:
+ * det som ligger inom räckhåll där är grannens ETIKETTTEXT, som inte är ett
+ * mål, aldrig grannens kryss — de står långt ifrån varandra.
+ *
+ * Mäts med `elementFromPoint` och inte med `getBoundingClientRect`, eftersom
+ * ett pseudoelements yta inte syns i knappens ruta. Det testet mäter dessutom
+ * det verkliga: vad ett finger träffar.
+ */
+
+@use "./focus" as focus;
+
+@mixin fw-chips($chip, $target: 44px, $visual: 22px, $border: var(--fw-border)) {
+  .#{$chip}s {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--fw-space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    &[hidden] {
+      display: none;
+    }
+  }
+
+  /*
+   * Tonad: en ljus primärton, ingen ram, halvfet primärtext.
+   *
+   * Johans val bland fyra. Den säger *vald* utan att ta över kortet, och till
+   * skillnad från en helfylld etikett behåller krysset sin kontrast — tio
+   * fyllda etiketter blir en vägg av primärfärg där man slutar se vilket
+   * kryss som hör till vilken text.
+   *
+   * Tonen och texten är TOKENS, inte färger: kortet är vitt i ljust läge och
+   * mörkt i mörkt, och en etikett som stod fast i en nyans hade fallit igenom
+   * i det ena. Kontrasten mäts i båda lägena av `chip-picker-contrast`.
+   */
+  .#{$chip} {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 3px 4px 3px var(--fw-space-3);
+    /*
+     * En ram som väger lika mycket som linjen mellan förslagen.
+     *
+     * `--fw-border-subtle` räcker inte här, och skälet är mätt: i mörkt läge är
+     * den `#232a38` medan pillens egen ton är `#1e2547` — nästan samma färg.
+     * Linjen mellan förslagen syns med samma token för att den ligger på den
+     * MÖRKARE kortytan (`#161b26`); en ram runt en ljusare pill behöver nästa
+     * steg för att väga lika.
+     *
+     * Utan ram flyter etiketten ihop med rutan i mörkt läge, och kanten är det
+     * enda som säger var pillen slutar. Samma token i båda lägena, inte en gren
+     * per tema: en regel som bara gäller det ena är en regel någon måste komma
+     * ihåg.
+     */
+    border: 1px solid var(--fw-border);
+    border-radius: 999px;
+    background: var(--fw-primary-surface);
+    color: var(--fw-primary-strong);
+    /* En vald etikett får inte skjuta ut ur kortet för att namnet är långt. */
+    max-width: 100%;
+  }
+
+  .#{$chip}-label {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-size: 14px;
+    font-weight: 600;
+    /*
+     * `line-height: 1`, inte 1.4.
+     *
+     * Rutorna var exakt centrerade — mätt avvikelse 0 — men BLÄCKET satt högt.
+     * Med 1.4 centreras radboxen, och i den ligger versalhöjden ovanför mitten
+     * medan utrymmet för nedstaplar står tomt under. Ett ord som "Danmark" har
+     * inga nedstaplar alls, så halva den luften är osynlig och texten ser hög ut.
+     *
+     * Med 1 omsluter radboxen glyferna, och flexboxens centrering hamnar då
+     * där ögat läser mitten. Etiketten är alltid en rad, så ingen radavstånd
+     * går förlorat.
+     */
+    line-height: 1;
+  }
+
+  .#{$chip}-remove {
+    /*
+     * Ritad liten, träffad stor. Se kommentaren om $target och $visual högst
+     * upp: krysset syns som $visual och tar emot ett finger i $target genom
+     * pseudoelementet nedan.
+     */
+    position: relative;
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: $visual;
+    height: $visual;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--fw-primary-strong);
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+
+    &::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: $target;
+      height: $target;
+      transform: translate(-50%, -50%);
+    }
+
+    &:hover {
+      background: var(--fw-surface);
+      color: var(--fw-danger-text);
+    }
+
+    &:focus-visible {
+      @include focus.ring(1px);
+    }
+  }
+}

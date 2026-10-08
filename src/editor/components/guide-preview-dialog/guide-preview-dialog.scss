@@ -1,0 +1,86 @@
+@use "../../../viewer/styles/focus" as focus;
+
+:host {
+  display: contents;
+}
+
+dialog {
+  width: min(760px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  /* Exakt --fw-radius-dialog — den enda av de sju dialogerna som redan låg
+     rätt. */
+  border-radius: var(--fw-radius-dialog);
+  background: var(--fw-canvas);
+  color: var(--fw-text);
+  box-shadow: var(--fw-shadow-floating);
+
+  &::backdrop {
+    background: rgb(16 24 40 / 55%);
+  }
+}
+
+.guide-preview-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fw-space-4);
+  /* 20px horisontellt: på rastret, ingen egen roll. */
+  padding: var(--fw-space-4) 20px;
+  border-bottom: 1px solid var(--fw-border);
+  background: var(--fw-surface);
+
+  h2 {
+    margin: 0;
+    font-weight: var(--fw-weight-heading);
+    /* 20px: samma tal och samma undantag som skalets rubrik — ingen av
+       rampens steg träffar det utan att synas. */
+    font-size: 20px;
+  }
+
+  button {
+    /* K6-undantag: en editor-yta, inte en besökares — 36×36 är oförändrad,
+       en höjning till 44 hade synts som en större knapp. */
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--fw-radius-button);
+    background: transparent;
+    color: var(--fw-text-strong);
+    font: inherit;
+    font-size: var(--fw-font-size-3xl);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--fw-bg);
+    }
+
+    &:focus-visible {
+      @include focus.ring(0px);
+    }
+  }
+}
+
+.guide-preview-dialog__content {
+  max-height: calc(100vh - 120px);
+  /* 28px: på rastret, ingen egen roll. */
+  padding: 28px;
+  overflow: auto;
+}
+
+/*
+ * Raden som står där navigeringen skulle ha stått. Den är editorns röst i
+ * besökarens bild, och ska läsas som det: mindre, dämpad, avskild med en linje
+ * — inte som ännu ett stycke i steget.
+ */
+.guide-preview-dialog__still {
+  margin: var(--fw-space-4) 0 0;
+  padding-top: var(--fw-space-3);
+  border-top: 1px solid var(--fw-border);
+  color: var(--fw-text-muted);
+  font-size: var(--fw-font-size-md);
+  text-align: center;
+}

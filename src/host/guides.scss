@@ -1,0 +1,508 @@
+/*
+ * *Mina guider* (story 126, criterion 4).
+ *
+ * A list page and nothing more: a row per guide, a filter above it, and one
+ * button that makes a new one. Only design tokens, like the rest of the site,
+ * so the page follows the theme and the palette without knowing either exists.
+ *
+ * Deliberately not built on `examples-index`: nothing here uses those classes,
+ * and importing a page's stylesheet for its link colour would ship the whole of
+ * that page's CSS for four rules.
+ */
+
+@use "../viewer/styles/focus" as focus;
+
+html {
+  color: var(--fw-text);
+  background: var(--fw-bg);
+  font-family: var(--fw-font);
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  padding: 64px 20px;
+}
+
+.guides {
+  width: min(760px, 100%);
+  margin: 0 auto;
+}
+
+.guides__intro {
+  max-width: 62ch;
+}
+
+.guides__intro h1 {
+  margin: 0 0 12px;
+  font-size: clamp(1.7rem, 4vw, 2.4rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.guides__intro p {
+  margin: 0;
+  color: var(--fw-text-secondary);
+  line-height: 1.6;
+}
+
+/*
+ * The line that is not an error — no host, or a host without a sign-in. Framed
+ * rather than coloured: it is information and not a warning, and a red box over
+ * a documented way of running the thing teaches people to ignore red boxes.
+ */
+.guides__notice {
+  margin: 28px 0 0;
+  /* 16px, not 14: 14 sits off the 4px scale (`_tokens-mixins.scss`), halfway
+     between 12 and 16 — rounded up. */
+  padding: 16px;
+  border: 1px solid var(--fw-border-control);
+  /* 10px matches no radius role (button/field 8, card 12, dialog 16) — kept
+     literal rather than guessed onto the nearest one (same call as the
+     dialog shell's own 14/22 vs. 16, `_dialog-shell.scss`). */
+  border-radius: 10px;
+  background: var(--fw-surface);
+  color: var(--fw-text-strong);
+  line-height: var(--fw-line-body);
+}
+
+.guides__signed-out,
+.guides__signed-in {
+  margin-top: 32px;
+}
+
+.guides__signed-out p {
+  margin: 0 0 16px;
+  color: var(--fw-text-secondary);
+}
+
+.guides__who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 24px;
+  color: var(--fw-text-secondary);
+}
+
+/*
+ * Etiketten på egen rad, sökrutan och knappen bredvid varandra — och knappen
+ * i linje med rutans ÖVERKANT.
+ *
+ * Det var en flexrad med `align-items: flex-end`, och det gav fel sak: kolumnen
+ * med rutan slutar under räknaren, inte under rutan, och en knapp som justeras
+ * mot underkanten hamnar då där räknaren står. Mätt på 1156: rutan började på
+ * 384, knappen på 400 — sexton pixlar under, med knappens överkant i höjd med
+ * räknaren *3 guider*.
+ *
+ * Ett rutnät löser det där en flexrad inte kan: etiketten spänner över båda
+ * kolumnerna, räknaren ligger i sin egen ruta under fältet, och raden justeras
+ * mot `start`. Då står knappen i linje med fältet oavsett vad räknaren råkar
+ * säga — och den byter höjd när texten blir *2 av 5 guider*.
+ */
+.guides__tools {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  /* Row-gap 8, not 6: half of the column-gap beside it, and 6 sits off the
+     4px scale. */
+  gap: 8px 16px;
+  margin-bottom: 20px;
+}
+
+.guides__search {
+  display: block;
+  min-width: 0;
+}
+
+/*
+ * Uttryckligt, för `display: block` ovan vinner annars över `hidden` (PRAXIS
+ * 36). Det är omslaget som göms och inte fältet, så att etiketten och rutan
+ * kan vara syskon i rutnätet.
+ */
+.guides__search[hidden] {
+  display: none;
+}
+
+.guides__search-label {
+  display: block;
+  grid-column: 1 / -1;
+  color: var(--fw-text-secondary);
+  font-size: 0.9rem;
+  font-weight: var(--fw-weight-strong);
+}
+
+/* Samma skäl som för omslaget ovan: `display: block` vinner över `hidden`. */
+.guides__search-label[hidden] {
+  display: none;
+}
+
+/*
+ * Själva fältet (18/9, när väljaren blev en vanlig sökruta).
+ *
+ * 44 px hög som allt annat man träffar med en tumme på den här sidan, och
+ * samma kant och radie som knapparna bredvid — rutan såg ut så förut, och det
+ * som ändrades ska vara att den fungerar, inte att sidan ser ny ut.
+ *
+ * `font: inherit` för att ett `<input>` annars ärver webbläsarens egen
+ * formulärstil och blir mindre än raden omkring det.
+ */
+.guides__search-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--fw-control-height);
+  /* 16px, not 14: off the 4px scale, rounded up. */
+  padding: 0 16px;
+  border: 1px solid var(--fw-border-control);
+  border-radius: var(--fw-radius-field);
+  background: var(--fw-surface);
+  color: var(--fw-text-strong);
+  font: inherit;
+}
+
+.guides__search-input:focus-visible {
+  @include focus.ring;
+}
+
+/*
+ * Räknaren, direkt under fältet — där väljaren ritade sin egen.
+ *
+ * Egen rutnätsruta i första kolumnen, alltså aldrig bredvid *Ny guide*: raden
+ * ändras medan man skriver, och en siffra som hoppar bredvid en knapp flyttar
+ * knappen.
+ */
+.guides__count {
+  grid-column: 1 / 2;
+  margin: 0;
+  color: var(--fw-text-secondary);
+  font-size: 0.85rem;
+}
+
+/*
+ * Rensningsknappen, inne i beskedet om att ingenting hittades.
+ *
+ * En länkliknande knapp och inte en till av sidans stora: den står mitt i en
+ * mening, och en 44 px hög ruta där hade brutit raden. Träffytan är ordet, och
+ * beskedet är en egen rad med luft omkring sig.
+ */
+.guides__clear {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fw-primary);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.guides__clear:focus-visible {
+  @include focus.ring;
+}
+
+/*
+ * Varför *Ny guide* saknas, på knappens egen plats (berättelse 128).
+ *
+ * I knappens rutnätsruta och inte på en egen rad: raden ersätter knappen, så
+ * sökfältet bredvid håller sin bredd och ingenting hoppar när en förvaltare och
+ * en redaktör jämför sina skärmar. Centrerad i höjdled mot fältet av samma
+ * skäl.
+ *
+ * `display: flex` vinner över `hidden`, så regeln för det står här också
+ * (PRAXIS 36) — det är fjärde gången i den här filen.
+ */
+.guides__role-note {
+  display: flex;
+  align-items: center;
+  min-height: var(--fw-control-height);
+  margin: 0;
+  color: var(--fw-text-secondary);
+  font-size: 0.9rem;
+}
+
+.guides__role-note[hidden] {
+  display: none;
+}
+
+/*
+ * *Bara mina* på egen rad under sökraden.
+ *
+ * Egen rad och inte bredvid knappen: rutan och *Ny guide* är det man gör,
+ * filtret är hur listan under dem läses. 44 px hög av samma skäl som knappen
+ * (se `.guides__button`) — den här sidan är den man öppnar på en surfplatta,
+ * och en kryssruta på 16 px är inte en yta man träffar med en tumme.
+ *
+ * `display: flex` vinner över `hidden` precis som omslaget ovan, så regeln
+ * finns här också (PRAXIS 36).
+ */
+.guides__filter {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  align-items: center;
+  /* Column-gap 12, not 10: off the 4px scale, rounded up. */
+  gap: 4px 12px;
+  min-height: var(--fw-control-height);
+}
+
+.guides__filter[hidden] {
+  display: none;
+}
+
+.guides__filter input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--fw-primary);
+}
+
+.guides__filter input:focus-visible {
+  @include focus.ring;
+}
+
+/*
+ * Etiketten bär träffytan: kryssrutan är 20 px, och raden är 44 — den som
+ * pekar någonstans på orden har tryckt på rutan.
+ */
+.guides__filter label {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  color: var(--fw-text-strong);
+  font-weight: var(--fw-weight-strong);
+  cursor: pointer;
+}
+
+.guides__filter-hint {
+  color: var(--fw-text-secondary);
+  font-size: 0.9rem;
+}
+
+/*
+ * På en telefon staplas de i stället.
+ *
+ * Knappen är 118 px och rutan får 350 att dela på — bredvid varandra blir
+ * rutan 216 px, och det är en sökruta man inte kan läsa sina egna titlar i.
+ * Då är en rad till billigare än en trång ruta, och etiketten hör ihop med
+ * rutan som förut.
+ */
+@media (max-width: 559px) {
+  .guides__tools {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .guides__button {
+    justify-self: start;
+  }
+
+  /*
+   * En kolumn betyder att räknaren annars hamnar UNDER knappen, och då läser
+   * den som om den handlade om knappen — *1 av 3 guider* under *Ny guide* (sett
+   * i en 390-bild 18/9). `order` sätter ordningen tillbaka: fältet, räknaren,
+   * och först därefter knappen.
+   *
+   * Bara här. I två kolumner står räknaren redan i fältets egen kolumn, och
+   * ett `order` där hade flyttat den till fel rad.
+   */
+  .guides__search-label {
+    order: 1;
+  }
+
+  .guides__search {
+    order: 2;
+  }
+
+  .guides__count {
+    order: 3;
+  }
+
+  .guides__button,
+  .guides__role-note {
+    order: 4;
+  }
+
+  .guides__filter {
+    order: 5;
+  }
+}
+
+/*
+ * The button, at 44 px.
+ *
+ * K6 exempts the editor's own surfaces, and this is one — but the number costs
+ * nothing here and this page is the one an editor is most likely to open on a
+ * tablet, because it is the one you open when you are not at your desk.
+ */
+.guides__button {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--fw-control-height);
+  /* 20px, not 18: off the 4px scale, rounded up. */
+  padding: 0 20px;
+  border: 1px solid var(--fw-border-control);
+  border-radius: var(--fw-radius-button);
+  background: var(--fw-surface);
+  color: var(--fw-text-strong);
+  font: inherit;
+  font-weight: var(--fw-weight-strong);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/*
+ * Femte gången i den här filen (PRAXIS 36): `display` i en klassregel vinner
+ * över `hidden`, så *Ny guide* stod kvar på skärmen för en redaktör med
+ * `hidden` satt — mätt i `smoke:login`, som räknar knappens RUTA och inte dess
+ * attribut. Det är precis därför provet mäter rutan.
+ */
+.guides__button[hidden] {
+  display: none;
+}
+
+.guides__button:hover {
+  border-color: var(--fw-primary);
+}
+
+.guides__button:focus-visible {
+  @include focus.ring;
+}
+
+.guides__button--primary {
+  border-color: var(--fw-primary);
+  background: var(--fw-primary);
+  color: var(--fw-on-primary);
+}
+
+.guides__button--primary:hover {
+  border-color: var(--fw-primary-hover);
+  background: var(--fw-primary-hover);
+}
+
+.guides__button[disabled] {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.guides__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * A row is one press with its facts under it. The whole row is not the control:
+ * the title is, so the accessible name is the guide's name and nothing else
+ * competes for the same press.
+ */
+.guides__row {
+  /* 16px, not 14: off the 4px scale, rounded up. */
+  padding: 16px 0;
+  border-bottom: 1px solid var(--fw-border);
+}
+
+.guides__row:first-child {
+  border-top: 1px solid var(--fw-border);
+}
+
+.guides__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  color: var(--fw-text-strong);
+  font-size: 1.05rem;
+  font-weight: var(--fw-weight-strong);
+  text-decoration: none;
+}
+
+.guides__link:hover {
+  color: var(--fw-primary);
+  text-decoration: underline;
+}
+
+.guides__link:focus-visible {
+  @include focus.ring(3px);
+}
+
+.guides__meta {
+  margin: 2px 0 0;
+  color: var(--fw-text-secondary);
+  font-size: 0.9rem;
+}
+
+/*
+ * *Låst av Anna Andersson*, med hänglåset före (berättelse 129).
+ *
+ * Samma ton som raden ovanför men med ikonen på baslinjen: teckningen är en
+ * genväg för ögat i en lista med tjugo rader, och ordet bär betydelsen (K3).
+ *
+ * **6px, inte 2px, till raden ovanför** (UX-genomgången 129–131, punkt 5).
+ * Uppmätt: alla tre raderna — status, lås, anteckning — hade samma 2px och
+ * samma dämpade grå, så en titel med alla tre lästes som fyra likvärdiga
+ * upplysningar utan någon att börja på. Statusraden (*publicerad · ändrad
+ * …*) svarar på en annan fråga än den här — *är den ute* mot *arbetar någon
+ * i den just nu* — och får därför lite mer luft till den, samma skillnad som
+ * skiljer fakta i Ta över-dialogen från rubriken ovanför dem.
+ */
+.guides__lock {
+  display: flex;
+  align-items: center;
+  /* 4px, not 6: the icon and its own word are a tight pair (one step down
+     the scale from the row's other gaps), and 6 sat off it. */
+  gap: 4px;
+  /*
+   * 6px, till raden ovanför — bildbedömt (UX-genomgången 129–131, punkt 5,
+   * kommentaren ovan) och medvetet kvar utanför 4px-skalan. Skalan vill ha
+   * 8; rört inte, för det var talet som gjorde att låsraden slutade läsas
+   * som en fjärde likvärdig upplysning bredvid status och anteckning.
+   */
+  margin: 6px 0 0;
+  color: var(--fw-text-secondary);
+  font-size: 0.9rem;
+}
+
+.guides__lock svg {
+  flex: none;
+}
+
+/*
+ * Arbetsanteckningen under titeln (berättelse 130): någons egna ord, i kursiv
+ * och dämpat — samma ton som editorns rad ger den, så den känns igen när man
+ * öppnar guiden.
+ *
+ * Två rader som mest. En lapp som är ett stycke gör varje rad i listan olika
+ * hög, och då går listan inte att skumma; resten står i guiden.
+ *
+ * **Marginalen beror på vad som står ovanför** (samma mätning som låsraden).
+ * Låset och anteckningen svarar båda på *vad pågår i guiden just nu* och hör
+ * ihop — 2px binder dem som en grupp. Utan ett lås ovanför är anteckningen
+ * ensam om att säga det, och får då samma 6px till statusraden som låset
+ * annars hade fått.
+ */
+.guides__note {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  /*
+   * 6px — bildbedömt, se `.guides__lock` ovan. Samma tal av samma skäl när
+   * låsraden saknas: anteckningen blir då ensam om att svara på *vad pågår
+   * just nu*, och skalan vill ha 8; rört inte.
+   */
+  margin: 6px 0 0;
+  color: var(--fw-text-secondary);
+  font-size: 0.9rem;
+  font-style: italic;
+  line-height: var(--fw-line-body);
+  overflow-wrap: anywhere;
+}
+
+.guides__lock + .guides__note {
+  margin-top: 2px;
+}
+
+.guides__nothing {
+  margin: 24px 0 0;
+  color: var(--fw-text-secondary);
+  line-height: 1.6;
+}

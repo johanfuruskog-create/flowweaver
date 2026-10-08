@@ -1,0 +1,784 @@
+@use "../../../viewer/styles/focus" as focus;
+@use "../../styles/chevron";
+@use "../../styles/menu-surface";
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+/*
+ * One field: toolbar and text inside the same frame, a thin line between
+ * (136, Johan's picture). The frame is what a textarea was — same border,
+ * same radius, same surface — and it carries the focus ring, not the text.
+ */
+.frame {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  /*
+   * A field inside the panel's `<label>` inherits the label's small-caps
+   * look — `text-transform` and `letter-spacing` cross the shadow boundary
+   * as any inherited property does. Measured 29/9 on the formula field:
+   * `ROUND(MIN(` and the chips in capitals. What is typed is shown as
+   * typed, whatever the label around it wears.
+   */
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: var(--fw-weight-text);
+  border: 1px solid var(--fw-border-control);
+  border-radius: var(--fw-radius-field);
+  background: var(--fw-surface);
+  color: var(--fw-text);
+}
+
+/* The text, and in a one-line field *Infoga svar* at its right edge. */
+.line {
+  display: flex;
+  align-items: stretch;
+}
+
+.frame[data-focused] {
+  @include focus.ring(1px);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  /* Gapet 4 → 8 → 4 (Johan 28/9): 8 betalade panelens 20 px breddökning
+     (guide-editor.scss) för luft mellan knapparna; samma dag, "gap 4",
+     knapparna själva växte till 48 px i stället (se `.tool` nedan) och
+     tar över den rollen — 321 px innerbredd i en 380 px panel rymmer sex
+     48 px-knappar plus avdelaren med gap 4, mätt på huvudgrenen. */
+  gap: var(--fw-space-1);
+  padding: var(--fw-space-1);
+  border-bottom: 1px solid var(--fw-border);
+}
+
+/*
+ * Johans förebild (26/9, Claude Codes plusmeny): plusset står för sig, med
+ * luft till formateringsknapparna — det skiljer "lägg till något" från
+ * "formatera markeringen". `margin-left: auto` i en `flex-wrap`-rad räcker:
+ * den öppnar mellanrummet utan en egen avdelarlinje, och om raden bryter i
+ * en smal panel hamnar plusset ensamt sist på sin egen rad.
+ */
+.toolbar [data-answer-toggle] {
+  margin-left: auto;
+}
+
+/*
+ * Astras förslag (Johan 28/9, "för bättring av menyn"): en tunn lodrät
+ * linje mellan länken och listknapparna. `align-self: stretch` i den
+ * flex-radade verktygsraden ger den samma höjd som knapparna runt den utan
+ * att ärva deras kant eller yta.
+ */
+.toolbar__divider {
+  align-self: stretch;
+  width: 1px;
+  margin: 0 var(--fw-space-1);
+  background: var(--fw-border);
+}
+
+/*
+ * Compact to look at, 44 px to hit (K6): the icon is drawn small, the button
+ * is the control height. The plus (`[data-answer-toggle]`) is a `.tool` too,
+ * Johans val (26/9): same shape as bold/italic/link/list, not a class of its
+ * own — a control that never had its own display rule needs no
+ * `[hidden] { display: none }` twin (PRAXIS 36), but this one's default
+ * `display: inline-flex` would otherwise beat the browser's own `[hidden]`
+ * rule at equal specificity, so it gets one below.
+ *
+ * 44 → 48 (Johan 28/9, "48 px, gap 4"): K6's floor is 44 and stays the
+ * floor everywhere else in the field; 48 has no token in the scale
+ * (`--fw-control-height` is 44, mätt i `_tokens-mixins.scss`, ingen
+ * "-lg"-variant finns), so it stands as a literal. Paid for by the
+ * panel's 380 px (`guide-editor.scss`), not by the gap, which went back
+ * to 4 the same day — see `.toolbar`.
+ */
+/*
+ * Del 4 (UPPDRAG-2026-09-28-ENHETLIGHET, 28/9): vilan lugnare. Varje knapp
+ * (B/I/länk/listor) hade sin egen ritade ruta i vila — en synlig kant
+ * (`--fw-border-control`) och en egen fyllning (`--fw-surface-subtle`) —
+ * vilket gjorde raden till sex tydligt avgränsade lådor bredvid varandra
+ * innan man ens rört något. Ingen av de andra menyfamiljerna i Del 2
+ * (verktygsradens menyer, nodens ⋯-meny) ritar en ruta runt en vilande
+ * rad — bara runt HELA menyn, med hover/fokus/vald som den enda
+ * radmarkeringen. Samma princip här: vilan har ingen egen kant eller
+ * yta alls, `kontrollkantsbrott()` (K3-grinden) har till och med en
+ * uttrycklig undantagsregel för exakt den formen ("ett textknapp-liknande
+ * kontroll utan egen kant" — se kommentaren ovanför funktionen i
+ * `testing/contrast.ts`). `box-sizing: border-box` läggs till samtidigt:
+ * annars hade hover/fokuserad/vald — som ALLA behöver en riktig kant,
+ * inte en genomskinlig (en genomskinlig kant FÅR `kontrollkantsbrott()`
+ * att kasta ett fel, inte bara falla — mätt) — vuxit knappen någon
+ * pixel större än vilans 48px varje gång, en synlig studs i en tät rad.
+ * Med border-box ryms kanten inuti samma yttermått i alla lägen.
+ */
+.tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fw-space-1);
+  box-sizing: border-box;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0 var(--fw-space-2);
+  border: 0;
+  border-radius: var(--fw-radius-sm);
+  background: transparent;
+  color: var(--fw-text-strong);
+  font: inherit;
+  font-size: var(--fw-font-size-sm);
+  font-weight: var(--fw-weight-strong);
+  cursor: pointer;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.tool svg {
+  width: 20px;
+  height: 20px;
+}
+
+/*
+ * Johans iPad 27/9: plusset blir ett kryss medan dess meny är öppen — samma
+ * ikon, vridet 45°, som chevronen redan gör det (`_chevron.scss`). Bara
+ * `[data-answer-toggle]`: format-knapparna har `aria-pressed`, aldrig
+ * `aria-expanded`, så selektorn träffar ingen annan `.tool`.
+ */
+[data-answer-toggle] svg {
+  transition: transform var(--fw-motion-duration) var(--fw-motion-ease);
+}
+
+[data-answer-toggle][aria-expanded="true"] svg {
+  transform: rotate(45deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-answer-toggle] svg {
+    transition: none;
+  }
+}
+
+/*
+ * Astras förslag (Johan 28/9, "för bättring av menyn"): plusset får en
+ * fylld dämpad accentbakgrund och en accentfärgad ikon i båda teman, i
+ * stället för att se ut som formateringsknapparna runt sig — samma par av
+ * toner chipset redan lånar (`--fw-primary-surface` + `--fw-primary-border`),
+ * ingen ny färg. Gäller lika mycket öppen (krysset) som stängd (plusset).
+ */
+/*
+ * Kanten är `--fw-primary`, inte `--fw-primary-border`: K3 kräver 3:1 för
+ * en kontrolls kant eller yta mot det bakom, och den fyllda ytan
+ * (`--fw-primary-surface`) når bara 1,12:1 mot fältet, den tunna kanten
+ * 1,49 — grinden guide-editor-boundary-contrast föll 28/9 (Fables mätning
+ * efter varv 9). Astras skiss har en kantlös tonad knapp; kanten är
+ * priset för K3.
+ */
+/*
+ * Del 4: vilans `.tool` har inte längre någon egen kantbredd (se ovan), så
+ * varje regel som visar en kant sätter nu HELA `border` (bredd + färg), inte
+ * bara `border-color` mot en bredd som fanns förut. `box-sizing: border-box`
+ * gör att det inte spelar någon roll för layouten — bara att uttrycket måste
+ * vara fullständigt.
+ */
+.tool[data-answer-toggle] {
+  border: 1px solid var(--fw-primary);
+  background: var(--fw-primary-surface);
+  color: var(--fw-primary-strong);
+}
+
+.tool:hover {
+  border: 1px solid var(--fw-primary);
+  background: var(--fw-primary-surface);
+}
+
+/*
+ * Pressed is a filled background AND a heavier border (K3): the state reads
+ * without colour — the edge doubles, as a button pushed in.
+ */
+.tool[aria-pressed="true"] {
+  border: 2px solid var(--fw-text-strong);
+  background: var(--fw-primary-surface);
+  color: var(--fw-primary-strong);
+}
+
+.tool:focus-visible {
+  @include focus.ring(1px);
+}
+
+.tool:disabled {
+  color: var(--fw-text-disabled);
+  cursor: not-allowed;
+}
+
+/*
+ * The plus in a one-line field, standing alone in the field's right edge
+ * (136, the heading picture). The same air on every side as the formula
+ * field gives its plus in the corner — 4 px — so the box grows a little
+ * (50 → 58 px) rather than pressing the button against the top and bottom
+ * borders (Johan 29/9, measured: 1 px above and below, 5 to the right).
+ */
+.answer {
+  display: flex;
+  align-items: center;
+  padding: var(--fw-space-1);
+
+  /* PRAXIS 36: `.answer` sets its own `display`, so hiding it needs its own twin. */
+  &[hidden] {
+    display: none;
+  }
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+  padding: var(--fw-space-3);
+  /*
+   * The field's own size, never its label's: iOS zooms the page into any
+   * field under 16 px and does not zoom back (the panel's fields, same reason).
+   */
+  font-size: var(--fw-font-size-xl);
+  line-height: var(--fw-line-body);
+  /* Spaces as typed: the model keeps them, and the browser must not turn them into &nbsp;. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  outline: none;
+}
+
+.frame--multiline .text {
+  min-height: 96px;
+}
+
+/*
+ * One line scrolls sideways inside itself. `width: 0` with `flex: 1` keeps its
+ * text out of the field's own minimum width — without it a long cell pushed
+ * the whole panel 700 px wide (measured 25/9 on the claim example's row).
+ */
+.frame:not(.frame--multiline) .text {
+  width: 0;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/*
+ * The line's end can scroll clear of the edge: a block's right padding is not
+ * part of what a box scrolls to, an inline block's is (fynd a — without it the
+ * caret stood on the very edge at the end of a long title).
+ */
+.frame:not(.frame--multiline) .text > p {
+  display: inline-block;
+  min-width: 100%;
+  padding-right: var(--fw-space-3);
+  box-sizing: border-box;
+}
+
+.text[data-empty]::before {
+  content: attr(data-placeholder);
+  color: var(--fw-text-muted);
+  pointer-events: none;
+}
+
+.text p,
+.text ul,
+.text ol {
+  margin: 0;
+}
+
+.text p + p,
+.text p + ul,
+.text p + ol,
+.text ul + p,
+.text ol + p,
+.text ul + ul,
+.text ol + ol,
+.text ul + ol,
+.text ol + ul {
+  margin-top: var(--fw-space-2);
+}
+
+.text ul,
+.text ol {
+  padding-left: var(--fw-space-6);
+}
+
+.text a {
+  color: var(--fw-primary-strong);
+  text-decoration: underline;
+}
+
+.text[contenteditable="false"] {
+  background: var(--fw-surface-subtle);
+  color: var(--fw-text-muted);
+  cursor: not-allowed;
+}
+
+/*
+ * The chip: an answer, drawn as one thing. A missing one keeps its place and
+ * says so in words and with a dashed border — never with colour alone (136).
+ */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fw-space-1);
+  margin: 0 1px;
+  padding: 0 var(--fw-space-2);
+  border: 1px solid var(--fw-primary-border);
+  border-radius: var(--fw-radius-chip);
+  background: var(--fw-primary-surface);
+  color: var(--fw-primary-strong);
+  font-size: var(--fw-font-size-md);
+  line-height: var(--fw-line-tight);
+  vertical-align: baseline;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: all;
+}
+
+.chip--missing {
+  border-style: dashed;
+  border-color: var(--fw-warning-border);
+  background: var(--fw-warning-surface);
+  color: var(--fw-warning-text);
+}
+
+.chip[data-selected] {
+  @include focus.ring(1px);
+}
+
+/*
+ * Drawn, as the chip's byt-meny has it (fynd b) — see the partial. Only the
+ * chip uses it now: the plus (Johans val 26/9) is a bare icon in a `.tool`,
+ * same as bold/italic/link/list, no chevron and no wrapping span.
+ */
+.chevron {
+  @include chevron.drawn;
+}
+
+/*
+ * Absolute in the frame, placed from the anchor's box by `placeMenu` — see
+ * there for why.
+ *
+ * Astras exakta mått (Johan 28/9, tredje vändan — "särskilt viktig"
+ * linjering, se `.menu__group-label` och `.menu button` för hur 18 px
+ * innanför kanten (6 padding här + 12 i raden/rubriken) hålls). Storlek/
+ * padding/radie kommer från den vändan. `--fw-radius-xl` (12 px) var och
+ * är en exakt träff på Astras hörnradie.
+ *
+ * Ram, bakgrund och skugga: Astras andra spec (Johan 28/9, samma dag),
+ * mot Johans regel — inga nya färger, inga nya tokens. Astras egen
+ * princip, hennes ord: "välj tokens efter funktion först; ΔE stöder
+ * jämförelsen men avgör inte." Facit, per egenskap:
+ *
+ *   yta    --fw-surface-raised  — Astras tredje steg samma dag: ramen
+ *          räckte inte i mörkt läge, menyn och fältet låg för nära i
+ *          ljushet. Semantisk token för upphöjda meny-/popoverytor,
+ *          ljust = subtle (oförändrat utseende), mörkt ett steg ljusare;
+ *          värdena och kontrasten står i _tokens-mixins.scss. Dessförinnan
+ *          --fw-surface-subtle (mätt närmast Astras par #ffffff/#262c3b).
+ *   ram    --fw-border          — mätt: klart närmast Astras par
+ *          (#d5d9e3/#454d60), sRGB-summa 16.1 mot --fw-border-subtles
+ *          85.5. Byte från förra vändans --fw-border-subtle.
+ *   skugga --fw-shadow-raised   — Astras enda lager (0 8px 24px, 16 %/
+ *          35 %) ligger mellan raised (6/18/9 %) och floating (24/48/
+ *          24 %) på alla tre mått; avståndssumman (offset+blur+opacitet,
+ *          båda teman) är 38 mot raised, 113 mot floating. Floating
+ *          avvisad av Astra själv: "dess stora utbredning riskerar att
+ *          återge den tunga skuggan vi ville minska."
+ *
+ * Ingen literal någonstans, inget dimmande lager (ytan är ogenomskinlig
+ * i båda teman via samma token).
+ */
+.menu {
+  position: absolute;
+  z-index: var(--fw-z-popover);
+  /* So the width `placeMenu`'s `fit` sets is the rendered one, border included. */
+  box-sizing: border-box;
+  /* Brickans byt-meny (ingen `fit`, ingen `.menu--answer`) håller sig till
+     den här — svarsmenyn nollar den, se `.menu--answer`. */
+  min-width: 220px;
+  padding: 10px 6px;
+  /*
+   * 280 var taket när menyn låg fast mot fönstret. Nu ligger den i ramen
+   * och panelen rullar fram den, så taket får rymma en vanlig guides svar
+   * med Astras 46 px-rader (Johan 28/9, tredje vändan): tio rader och två
+   * rubriker. Först därefter rullar menyn själv.
+   */
+  max-height: 520px;
+  overflow-y: auto;
+  border-radius: var(--fw-radius-xl);
+  @include menu-surface.surface;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+/*
+ * Astras exakta mått: 270 px inklusive kant (`box-sizing: border-box`
+ * ovan gör det). `min-width: 0` tar bort den gamla 220 px-golvet här — JS:s
+ * `min(270, ramens bredd − 32)` (se `placeMenu`) ska gälla rakt av, ner till
+ * en smal ram, utan att en CSS-golv tävlar med det. Brickans byt-meny har
+ * ingen klass här och behåller sin egen 220 px-golv.
+ */
+.menu--answer {
+  min-width: 0;
+  max-width: 270px;
+}
+
+/*
+ * Johans val (26/9) bland plus-varianterna: menyn har en rubrik ("Svar")
+ * ovanför sin lista, byggd som en `role="group"` — så en kommande sort
+ * (uträkning m.m.) blir en till grupp här i stället för en omritning.
+ *
+ * Astras exakta mått (Johan 28/9, tredje vändan): avdelaren är ett eget
+ * element (`::before`, minst kod — ingen extra markup i `rich-text-field.ts`),
+ * inte längre en kant på gruppens egen låda. `margin: 16px 12px` är
+ * `--fw-space-4`/`--fw-space-3` rakt av (exakta träffar) — 16 lika på var
+ * sida om linjen, 12 indraget så den inte går kant i kant, och 12 håller
+ * linjens vänsterkant på samma x som rubrikens text och radens ikon
+ * (6 padding på `.menu` + 12 här = 18, se `.menu__group-label`/`.menu
+ * button`). Ljust: #e1e3ed, `--fw-border-subtle` (sRGB 5.1, ΔE76 2.9) —
+ * se `.menu` för hela tabellen.
+ *
+ * `--fw-border`, inte `-subtle`, i mörkt (Siv, mätt 29/9, samma fel som
+ * formelmenyns rad-linje hade — se `.menu button + button` nedan): den
+ * subtila linjen mätte 1,03:1 mot menyns upphöjda yta i mörkt, `--fw-border`
+ * 1,58:1. Ljust läge oförändrat i praktiken (1,19:1 → 1,41:1, ingen text —
+ * avdelaren är dekorativ, inget K3-krav på den delen). Formelmenyns egen
+ * `:host([formula])`-regel för samma selektor tas bort här intill: den satte
+ * exakt samma värde och är nu överflödig.
+ */
+.menu__group + .menu__group::before {
+  content: "";
+  display: block;
+  height: 1px;
+  margin: var(--fw-space-4) var(--fw-space-3);
+  background: var(--fw-border);
+}
+
+/*
+ * Johans iPad 27/9, andra ändringen: "Underrubrikerna borde vara lika
+ * stora som alternativen." Astras exakta mått (tredje vändan) river det
+ * beslutet: rubriken får sin egen storlek igen — 13 px är en exakt träff
+ * på `--fw-font-size-base` — och sin egen vikt, 600 en exakt träff på
+ * `--fw-weight-strong` (`--fw-weight-heading` är 700, inte 600 — mätt,
+ * ingen "medium"-token finns i skalan). Färgen #4b4e62 mappar till
+ * `--fw-text-secondary` (sRGB 8.8, ΔE76 4.2) — närmare än `--fw-text-muted`
+ * som gissningen i uppdraget nämnde (sRGB 55.8). Padding 8px 12px 10px:
+ * 8 och 12 är `--fw-space-2`/`--fw-space-3` rakt av, 10 har ingen
+ * motsvarande token (mellan 8 och 12) och står som en literal.
+ */
+.menu__group-label {
+  margin: 0;
+  padding: var(--fw-space-2) var(--fw-space-3) 10px;
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-base);
+  font-weight: var(--fw-weight-strong);
+}
+
+/*
+ * Astras exakta mått: `padding 0 12px` (--fw-space-3, exakt), `min-height
+ * 46px` (över K6:s golv på 44, ingen token träffar 46 exakt), 16 px text
+ * (--fw-font-size-xl, exakt), vikt 400 (--fw-weight-text, exakt), 12 px
+ * mellan ikon och text (--fw-space-3, ner från 16). Färgen #272938 mappar
+ * till `--fw-text` (sRGB 32.8, ΔE76 9.1) — närmare än `--fw-text-strong`
+ * som fältet använde innan (sRGB 38.5). Hörnradien 7 px har ingen exakt
+ * token (mitt emellan `--fw-radius-sm` 6 och `--fw-radius-md` 8) och står
+ * som en literal.
+ */
+.menu button {
+  display: flex;
+  align-items: center;
+  gap: var(--fw-space-3);
+  width: 100%;
+  min-height: 46px;
+  padding: 0 var(--fw-space-3);
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--fw-text);
+  font: inherit;
+  font-size: var(--fw-font-size-xl);
+  font-weight: var(--fw-weight-text);
+  text-align: left;
+  cursor: pointer;
+
+  /*
+   * PRAXIS 36, samma knep som `.tool[hidden]` och `.answer[hidden]` ovan:
+   * raden sätter sin egen `display`, så `hidden` behöver sin egen tvilling —
+   * annars vinner `.menu button { display: flex }` över webbläsarens
+   * `[hidden] { display: none }` (lika specificitet, författarens regel sist
+   * i kaskaden) och sökningens filtrerade rader stod kvar synliga och
+   * klickbara trots `hidden = true` (Siv, mätt i renderad DOM 29/9).
+   */
+  &[hidden] {
+    display: none;
+  }
+}
+
+/* Astras exakta mått: ikonen 18×18 (ner från 20), färgen #646879 mappar till `--fw-text-muted` (sRGB 14.6, ΔE76 4.2) — samma token fältet redan använde. */
+.menu button svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--fw-text-muted);
+}
+
+/*
+ * Astras facit (Johan 28/9, andra vändan): inga linjer mellan raderna —
+ * bara den enda linjen mellan grupperna (`::before` ovan). Ingen kostnad
+ * att ta bort raderna här för brickans byt-meny också: inget prov
+ * förväntar sig en rad-till-rad-linje.
+ *
+ * Tredje vändan: hover och tangetbordsfokus får samma bakgrund som förut
+ * (#eeedff mappar till `--fw-primary-surface`, sRGB 5.0, ΔE76 3.4 — redan
+ * använd) plus en textfärg, #5043b1 → `--fw-primary-hover` (sRGB 30.3,
+ * ΔE76 20.9 — den svagaste träffen i hela mätningen, se rapporten). En
+ * tydlig fokusring måste finnas kvar (K3): `focus.ring-inset`, inte
+ * `ring()`, eftersom `.menu`s `overflow-y: auto` klipper en ring som ritas
+ * utanför en rads egen låda (samma knep som pickerns och versionslistans
+ * rader redan använder).
+ */
+.menu button:hover {
+  background: var(--fw-primary-surface);
+  color: var(--fw-primary-hover);
+}
+
+.menu button:focus-visible {
+  background: var(--fw-primary-surface);
+  color: var(--fw-primary-hover);
+  @include focus.ring-inset(-2px);
+}
+
+/* The answer it is now — marked with a sign, not only a colour. */
+.menu button[aria-checked="true"]::before {
+  content: "\2713";
+  margin-right: var(--fw-space-2);
+}
+
+.menu__remove {
+  color: var(--fw-danger-text);
+}
+
+.hint {
+  margin: var(--fw-space-1) 0 0;
+  color: var(--fw-text-muted);
+  font-size: var(--fw-font-size-sm);
+}
+
+/*
+ * The chip's box with its word joiner (fynd f) — see `renderInline`. Inline
+ * and `nowrap`, not an inline-block: the joiner then binds the word before
+ * the chip to it, so what is typed before a wrapped chip stands on the
+ * chip's line (Johan's iPad 26/9). An inline-block let the line break before
+ * the box, and WebKit filled the line above with the typing.
+ */
+.glue {
+  display: inline;
+  white-space: nowrap;
+}
+
+/*
+ * A formula (story 139): the text is code, the chips are not. Mono for the
+ * characters the parser reads — digits, operators, function names — and
+ * wrapping instead of the one-line field's sideways scroll, so the whole
+ * expression is in view (Astras spec §8: about three lines from the start,
+ * growing). The chip keeps the body face: it is a label, not code.
+ */
+:host([formula]) .frame:not(.frame--multiline) .text {
+  width: auto;
+  min-height: calc(3 * var(--fw-line-body) * var(--fw-font-size-xl) + 2 * var(--fw-space-3));
+  font-family: var(--fw-font-mono);
+  white-space: pre-wrap;
+  overflow-x: visible;
+}
+
+:host([formula]) .frame:not(.frame--multiline) .text > p {
+  display: block;
+  min-width: 0;
+  padding-right: 0;
+}
+
+:host([formula]) .chip {
+  /*
+   * Never wider than the formula's own line: a chip is `nowrap`, and a long
+   * label (measured 29/9: 459 px in a 227 px text column) ran past the
+   * frame and under the plus. The label takes the ellipsis; the whole name
+   * stays in the chip's accessible name and its menu.
+   */
+  max-width: 100%;
+  box-sizing: border-box;
+  font-family: var(--fw-font);
+}
+
+:host([formula]) .chip__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The name beside a label in the formula's menus, in the formula's own face. */
+.menu__item-name {
+  margin-left: auto;
+  padding-left: var(--fw-space-3);
+  color: var(--fw-text-muted);
+  font-family: var(--fw-font-mono);
+  font-size: var(--fw-font-size-sm);
+}
+
+/*
+ * Bild 05 (Astra 29/9): the formula's plus in the field's upper right corner,
+ * where the first line starts — not in the middle of a three-line field.
+ */
+:host([formula]) .answer {
+  align-items: flex-start;
+  /*
+   * Johan 30/9: the corner's air is not its own number but follows from the
+   * text beside it — half of what the first line's box (its padding and one
+   * line) leaves around the 36 px button, the same on top and to the right.
+   * That puts the plus's middle on the first line's middle, as Astras skiss
+   * 139 draws it (6 px in a 16 px field). No left padding: the text's own
+   * right padding is the air between the formula and the button.
+   */
+  padding: calc((var(--fw-line-body) * var(--fw-font-size-xl) + 2 * var(--fw-space-3) - 36px) / 2);
+  padding-bottom: 0;
+  padding-left: 0;
+}
+
+/*
+ * Johan 30/9, foto ur filmen Räkna: "Känns som plusknappen är gigantisk i
+ * formel." The formula's plus stands alone beside 14 px mono, not in a row of
+ * format buttons, and it had borrowed that row's 48 px (Johan 28/9). Astras
+ * skiss 139 draws it smaller: measured against the panel's 44 px field it is
+ * about 42, and Johan's "gigantisk" asked for less — 36 is the team lead's
+ * figure (30/9) and has no token (`--fw-control-height` is 44, the space
+ * scale stops at layout steps), so it stands as a literal, like the
+ * toolbar's 48. The border, corner and fill stay the text editor's plus:
+ * the same button, smaller.
+ *
+ * K6 is 44 to hit, not to see: the `::after` is an invisible 44 px square
+ * centred on the button, and a tap on it is a tap on the button.
+ */
+:host([formula]) .tool[data-answer-toggle] {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: var(--fw-control-height);
+    height: var(--fw-control-height);
+    transform: translate(-50%, -50%);
+  }
+}
+
+/*
+ * Bild 05: a formula menu's row is the label with the name under it, whole —
+ * two variables can share a label, and the name is what the formula holds;
+ * beside the label it was cut ("medborgars"). Thin lines between the rows.
+ * The group headings and the divider between the groups are the text menu's
+ * own (`.menu__group-label`, `.menu__group + .menu__group::before`): Astras
+ * granskning av vända 1 (bilaga 2, 29/9) took away the dark band each
+ * heading had here, "gruppindelningen ska framgå utan separata mörka
+ * remsor". The text's menu keeps its own form (Astras godkända, 28/9).
+ */
+:host([formula]) .menu button {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  padding-block: var(--fw-space-2);
+  border-radius: 0;
+}
+
+:host([formula]) .menu button + button {
+  /* `--fw-border`, not `-subtle`: the subtle line vanished on the dark
+     menu's raised surface (measured, 29/9). */
+  border-top: 1px solid var(--fw-border);
+}
+
+/* The chip menu's ✓ at the chosen row's end: in the column above it took a
+   line of its own over the label (measured 29/9: 67 px against 49). */
+:host([formula]) .menu button[aria-checked="true"] {
+  position: relative;
+  padding-right: calc(var(--fw-space-3) * 2 + 1em);
+}
+
+:host([formula]) .menu button[aria-checked="true"]::before {
+  position: absolute;
+  top: 50%;
+  right: var(--fw-space-3);
+  margin: 0;
+  transform: translateY(-50%);
+}
+
+/* No `:host([formula]) .menu__group + .menu__group::before` any more (Siv,
+   29/9): the base rule above now uses `--fw-border` for every rich-text-field
+   menu, formula and text alike — the group-divider fix stopped being
+   formula-only, so the duplicate that set the same value here was removed. */
+
+:host([formula]) .menu__item-name {
+  margin-left: 0;
+  padding-left: 0;
+  overflow-wrap: anywhere;
+}
+
+.menu__name {
+  padding-bottom: var(--fw-space-2);
+  font-family: var(--fw-font-mono);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* The search box first in a formula's menu: a field like the panel's, inside the menu's padding. */
+.menu__search {
+  position: relative;
+  padding: 0 var(--fw-space-2) var(--fw-space-2);
+}
+
+/* Bild 05: the magnifier inside the box, at its start. */
+.menu__search-icon {
+  position: absolute;
+  top: calc(var(--fw-control-height) / 2);
+  left: calc(var(--fw-space-2) + var(--fw-space-3));
+  width: 20px;
+  height: 20px;
+  color: var(--fw-text-muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.menu__search input {
+  box-sizing: border-box;
+  width: 100%;
+  /*
+   * Samma golv som panelens fält, inte ett eget mått: `--fw-control-height`
+   * (44px) höll redan varje fält i `.properties-panel__field`, och `--fw-
+   * font-size-xl` (16px) är varför — ett fält under 16px zoomar iOS in hela
+   * sidan vid fokus och zoomar inte ut igen (samma skäl som panelens fält
+   * bär, se kommentaren där). Sökfältet stod på en egen literal, 40px/14px,
+   * lägre än sin egen granne (Siv, mätt i renderad DOM 29/9).
+   */
+  min-height: var(--fw-control-height);
+  padding: 0 var(--fw-space-3) 0 calc(var(--fw-space-3) + 20px + var(--fw-space-2));
+  border: 1px solid var(--fw-border-control);
+  border-radius: var(--fw-radius-sm);
+  background: var(--fw-surface);
+  color: var(--fw-text);
+  font: inherit;
+  font-size: var(--fw-font-size-xl);
+
+  &:focus-visible {
+    @include focus.ring(0px);
+  }
+}

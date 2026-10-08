@@ -1,0 +1,132 @@
+@use "../../styles/dialog-shell";
+
+/*
+ * Fakta som rader: etikett i grått, värde i radens egen färg, tabellsiffror.
+ *
+ * Två kolumner och inte en lista under varandra — paren läses vågrätt, som i
+ * en kvittens, och då står värdena under varandra och går att jämföra. Under
+ * 380 px faller de i en kolumn i stället för att klippas.
+ */
+/*
+ * Citatet ovanför fakta (berättelse 130): någon annans ord, i sin egen form.
+ *
+ * Linjen i kanten och kursiven gör två saker på en gång — den säger *det här
+ * är sagt av en människa* och den skiljer meningen från rutans egna, som är
+ * maskinens. UX:s bild B, Johans val 19/9.
+ */
+.confirmation-dialog__quote {
+  margin: var(--fw-space-3) 0 0;
+  padding-inline-start: var(--fw-space-3);
+  border-inline-start: 3px solid var(--fw-warning-border, var(--fw-border));
+  color: var(--fw-text);
+}
+
+.confirmation-dialog__quote[hidden] {
+  display: none;
+}
+
+.confirmation-dialog__quote figcaption {
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-md);
+}
+
+.confirmation-dialog__quote blockquote {
+  margin: 2px 0 0;
+  font-style: italic;
+  /* Någons egna ord kan vara långa utan mellanslag — en adress, ett
+     diarienummer — och de bryts hellre än skjuter ut ur rutan. */
+  overflow-wrap: anywhere;
+}
+
+.confirmation-dialog__facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  /* 2px är optiskt (etikett→värde i samma rad) och står kvar utanför
+     skalan med flit. */
+  gap: 2px var(--fw-space-4);
+  margin: var(--fw-space-3) 0 0;
+  padding: var(--fw-space-3);
+  /* 8px: ingen egen roll för en liten faktaruta, men värdet råkar dela
+     fältets (--fw-radius-field). */
+  border-radius: var(--fw-radius-field);
+  background: var(--fw-surface-subtle, var(--fw-bg));
+  font-size: var(--fw-font-size-lg);
+}
+
+/*
+ * Citatet och fakta hör ihop — båda är **bevis**, det citatet säger med ord
+ * och fakta säger med tid — och ska läsas som ett stycke, inte tre.
+ *
+ * Uppmätt i UX-genomgången (129–131, punkt 4): rubrik→citat, citat→fakta och
+ * fakta→mening var alla exakt 14px — samma luft mellan frågan och sitt bevis
+ * som mellan de två bevisen sinsemellan, så inget i rutan sa att citatet och
+ * fakta var en grupp. Bara `:not([hidden])`, så en dialog utan citat (de
+ * flesta) behåller sina vanliga 14px mellan rubrik och fakta.
+ */
+.confirmation-dialog__quote:not([hidden]) + .confirmation-dialog__facts {
+  margin-top: var(--fw-space-2);
+}
+
+.confirmation-dialog__facts dt {
+  color: var(--fw-text-secondary);
+}
+
+.confirmation-dialog__facts dd {
+  margin: 0;
+  color: var(--fw-text-strong);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--fw-weight-strong);
+}
+
+.confirmation-dialog__facts[hidden] {
+  display: none;
+}
+
+@media (max-width: 380px) {
+  .confirmation-dialog__facts {
+    grid-template-columns: 1fr;
+    gap: 0 0;
+  }
+
+  .confirmation-dialog__facts dd {
+    margin-block-end: var(--fw-space-2);
+  }
+}
+
+/* Den framhävda biten i meningen väger lika mycket som ett värde i raderna
+   ovanför — det är samma uppgift, sedd en gång till. */
+p strong {
+  color: var(--fw-text-strong);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--fw-weight-strong);
+}
+
+/* Meningen står under fakta och behöver luft från dem — den är slutsatsen,
+   inte en tredje rad i listan. */
+.confirmation-dialog__facts + p {
+  margin-top: var(--fw-space-3);
+}
+
+/* The confirming button is the dangerous one here: this dialog exists for acts
+   that cannot be taken back, so the affirmative is the one dressed as a warning
+   rather than as the safe default. */
+.confirmation-dialog__actions {
+  @extend .dialog__actions;
+}
+
+/* Red only for a significant loss of work that cannot be had back — the
+   destructive main action (GRAFISK-PROFIL, Visuell hierarki; Astra 30/9).
+   Every other confirmation gets the ordinary colour, so that the red one
+   still means something when it appears. The words are `--fw-on-danger`:
+   they were `--fw-surface`, dark in the dark theme, 3.57 : 1 on the red. */
+.confirmation-dialog__confirm[data-tone="danger"] {
+  border-color: var(--fw-danger);
+  background: var(--fw-danger);
+  color: var(--fw-on-danger);
+}
+
+.confirmation-dialog__confirm[data-tone="normal"] {
+  border-color: var(--fw-primary-strong);
+  background: var(--fw-primary-strong);
+  color: var(--fw-surface);
+}

@@ -1,0 +1,375 @@
+@use "../../styles/dialog-shell";
+@use "../../../viewer/styles/focus" as focus;
+
+/*
+ * Publiceringsdialogen är bredare än de andra, och det är innehållet som avgör:
+ * en bekräftelse är en mening, den här är en lista med meningar man ska kunna
+ * läsa utan att varje rad bryts tre gånger.
+ */
+/*
+ * Rubriken och knappraden står still; bara mitten rullar.
+ *
+ * Mätt i bild på 390 px 18/9: med ett blockerande fel och fyra ändringar låg
+ * *Publicera* under vikningen, och ett beslut man måste leta efter är ett
+ * beslut någon fattar utan att läsa. `dvh` och inte `vh`, för det är den
+ * adressfältet inte ljuger om på en telefon.
+ */
+dialog {
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(100dvh - 32px, 100vh - 32px);
+  /* Hörnet ärvs från dialogskalet (dialogrollen, 16) sedan 20/9 kväll —
+     den egna 22-rundningen gick när Johan valde ett hörn för alla sex. */
+}
+
+/*
+ * `[open]`, och det är hela skillnaden mellan en dialog och en osynlig fälla.
+ *
+ * Webbläsarens egen regel för en stängd `<dialog>` är `display: none`, och en
+ * `display` på elementnamnet slår den. Mätt 18/9: den stängda dialogen ritades
+ * som en låda på 57×88 px mitt i sidan och tog klick som var på väg till
+ * knappen under — provet stod och väntade på att något skulle gå undan.
+ *
+ * Samma fel som bandet och statusradens knappar gjorde tidigare i veckan. En
+ * regel som visar måste sägas om det som ska visas.
+ */
+dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-space-4);
+  /* Utan `min-height: 0` vägrar en flexbox krympa under sitt innehåll, och då
+     rullar ingenting — den växer i stället utanför dialogen. */
+  min-height: 0;
+}
+
+.publish-dialog__head,
+.publish-dialog__actions {
+  flex: none;
+}
+
+.publish-dialog__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-space-2);
+}
+
+.publish-dialog__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-space-4);
+  min-height: 0;
+  overflow-y: auto;
+  /* Rullbar med tangentbord, och därför också fokuserbar — annars kan den som
+     inte använder mus inte nå det som ligger nedanför kanten. */
+  scrollbar-gutter: stable;
+  /*
+   * Plats för fokusringen. Den ritas utanför fältets kant (3 px streck + 5 px
+   * ring, _focus.scss), och ett rullbart element klipper allt utanför sitt
+   * innehåll — så ringen runt *Vad ändrades?* skars av mot högerkanten (Johan
+   * 23/9). Luft inåt, samma mått utåt: kanterna står kvar där de stod.
+   */
+  padding: 8px;
+  margin: -8px;
+}
+
+h2 {
+  margin: 0;
+  font-weight: var(--fw-weight-heading);
+  letter-spacing: var(--fw-tracking-heading);
+}
+
+/* Rubriken tar fokus när dialogen öppnas; ringen runt den ska synas. */
+h2:focus-visible {
+  @include focus.ring(4px);
+}
+
+h3 {
+  margin: 0 0 var(--fw-space-2);
+  font-size: var(--fw-font-size-lg);
+  font-weight: var(--fw-weight-heading);
+}
+
+ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * Text på sin egen rad, knappen på sin — alltid, för varje rad, oavsett hur
+ * mycket text den bär.
+ *
+ * Två fel bytte plats här (Siv/Fable 22/9, LOGG samma dag). Först: text och
+ * knapp som syskon i en radbrytande flex, så en rad med en före/efter-rad
+ * sköt sin knapp under texten medan en rad utan behöll den till höger —
+ * knapparna vandrade i listan efter hur mycket text raden råkade ha
+ * (berättelse 125, 18/9). Rättningen då tog bort radbrytningen helt: en
+ * `flex`-rad utan `wrap`, texten pressad till vad som blev kvar bredvid
+ * knappen. Det höll vid vanlig textstorlek — men vid `rot 32px` (200 %
+ * textförstoring, WCAG 1.4.4) hade dialogens fasta `560px`-bredd inte vuxit
+ * medan bokstäverna gjorde det, och textkolumnen pressades till en 28×2025 px
+ * remsa, ett tecken per rad.
+ *
+ * Lösningen är inte en tredje flex-variant utan en annan mekanism helt: en
+ * rad grid med EN kolumn. Text och knapp blir varsin hel bredd rad i den,
+ * alltid i samma ordning — ingen villkorad radbrytning som kan variera
+ * mellan rader, och ingen sidoknapp som konkurrerar om bredd med texten.
+ * Det håller vid alla storlekar utan ett enda breddvillkor: se
+ * `publish-dialog-text-zoom.browser.test.ts`.
+ */
+li {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--fw-space-2);
+  color: var(--fw-text);
+  font-size: var(--fw-font-size-lg);
+  line-height: var(--fw-line-body);
+}
+
+.publish-dialog__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  /* Långa ord — en url, ett variabelnamn — bryter hellre än trycker ut knappen
+     ur lådan. Mätt på 390 px, där en rubrik på 40 tecken räcker. */
+  overflow-wrap: anywhere;
+}
+
+/*
+ * Före och efter, tystare än meningen ovanför. Det är beviset för den som vill
+ * se exakt vad — inte det man läser först.
+ */
+.publish-dialog__detail {
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-md);
+}
+
+/*
+ * Det som stoppar en publicering får den enda färgen i dialogen, och färgen
+ * bär ingenting ensam: rubriken säger *Kan inte publicera* i klartext och
+ * knappen nedanför bär samma skäl (K3).
+ */
+/*
+ * De tre beskedrutorna (fel, varningar, arbetsanteckning) delar 10px
+ * hörnradie — mellan fält/knapp (8) och kort (12), ingen av rollerna.
+ * Oförändrad på alla tre: en ändring åt endera hållet hade synts.
+ */
+.publish-dialog__errors {
+  padding: var(--fw-space-3);
+  border: 1px solid var(--fw-danger-border, var(--fw-border));
+  border-radius: 10px;
+  background: var(--fw-danger-surface, var(--fw-surface-subtle));
+  color: var(--fw-danger-text, var(--fw-text));
+}
+
+.publish-dialog__warnings {
+  padding: var(--fw-space-3);
+  border: 1px solid var(--fw-warning-border);
+  border-radius: 10px;
+  background: var(--fw-warning-surface);
+  color: var(--fw-warning-text);
+}
+
+/*
+ * Arbetsanteckningen (berättelse 130): samma gula yta som varningarna, för det
+ * är samma sorts besked — *det går att publicera, men läs det här först*.
+ *
+ * Skillnaden är att den kommer från en människa, och det syns på citatet: en
+ * egen rad i kursiv med en linje i kanten, som i UX:s bild. En mening från en
+ * kollega mitt i en uppräkning av maskinens anmärkningar hade lästs som en
+ * anmärkning till.
+ */
+.publish-dialog__draft-note {
+  padding: var(--fw-space-3);
+  border: 1px solid var(--fw-warning-border);
+  border-radius: 10px;
+  background: var(--fw-warning-surface);
+  color: var(--fw-warning-text);
+}
+
+/*
+ * Ingen egen `h3`-regel längre: den satte samma marginal (`0 0 8px`) och,
+ * tokeniserat, samma storlek (`0.95em` = 0.95rem = --fw-font-size-lg) som
+ * den allmänna `h3`-regeln ovan. Två rader som säger samma sak är en av
+ * dem för mycket — den allmänna regeln räcker.
+ */
+
+.publish-dialog__draft-note [data-draft-note-ask] {
+  margin: 0;
+}
+
+/* Skriven under sin låda och inte fristående, så den vinner på specificitet
+   över lådans `p`-regel. Alternativet hade varit ett undantagsvikt-nyckelord,
+   och den räknaren går bara nedåt i det här repot
+   (`src/gates/css-ratchet.test.ts`). */
+.publish-dialog__draft-note .publish-dialog__quote {
+  margin: 0 0 var(--fw-space-2);
+  padding-inline-start: var(--fw-space-3);
+  border-inline-start: 3px solid var(--fw-warning-border);
+  color: var(--fw-text);
+  font-style: italic;
+  /* Någons egna ord, och de kan vara långa utan mellanslag — en adress, ett
+     diarienummer. De bryts hellre än att skjuta ut ur lådan. */
+  overflow-wrap: anywhere;
+}
+
+/*
+ * Vilkas ändringar det här är. Under underrubriken och i samma ton som den:
+ * en upplysning, inte en varning — två som arbetat i samma guide är det
+ * normala, och en gul ruta om det hade lärt folk att ignorera gula rutor.
+ */
+.publish-dialog__contributors {
+  margin: var(--fw-space-2) 0 0;
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-lg);
+}
+
+.publish-dialog__contributors[hidden],
+.publish-dialog__draft-note[hidden] {
+  display: none;
+}
+
+/*
+ * Ingen låda: en tunn linje ovanför och rubriken är nog för att skilja
+ * granskningen från resten. En tystare yta läser lugnare i en dialog som
+ * redan har en ram runt fel och varningar.
+ */
+.publish-dialog__changes {
+  padding-top: var(--fw-space-4);
+  border-top: 1px solid var(--fw-border-subtle);
+}
+
+.publish-dialog__updated {
+  margin-bottom: var(--fw-space-2);
+  color: var(--fw-info-text);
+  font-size: var(--fw-font-size-md);
+  font-weight: var(--fw-weight-strong);
+}
+
+.publish-dialog__note {
+  display: grid;
+  gap: var(--fw-space-2);
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-lg);
+}
+
+input {
+  padding: var(--fw-space-2) var(--fw-space-3);
+  border: 1px solid var(--fw-border-control);
+  border-radius: var(--fw-radius-field);
+  background: var(--fw-surface);
+  color: var(--fw-text);
+  font: inherit;
+}
+
+input:focus-visible {
+  @include focus.ring(1px);
+}
+
+.publish-dialog__warning {
+  margin: 0;
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-md);
+}
+
+.publish-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fw-space-2);
+  margin: 0;
+}
+
+.publish-dialog__spacer {
+  flex: 1 1 auto;
+}
+
+/*
+ * K6: varje knapp i dialogen går att träffa med en tumme. Skalet ger 9 px
+ * vaddering, vilket blir ungefär 38 — nog för en muspekare, inte för ett
+ * finger, och den här dialogen är den som fattar beslutet.
+ *
+ * Rundade som --fw-radius-button (Johans beslut 20/9): pillformen gick
+ * tillbaka till 8px, samma hörn som varje annan knapp i verktyget — en knapp
+ * ser likadan ut oavsett var den råkar stå, i stället för att forma om sig
+ * efter dialogens bredd.
+ */
+button {
+  min-height: var(--fw-control-height);
+  border-radius: var(--fw-radius-button);
+}
+
+.publish-dialog__actions button:not(.publish-dialog__confirm) {
+  border-color: transparent;
+  background: transparent;
+}
+
+.publish-dialog__actions button:not(.publish-dialog__confirm):hover {
+  background: var(--fw-surface-subtle, var(--fw-bg));
+}
+
+li button {
+  /* Sin egen rad (se `li` ovan) — utan den här skulle en grid-cell sträcka
+     knappen till radens fulla bredd, precis som en `<div>` skulle. */
+  justify-self: start;
+  padding: 0 var(--fw-space-3);
+  font-size: var(--fw-font-size-md);
+  /* Kvar på den gamla skalan (10px): varken fält/knapp (8) eller kort (12)
+     träffar exakt, och en flytt hade synts som en annan rundning på en
+     knapp som redan syns i varje rad. */
+  border-radius: var(--fw-radius-lg);
+}
+
+.publish-dialog__confirm {
+  border-color: var(--fw-primary-strong);
+  background: var(--fw-primary-strong);
+  color: var(--fw-surface);
+}
+
+.publish-dialog__confirm[aria-disabled="true"] {
+  border-color: transparent;
+  background: var(--fw-surface-subtle, var(--fw-surface));
+  color: var(--fw-text-muted);
+  cursor: default;
+}
+
+@media (max-width: 420px) {
+  /*
+   * Beslutet först, granskningen under.
+   *
+   * *Publicera* och *Avbryt* delar första raden och syns utan att man rullar;
+   * *Förhandsgranska från start* får en egen rad under dem. Den ligger först i
+   * DOM:en och därmed först i tabbordningen, vilket är ordningen handlingen har
+   * — man tittar och beslutar sedan — även när den ritas sist.
+   */
+  .publish-dialog__actions {
+    flex-wrap: wrap;
+  }
+
+  .publish-dialog__actions button[data-action="preview-start"] {
+    order: 3;
+    flex: 1 1 100%;
+  }
+
+  .publish-dialog__actions button[data-action="cancel"],
+  .publish-dialog__actions .publish-dialog__confirm {
+    flex: 1 1 auto;
+  }
+
+  .publish-dialog__spacer {
+    display: none;
+  }
+
+  /* Knappen i en rad får inte krympa till tre bokstäver när meningen är lång. */
+  li button {
+    white-space: nowrap;
+  }
+}

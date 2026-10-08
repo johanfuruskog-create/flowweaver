@@ -1,0 +1,65 @@
+{
+  "startNodeId": "q-resident",
+  "nodes": [
+    {
+      "id": "q-resident",
+      "type": "question",
+      "position": { "x": 0, "y": 0 },
+      "data": {
+        "title": "Är du folkbokförd i kommunen?",
+        "variableName": "resident",
+        "options": [
+          { "id": "resident-yes", "label": "Ja", "value": "yes" },
+          { "id": "resident-no", "label": "Nej", "value": "no" }
+        ]
+      }
+    },
+    {
+      "id": "q-adult",
+      "type": "question",
+      "position": { "x": 400, "y": 0 },
+      "data": {
+        "title": "Är du över 18 år?",
+        "variableName": "adult",
+        "options": [
+          { "id": "adult-yes", "label": "Ja", "value": "yes" },
+          { "id": "adult-no", "label": "Nej", "value": "no" }
+        ]
+      }
+    },
+    {
+      "id": "result-approve",
+      "type": "result",
+      "position": { "x": 800, "y": -100 },
+      "data": { "title": "Du kan använda tjänsten." }
+    },
+    {
+      "id": "result-reject",
+      "type": "result",
+      "position": { "x": 800, "y": 100 },
+      "data": { "title": "Tjänsten är inte tillgänglig för dig." }
+    }
+  ],
+  "connections": [
+    {
+      "id": "resident-yes-to-adult",
+      "from": { "nodeId": "q-resident", "portId": "resident-yes" },
+      "to": { "nodeId": "q-adult", "portId": "input" }
+    },
+    {
+      "id": "resident-no-to-reject",
+      "from": { "nodeId": "q-resident", "portId": "resident-no" },
+      "to": { "nodeId": "result-reject", "portId": "input" }
+    },
+    {
+      "id": "adult-yes-to-approve",
+      "from": { "nodeId": "q-adult", "portId": "adult-yes" },
+      "to": { "nodeId": "result-approve", "portId": "input" }
+    },
+    {
+      "id": "adult-no-to-reject",
+      "from": { "nodeId": "q-adult", "portId": "adult-no" },
+      "to": { "nodeId": "result-reject", "portId": "input" }
+    }
+  ]
+}

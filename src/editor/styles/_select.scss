@@ -1,0 +1,73 @@
+/**
+ * A `<select>` in the editor's field family: the text box's calm shape with a
+ * drawn chevron (Astra via Johan 29/9).
+ *
+ * The chevron is NOT painted on the select. A `<select>` can carry no pseudo-
+ * element, and a background image cannot read a token — the first cut kept a
+ * per-theme SVG with the colour written in (`--fw-select-chevron`), which
+ * followed the theme but not a host that overrides `--fw-text-secondary` on
+ * the element (Astra 29/9: "verifiera att chevronen följer … lokal
+ * överskrivning"; measured: it did not). So the select sits in a wrapper, and
+ * the wrapper's `::after` draws the chevron as a mask filled from the token,
+ * the way `_tick-boxes.scss` draws its tick: the shape is colourless, the
+ * colour is whatever the token says right there. Change the token, the arrow
+ * follows — theme, palette or a host's own override alike.
+ *
+ * The wrapper adds no size: it is a block the select fills, and the arrow is
+ * absolutely placed over the select's right padding, 18px, centred, 12px in,
+ * with `pointer-events: none` so every click still lands on the select. The
+ * select itself only loses the platform arrow and gains the right padding
+ * that reserves the arrow's room (12 + 18 + 12); border, radius, height and
+ * font stay with the rule that includes `field`, so a compact select and a
+ * full field can share the arrow without sharing their size. Opening the
+ * select is still the platform's picker: `appearance: none` changes the
+ * closed control's paint only, and focus is the select's own ring.
+ *
+ * Only single-value selects: `select[multiple]` is a list, not a menu, and
+ * keeps the platform's rendering — the wrapper is not used around one.
+ */
+
+/* The same stroke as the option card's chevron (`M6 9l6 6 6-6`, width 2,
+   round ends), colourless: the mask takes the colour below. */
+$shape: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+
+@mixin wrap {
+  position: relative;
+  display: block;
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: var(--fw-space-3);
+    width: 18px;
+    height: 18px;
+    transform: translateY(-50%);
+    background-color: var(--fw-text-secondary);
+    mask: $shape center / contain no-repeat;
+    pointer-events: none;
+  }
+
+  /* A disabled select keeps the arrow in the secondary colour while its text
+     goes muted: dimming the arrow too would need `:has(select:disabled)`,
+     and the CSS ratchet (src/gates/css-ratchet.test.ts) holds `:has()` at
+     its ceiling — a class set by the renderer would be the way, if a
+     disabled select ever reads wrong. None does today. */
+
+  > select {
+    @include field;
+  }
+}
+
+@mixin field {
+  padding-right: calc(var(--fw-space-3) * 2 + 18px);
+  -webkit-appearance: none;
+  appearance: none;
+  /*
+   * No ellipsis on a long value (Johan 29/9, after seeing it: "snyggare
+   * utan punkter"). The chooser spans the panel's width, and since story
+   * 141 the panel is the redaktör's to widen — dragging the edge shows the
+   * rest. WebKit ignores `text-overflow` on a select anyway (measured,
+   * LOGG 29/9), so the dots were Chromium-only.
+   */
+}

@@ -1,0 +1,10 @@
+# A database to run the example against, and nothing more.
+#
+# No volume on purpose: this is a place to try a version list, and a demo that
+# quietly accumulates last month's experiments on disk is the kind of thing
+# nobody remembers setting up. `docker compose down` and it is gone.
+services:
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"

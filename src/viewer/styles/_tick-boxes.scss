@@ -1,0 +1,187 @@
+/**
+ * Checkboxes and radio buttons drawn by us, shared by everything that has one.
+ *
+ * ## Why draw them at all
+ *
+ * The platform's own are fine to look at and impossible to measure. WCAG 1.4.11
+ * exempts them, which sounds like a favour and is really a blind spot: our sweep
+ * (`kontrollkantsbrott`) has to skip anything with `appearance: auto`, so a tick
+ * box could be invisible against its background and nothing would say so. Drawing
+ * them brings them under the same gate as every other control, with
+ * `--fw-border-control` — measured at 4.97:1 in light and 5.75:1 in dark.
+ *
+ * They also looked like two different products: the viewer's radios carried
+ * `accent-color`, the panel's checkboxes carried whatever the OS felt like.
+ *
+ * ## The four things that make this safe
+ *
+ * 1. **It is still an `<input>`.** Never a `<div role="checkbox">`. Keyboard,
+ *    form semantics and every screen reader's own handling stay where they are;
+ *    only the paint changes.
+ * 2. **`forced-colors` hands it straight back.** Windows' high contrast mode
+ *    repaints native controls and leaves author-drawn ones exactly as they were,
+ *    so a hand-drawn box disappears there — for precisely the people this work is
+ *    for. `appearance: auto` inside the query returns the control to the platform
+ *    and undoes everything below it.
+ * 3. **The tick is a mask, not an image.** It inherits `currentColor`, so one
+ *    shape serves both themes and neither needs a file.
+ * 4. **The focus ring is drawn here**, because `appearance: none` removes the
+ *    platform's and nothing else would put one back.
+ */
+
+@use "./focus" as focus;
+
+@mixin fw-tick-boxes {
+  input[type="checkbox"],
+  input[type="radio"] {
+    appearance: none;
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    padding: 0;
+
+    border: 1px solid var(--fw-border-control);
+    background: var(--fw-surface);
+
+    cursor: pointer;
+
+    /* The tick and the dot are drawn on the box itself, so there is no second
+       element to keep aligned with it. */
+    display: inline-grid;
+    place-content: center;
+
+    &::before {
+      content: "";
+      width: 12px;
+      height: 12px;
+      transform: scale(0);
+      transition: transform 90ms ease-out;
+      background: var(--fw-on-primary);
+    }
+
+    &:checked {
+      border-color: var(--fw-primary);
+      background: var(--fw-primary);
+
+      &::before {
+        transform: scale(1);
+      }
+    }
+
+    &:focus-visible {
+      @include focus.ring;
+    }
+
+    &:disabled {
+      border-color: var(--fw-border-subtle);
+      background: var(--fw-surface-subtle);
+      cursor: not-allowed;
+    }
+  }
+
+  input[type="checkbox"] {
+    border-radius: 4px;
+
+    &::before {
+      /* A tick, as a mask so it takes the colour above rather than carrying one. */
+      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M13.5 4.5 6.5 11.5 2.5 7.5' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+        center / contain no-repeat;
+    }
+  }
+
+  input[type="radio"] {
+    border-radius: 50%;
+
+    &::before {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+  }
+
+  /*
+   * Back to the platform, wholesale.
+   *
+   * Everything above is undone rather than adjusted: in high contrast mode the
+   * user has asked the system to decide what controls look like, and the honest
+   * answer to that is to stop having opinions. `forced-color-adjust: auto` lets
+   * the engine repaint what remains.
+   */
+  @media (forced-colors: active) {
+    input[type="checkbox"],
+    input[type="radio"] {
+      appearance: auto;
+      forced-color-adjust: auto;
+
+      &::before {
+        content: none;
+      }
+    }
+  }
+}
+
+/*
+ * The switch: an on/off SETTING, painted as one.
+ *
+ * Johan, in front of three design sketches of the editor (2026-08-31): the
+ * panel's booleans become switches — and only the panel's. A consent in the
+ * viewer stays a checkbox, because an agreement is attested, not toggled;
+ * "reglage, på" is the wrong word for an intyg. So this mixin is applied by
+ * the properties panel alone, and it takes effect only where the markup says
+ * `role="switch"` — the role is the opt-in, so a checkbox that means checkbox
+ * keeps its square even inside the panel.
+ *
+ * Same safety rules as the boxes above: still an `<input type="checkbox">`
+ * (role="switch" on a native checkbox is the complete ARIA pattern — state,
+ * keyboard and form semantics stay the platform's), drawn so the contrast
+ * gates measure it, and handed back wholesale under forced-colors.
+ */
+@mixin fw-switch {
+  input[type="checkbox"][role="switch"] {
+    width: 36px;
+    height: 20px;
+    border-radius: 999px;
+
+    &::before {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      transform: translateX(-8px) scale(1);
+      transition: transform 120ms ease-out;
+      /* The knob against the OFF track: the track is the surface, the knob the
+         control border colour — measured by kontrollkantsbrott like the rest. */
+      background: var(--fw-border-control);
+      mask: none;
+    }
+
+    /*
+     * ON is green — Johans ord: "på ska vara grön." Indigo är väljandets färg
+     * i verktyget; av/på är ett tillstånd, och grönt är ordet för på. Samma
+     * token som hälsopricken (`--fw-success`), som behåller sitt värde i
+     * mörkt läge.
+     */
+    &:checked {
+      border-color: var(--fw-success);
+      background: var(--fw-success);
+    }
+
+    &:checked::before {
+      transform: translateX(8px) scale(1);
+      background: var(--fw-on-primary);
+    }
+  }
+
+  @media (forced-colors: active) {
+    input[type="checkbox"][role="switch"] {
+      appearance: auto;
+      forced-color-adjust: auto;
+      width: 18px;
+      height: 18px;
+
+      &::before {
+        content: none;
+      }
+    }
+  }
+}

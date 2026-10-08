@@ -1,0 +1,90 @@
+@use "../../../viewer/styles/focus" as focus;
+
+:host {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  /* Ovanför sidopanelen (z-index 25) så toasten alltid går att nå. */
+  z-index: 40;
+  max-width: min(420px, calc(100% - 40px));
+}
+
+section {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--fw-border);
+  border-radius: 10px;
+  background: var(--fw-surface);
+  color: var(--fw-text-strong);
+  box-shadow: 0 12px 30px rgb(16 24 40 / 20%);
+}
+
+section[hidden] {
+  display: none;
+}
+
+/* Glider in när meddelandet visas, så att man registrerar att något hänt.
+   (show() sätter hidden=false, vilket startar om animationen varje gång.) */
+section:not([hidden]) {
+  animation: editor-toast-in 200ms ease both;
+}
+
+@keyframes editor-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  section:not([hidden]) {
+    animation: none;
+  }
+}
+
+section[data-type="success"] {
+  border-color: var(--fw-success-border);
+  background: var(--fw-success-surface);
+  color: var(--fw-success-text);
+}
+
+section[data-type="error"] {
+  border-color: var(--fw-danger-border);
+  background: var(--fw-danger-surface);
+  color: var(--fw-danger-text);
+}
+
+.editor-toast__icon::before {
+  content: "ℹ";
+}
+
+section[data-type="success"] .editor-toast__icon::before {
+  content: "✓";
+}
+
+section[data-type="error"] .editor-toast__icon::before {
+  content: "!";
+}
+
+p {
+  margin: 0;
+  line-height: 1.4;
+}
+
+button {
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: currentcolor;
+  font: inherit;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+button:focus-visible {
+  @include focus.ring;
+}

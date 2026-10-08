@@ -1,0 +1,25 @@
+# Mejlen. Innehåller vad besökare faktiskt skrivit — hör aldrig hemma i ett
+# repo, inte ens som exempel.
+outbox/
+
+# Nycklarna. `.env.example` är kartan och committas; den här är värdena.
+.env
+
+# Katalogen som körs. `recipients.example.json` är exemplet och committas —
+# det är den man kopierar hit och fyller i. Själva katalogen bär riktiga
+# interna adresser och hör aldrig hemma i repot.
+#
+# Två namn, inte ett: exempelfilen hette `recipients.json` fram till 16/9,
+# alltså samma sak som den skarpa på servern, och en utrullning skrev över
+# den skarpa med exemplet. Ett namn som inte kan krocka är billigare än ett
+# undantag någon måste komma ihåg.
+recipients.json
+recipients.local.json
+
+# Registret. Samma sak som utkorgen, i en fil: raderna bär namn, adresser och
+# vad besökare skrivit. Vägen kommer ur FLOWWEAVER_DB och pekar normalt utanför
+# repot — det här är nätet under, för den som pekar den hit under utveckling.
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+data/

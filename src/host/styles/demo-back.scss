@@ -1,0 +1,33 @@
+/**
+ * Bakåtlänk på exempelsidorna tillbaka till startsidan (exempelindex).
+ * Delad av alla demo-entrypunkter; använder bara design-tokens som finns
+ * överallt via tokens.scss.
+ */
+@use "../../viewer/styles/focus" as focus;
+
+.demo-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fw-space-2);
+  margin-bottom: 16px;
+  color: var(--fw-primary);
+  font-size: 14px;
+  font-weight: var(--fw-weight-strong);
+  text-decoration: none;
+
+  &::before {
+    content: "←";
+    font-size: 15px;
+  }
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    @include focus.ring;
+    /* 4 matchar ingen roll (button 8) — literal, orörd. */
+    border-radius: 4px;
+  }
+}
+

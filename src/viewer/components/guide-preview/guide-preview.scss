@@ -1,0 +1,3706 @@
+@use "../../styles/tick-boxes";
+@use "../../styles/focus" as focus;
+
+:host {
+  display: block;
+  color: var(--fw-text);
+  font-family: var(--fw-font);
+  /*
+   * The ground the package's own sizes stand on, taken from the page root
+   * rather than from whatever element we happen to be inside (Johan 21/9:
+   * *men vi jobbar i rem?*).
+   *
+   * A host page decides its own body size, and whatever it decides used to
+   * become ours: embedded in a page that sets 14 px, every relative length in
+   * here shrank with it, and the component looked like a different product on
+   * every site. GOV.UK states 19 px and Digdir 18; we stated nothing at all.
+   *
+   * `1rem` and not `16px`, which this was for one commit: `rem` resets to the
+   * page's ROOT, so the host's containers stop reaching us while the visitor's
+   * own default text size still does. A fixed px here would have overruled
+   * that setting — measured at a 20 px default, seventeen points went back
+   * down to 16, including the site's `h1` from 40 to 32 (LOGG 21/9). The type
+   * scale below `--fw-font-size-*` is in `rem` for the same reason; spacing,
+   * radii, borders and control height stay in px, because a grid is a measure
+   * and not a piece of text.
+   */
+  font-size: 1rem;
+}
+
+.guide-preview {
+  /*
+   * Positioned, so an absolute box in the view (the honeypot) measures itself
+   * against the view and stays inside its scroller. Without it the honeypot
+   * escaped the editor's sidebar and gave the `overflow: hidden` wrapper
+   * outside 284 px to scroll — which a focus or `scrollIntoView` then did,
+   * clipping the toolbar (film 3, 7/9). Test: guide-preview-honeypot-contained.
+   */
+  position: relative;
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+/* One tempo for a step arriving: the slide-in and the height (story 144). */
+$step-tempo: 220ms;
+
+.guide-preview__card {
+  /* 24 in a wide viewer, 16 under 400 px (the `data-under~="400"` rule
+     below): Astra 30/9, B8 — the extra width goes to the content on a phone. */
+  padding: var(--fw-space-5);
+  /* The control-border token, not --fw-border: the card is the visitor's
+     whole surface, and in dark mode the softer edge measured 1.95:1 against
+     the page — there but barely read (Johan 25/9, four pictures in 390). */
+  border: 1px solid var(--fw-border-control);
+  border-radius: 14px;
+  background: var(--fw-surface);
+  box-shadow: 0 8px 24px rgb(16 24 40 / 8%);
+  /*
+   * Ett eget kompositlager, för Safari. När kortet krymper — bildspelsstegets
+   * höga skärmbild följs av ett litet resultatkort — lämnade iPad-Safari den
+   * gamla kortskuggans målning kvar på skärmen: ett "osynligt block, man ser
+   * skuggan" under resultatet, utan något element i DOM:en. Lagret får Safari
+   * att sudda rent. Verifierat på Johans platta 2026-08-23.
+   */
+  transform: translateZ(0);
+  /* Nästa steg glider in så progressionen känns när man testar guiden. */
+  animation: guide-preview-step-in $step-tempo ease both;
+
+  /* The height between two steps (story 144): set and cleared by
+     `easeCardHeight` in guide-preview.ts, in the slide-in's tempo. The card
+     clips while it travels — content taller than the card so far would
+     otherwise spill over the edge for those 220 ms. */
+  &[data-height-shift] {
+    box-sizing: border-box;
+    overflow: hidden;
+    transition: height $step-tempo ease;
+  }
+
+  h2 {
+    margin: 0;
+    font-size: 26px;
+    line-height: 1.25;
+  }
+
+  p {
+    margin: 12px 0 0;
+    color: var(--fw-text-secondary);
+    line-height: 1.6;
+  }
+}
+
+/*
+ * The step row (Astra 1/10, bilaga 10 punkt 8): ONE form for where the
+ * visitor has been — the steps answered on the way here, in the secondary
+ * ink, sentence case, text weight, a check mark on each. *Steg 1* on a
+ * metered guide's first step (`.guide-preview__step`) wears the same form;
+ * the uppercase primary eyebrow (*STEG 1*, *RESULTAT*) is gone, it was one
+ * of the three forms the review found (genomgången 30/9, V7).
+ *
+ * The `!important`s fight `.guide-preview__card p` (colour, margin, line
+ * height), which outweighs one class.
+ */
+.guide-preview__step {
+  margin: 0 0 var(--fw-space-2) !important;
+  color: var(--fw-text-secondary) !important;
+  font-size: var(--fw-font-size-base);
+  line-height: var(--fw-line-tight) !important;
+}
+
+/*
+ * Wraps — never clips, never scrolls sideways on a phone (Astra: *"'En rad'
+ * får inte innebära att en lång historik klipps eller skapar sidledes
+ * rullning på telefon"*). A flex row wraps between items; `min-width: 0`
+ * and `overflow-wrap: anywhere` let one long item (a question's whole
+ * sentence, an address) break inside itself instead of pushing the row out.
+ */
+.guide-preview__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--fw-space-1);
+  min-width: 0;
+  margin: 0 0 var(--fw-space-2);
+  padding: 0;
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-base);
+  line-height: var(--fw-line-body);
+  list-style: none;
+}
+
+.guide-preview__steps li {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The separator ends an item rather than starting the next: where the row
+   wraps, a line began with a lone "·" (seen in the 390 px review, 1/10). */
+.guide-preview__steps li:not(:last-child)::after {
+  content: "·";
+  margin-inline-start: var(--fw-space-1);
+}
+
+/* For the ear only.
+ *
+ * `clip-path` beside the legacy `clip`: the site smoke's clipped-text sweep
+ * (`e2e/site-smoke.mjs`) excuses a 1 px element only when it carries a
+ * `clip-path`, as the other hidden texts here do. The file field's hidden
+ * label (B5 punkt 11) was the first to use this class on a card, and the
+ * deploy gate stopped on "kapad text" for it (1/10 2026). */
+.guide-preview__visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.guide-preview__history {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: grid;
+    gap: 3px;
+    padding: var(--fw-space-3);
+    border: 1px solid var(--fw-border-subtle);
+    border-radius: 8px;
+    background: var(--fw-surface-subtle);
+  }
+
+  span {
+    color: var(--fw-text-muted);
+    font-size: var(--fw-font-size-base);
+  }
+
+  strong {
+    color: var(--fw-text-strong);
+    font-size: var(--fw-font-size-md);
+  }
+}
+
+.guide-preview__routes {
+  display: grid;
+  gap: var(--fw-space-3);
+  margin-top: var(--fw-space-5);
+}
+
+.guide-preview__rule-expression {
+  margin-top: var(--fw-space-4) !important;
+  padding: var(--fw-space-3);
+  border-radius: 8px;
+  background: var(--fw-node-rule-tint);
+  color: var(--fw-node-rule-ink) !important;
+  font-size: var(--fw-font-size-base);
+
+  code {
+    font-weight: 700;
+  }
+}
+
+.guide-preview__route {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--fw-border-subtle);
+  border-radius: 8px;
+  background: var(--fw-surface-subtle);
+
+  /* Ensamma ruttrutor (sifferfråga, textfråga, sida) renderas direkt i
+     kortet utan .guide-preview__routes-omslag och behöver samma avstånd
+     till brödtexten ovanför. */
+  .guide-preview__card > & {
+    margin-top: var(--fw-space-5);
+  }
+
+  strong {
+    color: var(--fw-text);
+  }
+
+  span {
+    color: var(--fw-text-muted);
+    font-size: var(--fw-font-size-base);
+    line-height: 1.4;
+  }
+}
+
+.guide-preview__route--warning {
+  border-color: var(--fw-warning-border);
+  background: var(--fw-warning-surface);
+
+  span {
+    color: var(--fw-warning-text);
+  }
+}
+
+.guide-preview__result-paths {
+  margin-top: var(--fw-space-5);
+
+  h3 {
+    margin: 0 0 var(--fw-space-2);
+    color: var(--fw-text-strong);
+    font-size: var(--fw-font-size-md);
+  }
+
+  ol {
+    display: grid;
+    gap: var(--fw-space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: result-path;
+  }
+
+  li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--fw-space-1);
+    padding: 12px;
+    border: 1px solid var(--fw-border-subtle);
+    border-radius: 8px;
+    background: var(--fw-surface-subtle);
+    color: var(--fw-text-secondary);
+    font-size: var(--fw-font-size-base);
+    line-height: 1.5;
+    counter-increment: result-path;
+  }
+
+  li::before {
+    width: 100%;
+    color: var(--fw-text-muted);
+    content: "Väg " counter(result-path);
+    font-weight: 700;
+  }
+}
+
+.guide-preview__path-arrow {
+  color: var(--fw-text-muted);
+}
+
+.guide-preview__path-legend {
+  margin: 0 0 var(--fw-space-2) !important;
+  color: var(--fw-success-text) !important;
+  font-size: var(--fw-font-size-base);
+  font-weight: 600;
+}
+
+.guide-preview__paths {
+  summary {
+    color: var(--fw-success-text);
+    font-size: var(--fw-font-size-base);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  ol {
+    margin-top: var(--fw-space-2);
+  }
+
+  > p {
+    margin: var(--fw-space-2) 0 0;
+    color: var(--fw-text-muted);
+    font-size: var(--fw-font-size-base);
+  }
+}
+
+.guide-preview__path-warning {
+  margin: 0 !important;
+  /* "Ramar för nära texten" (Fable 21/9): 12 → 16, "kortets inre"-skalan. */
+  padding: var(--fw-space-4);
+  border: 1px solid var(--fw-warning-border);
+  border-radius: 8px;
+  background: var(--fw-warning-surface);
+  color: var(--fw-warning-text) !important;
+  font-size: var(--fw-font-size-base);
+}
+
+.guide-preview__checklist {
+  margin: 12px 0 0;
+  /* Följer texten: punktlistans indrag byter sida i ett RTL-språk. */
+  padding-inline-start: 20px;
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-md);
+  line-height: 1.6;
+}
+
+/*
+ * — eller — mellan de vanliga alternativen och det som står ensamt.
+ *
+ * Ordet är riktig text, inte en ritad linje: den som inte ser listan ska höra
+ * att det är antingen-eller innan den kryssar. Linjerna på sidorna är dekor
+ * och ritas med pseudoelement, som ingen skärmläsare går in i.
+ *
+ * Varken ram, hus eller pekare — raden ska inte se ut som något att trycka på,
+ * för den är det inte.
+ */
+.guide-preview__choice-or {
+  display: flex;
+  align-items: center;
+  gap: var(--fw-space-2);
+  margin: 2px 0;
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-md);
+
+  &::before,
+  &::after {
+    flex: 1;
+    height: 1px;
+    background: var(--fw-border);
+    content: "";
+  }
+}
+
+/*
+ * Raden som säger vad regeln tog bort, och varför.
+ *
+ * Tom nästan hela tiden — den fylls bara när koden kryssat ur något
+ * besökaren inte rörde. Marginalen ligger därför på texten och inte på
+ * elementet: en tom rad ska inte lämna en lucka i kortet.
+ */
+.guide-preview__choice-status {
+  margin: 0;
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-md);
+
+  &:not(:empty) {
+    margin-top: var(--fw-space-2);
+  }
+}
+
+/*
+ * Raden under en lista där något alternativ hålls tillbaka av sitt eget
+ * villkor (berättelse 134). Stilla med flit: den säger att listan är kortare
+ * än den ser ut, inte att något är fel — den som inte är allergisk ska aldrig
+ * se den, och den som är det ska inte läsa den som en varning.
+ *
+ * Aldrig `hidden`: raden ritas inte alls när ingenting är dolt, så det finns
+ * ingen ruta att gömma (PRAXIS 36).
+ */
+.guide-preview__options-hidden {
+  margin: var(--fw-space-2) 0 0;
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-md);
+}
+
+/*
+ * On a page (several questions stacked as fieldsets, `.guide-preview__page-field`
+ * below), the row is the last child of the fieldset it belongs to — it says
+ * the list ABOVE it is short, never that the next question is. Mätt (Fable
+ * 21/9, konferenscasets Menyn): 20px above the row and 16px below it made it
+ * read as the next question's opening line instead. The design rule is
+ * *related things bind at half the usual distance* — the usual distance here
+ * is `.guide-preview__page-fields`' own `gap` between two separate questions
+ * (`--fw-space-4`, 16px) — so the row should sit 8px from the list above, not
+ * 16 or more.
+ *
+ * Two classes, needed to win over `.guide-preview__card p` above (one class
+ * plus the element type still outweighs the single class this rule used to
+ * rely on): the base rule's `var(--fw-space-2)` top margin never actually won
+ * that fight, and the fieldset's own 8px `gap` (`.guide-preview__page-field`)
+ * was doing the real work silently. Zeroing the margin here makes that the
+ * only source of the space above, instead of stacking a second one on top.
+ */
+.guide-preview__page-field > .guide-preview__options-hidden {
+  margin-top: 0;
+  /* Plain text by inheritance since 30/9: the cell no longer carries its
+     label's 600. Before that, inherited, the row read as the next question's
+     heading at 390 (Fia 29/9, story 138). */
+}
+
+/*
+ * Story 138: nothing left to choose in a record — the line stands where the
+ * list would, in the field's own text colour, because it is the field's state
+ * and not a note about it. The quiet row saying why follows under it.
+ *
+ * Two classes for the same reason as the row above: `.guide-preview__card p`
+ * outweighs one class, and gave it the secondary colour and a margin that
+ * put it 20px under the question where a list sits 8 (Fia 29/9, measured).
+ * Plain weight, inherited from the cell.
+ */
+/*
+ * The field that takes focus when a record has nothing left to choose (story
+ * 138): the fieldset itself, `tabindex="-1"`, since there is no radio. The
+ * browser's own ring stays — it reads in both themes (Astra 29/9) — with air
+ * between it and the legend's text. Measured unclipped at 390 and 900.
+ */
+.guide-preview__page-field[tabindex="-1"] {
+  outline-offset: 2px;
+}
+
+.guide-preview__page-field > .guide-preview__options-none {
+  margin: 0;
+  color: var(--fw-text);
+}
+
+.guide-preview__options {
+  display: grid;
+  gap: var(--fw-space-3);
+  /* All four sides: a fieldset's own margin is 2 px inline, and it set the
+     standalone rows 2 px in from the heading and every field's edge
+     (genomgången 30/9, V8: 137 against 135). */
+  margin: 24px 0 0;
+  padding: 0;
+  border: 0;
+
+  legend {
+    margin-bottom: var(--fw-space-2);
+    /* A legend's own 2 px inline padding set the question 2 px in from the
+       rows under it and from a text field's label (Fia 1/10, B4 review). */
+    padding-inline: 0;
+    color: var(--fw-text-secondary);
+    font-size: var(--fw-font-size-md);
+    font-weight: 600;
+  }
+
+
+  input {
+    /* Kryssrutan är ett fast träffområde och ska aldrig ge vika för text. */
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+  }
+}
+
+/* The opened list under a closed control — the editor's viewing mode only
+   (rendered by renderOpenOptionList, never in the viewer or a run). Looks
+   like the control's own menu, one option per row for the exit rings. */
+.guide-preview__open-list {
+  display: grid;
+  /* Aligned with the closed control above it, like the control's own menu
+     ("linjera listan med Välj ovanför", Johan 2/9); the exit rings travel in
+     to the list's edge instead. */
+  margin-top: var(--fw-space-2);
+  border: 1px solid var(--fw-border-control);
+  border-radius: 8px;
+  background: var(--fw-surface);
+  overflow: hidden;
+}
+
+.guide-preview__open-list-row {
+  padding: var(--fw-space-2) var(--fw-space-3);
+  font-size: var(--fw-font-size-base);
+  color: var(--fw-text);
+
+  & + & {
+    border-top: 1px solid var(--fw-border-subtle, var(--fw-border));
+  }
+}
+
+/* "N fler" — dämpad, portlös, bara en uppgift om vad taket gömmer. */
+.guide-preview__open-list-row--more {
+  color: var(--fw-text-secondary);
+}
+
+.guide-preview__open-list-row--chosen {
+  background: var(--fw-primary-surface);
+  color: var(--fw-primary-strong, var(--fw-primary));
+  font-weight: 700;
+}
+
+.guide-preview__value-answer {
+  display: grid;
+  gap: 8px;
+  margin-top: 24px;
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-md);
+  font-weight: 600;
+
+  input,
+  select,
+  textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: var(--fw-space-3) var(--fw-space-4);
+    /* Kontrollkant, inte avdelare: WCAG 1.4.11 vill ha 3:1 mot ytan bakom, och
+     * `--fw-border` mätte 1.47 i ljust och 1.95 i mörkt läge. */
+    border: 1px solid var(--fw-border-control);
+    border-radius: 8px;
+    background: var(--fw-surface);
+    color: var(--fw-text);
+    font: inherit;
+    font-size: var(--fw-font-size-xl);
+  }
+
+  textarea {
+    resize: vertical;
+    min-height: 96px;
+    line-height: 1.5;
+  }
+
+  select[multiple] {
+    padding: var(--fw-space-2);
+
+    option {
+      padding: var(--fw-space-1) var(--fw-space-2);
+      border-radius: var(--fw-radius-sm);
+    }
+  }
+}
+
+.guide-preview__image {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 8px;
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-md);
+}
+
+.guide-preview__annotated {
+  position: relative;
+  margin-top: 8px;
+  overflow: hidden;
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-md);
+}
+
+.guide-preview__annotated-img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.guide-preview__pin {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  transform: translate(-50%, -50%);
+  border: 2px solid var(--fw-primary);
+  border-radius: 50%;
+  background: var(--fw-surface);
+  color: var(--fw-text-strong);
+  font-size: var(--fw-font-size-base);
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 25%);
+}
+
+.guide-preview__pin--current {
+  background: var(--fw-primary);
+  color: var(--fw-on-primary);
+}
+
+.guide-preview__annotation {
+  position: absolute;
+  max-width: min(240px, 70%);
+  padding: var(--fw-space-2) var(--fw-space-3);
+  border-radius: var(--fw-radius-md);
+  background: var(--fw-primary);
+  color: var(--fw-on-primary);
+  font-size: var(--fw-font-size-md);
+  line-height: 1.4;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 30%);
+
+  /*
+   * Liten pil som pekar mot punkten.
+   *
+   * `border` ritar en 16×16 ruta (2 × 8px); centrerad över punkten är den
+   * alltså -8px, en halv ruta. Var 7px (14×14, -7px) innan avståndssvepet
+   * 20/9 — 8 är det närmaste talet på skalan, och rutan är 2px större,
+   * osynligt för ögat men mätbart för grinden.
+   */
+  &::before {
+    content: "";
+    position: absolute;
+    border: 8px solid transparent;
+  }
+
+  /* Bubblan förskjuts bort från punkten i pilens riktning. */
+  &--up {
+    transform: translate(-50%, 20px);
+    &::before { top: -16px; left: 50%; margin-left: calc(var(--fw-space-2) * -1); border-bottom-color: var(--fw-primary); }
+  }
+  &--down {
+    transform: translate(-50%, calc(-100% - 20px));
+    &::before { bottom: -16px; left: 50%; margin-left: calc(var(--fw-space-2) * -1); border-top-color: var(--fw-primary); }
+  }
+  &--left {
+    transform: translate(20px, -50%);
+    &::before { left: -16px; top: 50%; margin-top: calc(var(--fw-space-2) * -1); border-right-color: var(--fw-primary); }
+  }
+  &--right {
+    transform: translate(calc(-100% - 20px), -50%);
+    &::before { right: -16px; top: 50%; margin-top: calc(var(--fw-space-2) * -1); border-left-color: var(--fw-primary); }
+  }
+}
+
+.guide-preview__annotation-caption {
+  margin: 12px 0 0;
+  color: var(--fw-text);
+  font-size: var(--fw-font-size-lg);
+
+  strong {
+    /* Följer texten: avståndet ligger efter etiketten, inte till höger om den. */
+    margin-inline-end: var(--fw-space-2);
+    color: var(--fw-primary-strong);
+  }
+}
+
+.guide-preview__code {
+  margin-top: 8px;
+  padding: var(--fw-space-4);
+  overflow-x: auto;
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-md);
+  background: var(--fw-surface-subtle);
+  color: var(--fw-text-strong);
+  font-family: ui-monospace, "SF Mono", "Fira Code", Menlo, Consolas, monospace;
+  font-size: var(--fw-font-size-base);
+  line-height: 1.55;
+  tab-size: 2;
+
+  code {
+    font: inherit;
+    white-space: pre;
+  }
+
+  &[data-language]::before {
+    content: attr(data-language);
+    display: block;
+    margin-bottom: 8px;
+    color: var(--fw-text-muted);
+    font-size: var(--fw-font-size-xs);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+}
+
+.guide-preview__caption {
+  margin: 12px 0 0;
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-md);
+}
+
+.guide-preview__image-empty {
+  margin-top: 8px;
+  padding: 32px;
+  border: 1px dashed var(--fw-border);
+  border-radius: var(--fw-radius-md);
+  color: var(--fw-text-muted);
+  text-align: center;
+}
+
+.guide-preview__char-counter {
+  justify-self: end;
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-base);
+  font-weight: 500;
+
+  &--near {
+    color: var(--fw-warning-text);
+  }
+
+  &--over {
+    color: var(--fw-danger-text);
+    font-weight: 700;
+  }
+}
+
+/*
+ * Kortets Föregående/Nästa och dialogens Ändra/Gå vidare (berättelse 118,
+ * kriterium 7): EN regel, inte två — de bar identisk klädsel på varsitt
+ * håll redan innan det här, kommentaren vid `.guide-preview__ask-actions`
+ * sa det uttryckligen, och en tredje knapp som ska se likadan ut hade annars
+ * fått välja vilken kopia den kopierar.
+ *
+ * `min-height: 44px` uttryckligen och inte utspritt, som kartvalet,
+ * uppslagsknappen och upprepningsknapparna redan gör: K6 gäller besökarens
+ * yta. Mätt i renderad DOM på den riktiga sidan (`claim.html`, 390 px) ger
+ * 45 px både med och utan den här raden — träffytan höll redan, buren av
+ * padding och `--fw-font`s radhöjd, inte av något tal skrivet någonstans.
+ * Rader man inte kan se stämmer bara tills något annat i kedjan ändras; en
+ * knapp vars enda skydd är en padding-siffra ingen räknat om till en höjd
+ * kan tappa den vid nästa typsnittsbyte utan att något säger ifrån. Skrivet
+ * ut för samma skäl som grannarna redan har det — inte för att ett fel
+ * hittades här.
+ */
+.guide-preview__navigation button,
+.guide-preview__ask-actions button {
+  min-height: 44px;
+  padding: 12px 16px;
+  /* Samma skäl som fälten ovan. Gäller "Tillbaka" i aktivt läge — en
+   * inaktiverad kontroll är undantagen från 1.4.11, och `:disabled` nedan får
+   * behålla sin svagare kant. */
+  border: 1px solid var(--fw-border-control);
+  border-radius: 8px;
+  background: var(--fw-surface);
+  color: var(--fw-text-strong);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--fw-surface-subtle);
+  }
+
+  &:focus-visible {
+    @include focus.ring;
+  }
+
+  &:disabled {
+    border-color: var(--fw-border-subtle);
+    background: var(--fw-surface-subtle);
+    color: var(--fw-text-disabled);
+    cursor: not-allowed;
+  }
+}
+
+/* Primär framåt-handling (Nästa/Börja om): en fylld knapp så den läses som
+ * knapp och som det huvudsakliga valet. Föregående behåller den sekundära. */
+.guide-preview__navigation button[data-action="next"],
+.guide-preview__navigation button[data-action="restart"] {
+  /* At the end of the row whether or not *Föregående* stands before it — on
+     a first step it does not (punkt 10), and `space-between` with one child
+     put *Nästa* at the start. `inline` so a right-to-left guide mirrors it. */
+  margin-inline-start: auto;
+  border-color: var(--fw-primary);
+  background: var(--fw-primary);
+  color: var(--fw-on-primary);
+
+  &:hover {
+    border-color: var(--fw-primary-hover);
+    background: var(--fw-primary-hover);
+  }
+
+  &:disabled {
+    border-color: var(--fw-border-subtle);
+    background: var(--fw-surface-subtle);
+    color: var(--fw-text-disabled);
+  }
+}
+
+/*
+ * Mätt 22/9 vid 200 % textförstoring, 320/390 px: "Föregående" är ett enda
+ * ord utan brytpunkt — dess min-content-bredd (runt 248 px, buren av ordet
+ * själv, inte av någon flex-krympning) är bredare än raden har plats för
+ * bredvid "Nästa" (138 px + 12 px mellanrum). Två knappar som redan är vid
+ * sin egen bottengräns kan inte krympa längre — raden måste bryta i stället,
+ * annars sticker "Nästa" ut ur fönstret (435/390 px, oberoende av 320 eller
+ * 390). `flex-wrap` staplar dem i dokumentordning (Föregående överst, Nästa
+ * under) i stället för att klippa; K6 (min-height 44px på knapparna) rörs
+ * inte.
+ */
+.guide-preview__navigation {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+/*
+ * Mätt 22/9 (Johan, "besökarens sida ska hålla vid zoom, med knapparna
+ * först"): utan en egen bredd blev knapparna frimärken i ett brett kort —
+ * "Nästa" 86 px bred på 900 px, "Föregående" 141 px — medan de i smalt
+ * läge redan var ordets egen bredd (248 px vid 200 %). `min(9rem, 100%)`
+ * ger en golvbredd som växer med texten (rem, inte px) men aldrig kräver
+ * mer än raden faktiskt har: på en smal rad väger `100%` in och knappen
+ * fyller sin kolumn i stället för att sticka ut.
+ *
+ * Talet ändrat 10rem → 9rem samma dag (Johan, bildgranskning): 10rem
+ * (160 px) fick de två knapparna att bryta rad redan vid 390 px/100 % —
+ * `.guide-preview__navigation`s bredd där är 316 px, och 160+160+12=332
+ * är 16 px för mycket. 9rem (144 px) håller på en rad: 144+144+12=300 ≤
+ * 316. Vid 320 px/200 % är 9rem 288 px — 100 %-taket ger ändå full bredd
+ * staplat, precis som förut. Samma tal på de tre andra golven nedan
+ * (ask-actions, Försök igen, repeaterns knappar), så det är ETT tal att
+ * hålla i huvudet, inte fyra.
+ */
+.guide-preview__navigation button {
+  min-width: min(9rem, 100%);
+}
+
+.guide-preview__error {
+  margin: 0 0 16px;
+  padding: var(--fw-space-3);
+  border: 1px solid var(--fw-danger-border);
+  border-radius: 8px;
+  background: var(--fw-danger-surface);
+  color: var(--fw-danger-text);
+}
+
+/*
+ * The row that says an earlier choice was cleared because a later answer
+ * hid it (story 134, criterion 6). Warning tones, not danger: nothing is
+ * wrong, something changed — Johan 21/9, "en varning, inte ett fel".
+ */
+.guide-preview__choice-redo {
+  margin: 0 0 var(--fw-space-4);
+  padding: var(--fw-space-3);
+  border: 1px solid var(--fw-warning-border);
+  border-radius: var(--fw-radius-field);
+  background: var(--fw-warning-surface);
+  color: var(--fw-warning-text);
+}
+
+.guide-preview__empty {
+  color: var(--fw-text-muted);
+}
+
+/* Hur långt det är kvar (story 116).
+
+   Listen går över kortets hela bredd, stegmärkningen står under den och talet
+   högerställt på samma rad som stegmärkningen. Johans tredje pekning 13/9
+   kväll: "Jag vill att mätaren ska täcka hela, sedan under står Steg 1."
+
+   I samma rad konkurrerade de — "STEG 2" och "40 %" är två svar på samma
+   fråga. I två rader gör de inte det: listen säger hur långt, stegmärkningen
+   var. Full bredd tar dessutom bort trängseln som gjorde stapeln till en stump
+   på 390 px.
+
+   Ingen synlig rubrik: orden bär det tillgängliga namnet (K3, K4). En rubrik
+   åt upp raden på 390 px tills stapeln blev smalare än texten som beskrev den.
+
+   Stapeln växer från där den stod: `--fw-progress-from` sätts av renderaren,
+   och `to` är elementets egen bredd — samma form som `guide-preview-step-in`,
+   som också bara skriver `from`. */
+.guide-preview__progress {
+  margin: 0 0 var(--fw-space-3);
+}
+
+/* Spårets KANT och inte dess yta bär 1.4.11:s 3:1 mot kortet.
+
+   Mätt 13/9: spåret i `--fw-border-subtle` låg på 1.24:1 ljust och 1.20:1
+   mörkt mot kortet — vid två procent är nästan allt man ser spåret, och det
+   syntes knappt. Att i stället FYLLA spåret med `--fw-border-control` var det
+   närliggande svaret och är fel: då faller fyllt-mot-spår till 1.26:1 ljust och
+   1.01:1 mörkt, alltså en mätare där man inte kan se hur mycket som är fyllt.
+   Kanten löser bägge: 4.97:1 respektive 5.75:1 mot kortet, och fyllt-mot-spår
+   står kvar på 5.07/4.82. Talen mäts i `guide-preview-progress-meter`, inte här.
+
+   `--fw-border-control` och inte `--fw-border`: skälet står redan skrivet vid
+   token (`_tokens-mixins.scss`) — det här är en gräns någon ska hitta, inte en
+   avdelare. Samma token som kryssrutornas och chipens kanter. */
+.guide-preview__progress-meter {
+  box-sizing: border-box;
+  height: 8px;
+  border: 1px solid var(--fw-border-control);
+  border-radius: 999px;
+  background: var(--fw-border-subtle);
+  overflow: hidden;
+}
+
+.guide-preview__progress-bar {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--fw-primary);
+  animation: guide-preview-progress-grow 320ms ease-out;
+}
+
+/* Stegmärkningens rad: märkningen till vänster, talet längst ut till höger.
+   `baseline` och inte `center`, så siffran vilar på samma linje som "STEG 1"
+   trots att de har olika teckengrad. */
+.guide-preview__step-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.guide-preview__progress-value {
+  /* Samma luft under som stegmärkningen, annars drar raden snett. */
+  margin: 0 0 8px;
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-base);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@keyframes guide-preview-progress-grow {
+  from {
+    width: var(--fw-progress-from, 0%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guide-preview__progress-bar {
+    animation: none;
+  }
+}
+
+@keyframes guide-preview-step-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guide-preview__card {
+    animation: none;
+  }
+}
+
+/* The same step drawn again (see `renderedNodeId` in guide-preview.ts): new
+   content where the old was, no slide. */
+.guide-preview--redrawn .guide-preview__card {
+  animation: none;
+}
+
+/* Inside a node, the node is already the card.
+
+   `in-node` is set only by `flow-node`, which draws the viewer inside a card
+   that has its own border, radius, shadow and padding — so the viewer's own
+   gave a frame within a frame and an inset of 28 px nobody asked for. The
+   step's animation goes with them: a card sliding in is right when somebody
+   moves through a guide, and noise on a canvas where twenty of them redraw
+   whenever a node is edited.
+
+   It used to key on `editor-view`. That attribute is the editor's *picture*
+   (variable names, hidden fields shown) and the panel's preview got it on
+   13/9 — and lost its card as a side effect (Johan 25/9: "varför plockade vi
+   bort att visaren låg i ett kort?"). One attribute, one meaning. */
+:host([in-node]) .guide-preview__card {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  animation: none;
+}
+
+/* Frozen, not broken. Inside a node the navigation cannot be pressed (the
+   preview is inert), and both buttons rendered grey read as a fault — Johan on
+   the first 064 build: "ser ju hemskt ut". Next keeps its primary colour and
+   the pair is dimmed as one, whatever `disabled` the engine happens to set.
+
+   Not while the guide is being run on the canvas (`proving`, story 065): there
+   the buttons work, and a Next the engine has disabled because the answer is
+   missing has to look disabled or it lies about what a press will do. */
+:host([editor-view]:not([proving])) .guide-preview__navigation button {
+  opacity: 0.6;
+}
+
+/* Knappgolvet är besökarens, inte spegelns.
+ *
+ * `min(9rem, 100%)` några hundra rader upp ger *Föregående* och *Nästa* en
+ * bredd värd namnet på en sida. Men golvet gäller vid 100 % också, och ett
+ * nodkort på canvasen är 240 px brett med 206 px innehåll: 144 + 144 + 12 =
+ * 300 px får inte plats, så `flex-wrap: wrap` bröt raden i **varje** spegel
+ * och den blev en knapprad (39 px, mätt 23/9 2026) högre än före golvet. Med
+ * tänt öga är det spegeln som håller upp kortet (`.flow-node__visitor` i
+ * flow-node.scss), så kortet växte med den.
+ *
+ * Här kan golvet släppas, för här är knapparna inte kontroller: spegeln är
+ * `inert`, och K6:s träffyta gäller besökarens yta — samma undantag som
+ * `min-height: 0` några rader ned redan vilar på. Under `proving` går de att
+ * trycka på, och då gäller golvet igen.
+ *
+ * **Bara golvet, inte `flex-wrap: nowrap`.** Nowrap prövades och gjorde
+ * ingenting som ett test kunde se: utan golv ryms båda orden på 206 px ändå.
+ * Och vid 200 % textförstoring hade den varit fel — *Föregående* är då ett
+ * ord på 248 px som ingen krympning når under, och nowrap hade skjutit
+ * *Nästa* ut ur kortet i stället för att låta raden bryta.
+ */
+:host([editor-view]:not([proving])) .guide-preview__navigation button {
+  min-width: 0;
+}
+
+:host([editor-view]:not([proving])) .guide-preview__navigation button[data-action="next"],
+:host([editor-view]:not([proving])) .guide-preview__navigation button[data-action="restart"] {
+  border-color: var(--fw-primary);
+  background: var(--fw-primary);
+  color: var(--fw-on-primary);
+}
+
+/* Restart only exists on the end step, and on the canvas that step's card is
+   green (Avslut, see flow-node.scss) — an indigo button on it read as somebody
+   else's (Johan, the known-answers film 6/9). Same colour as the card's header,
+   which already holds 4.5:1 against white. Only the canvas mirror carries
+   `editor-view`; the panel and the viewer keep the primary colour. After the
+   frozen rule above, so it wins when both apply. */
+:host([editor-view]) .guide-preview__navigation button[data-action="restart"] {
+  border-color: var(--fw-node-end);
+  background: var(--fw-node-end);
+  color: var(--fw-on-node);
+
+  /* No hover token for this green (the ink token is pale in dark mode);
+     a touch brighter keeps white text above 4.5:1. */
+  &:hover {
+    filter: brightness(1.2);
+  }
+}
+
+:host([editor-view]) .guide-preview__conditional {
+  gap: 3px;
+  padding: var(--fw-space-1) var(--fw-space-2);
+}
+
+/* A miniature, not the viewer squeezed into a node.
+
+   A free question node is 250–300 px wide; the viewer's scale (26 px heading,
+   16 px controls, option cards with borders) is made for a page column and
+   turns three options into 536 px. The page node is 660 px — the viewer's own
+   width — and keeps the real scale, which is why this is a container query on
+   the host's width and not a flag: the same `editor-view` preview is a
+   miniature where it is narrow and the real thing where it is not.
+
+   `data-under` is the component's own container query: a ResizeObserver on
+   the host lists every threshold its width is under (see `watchWidth` in
+   guide-preview.ts). `@container` did this in CSS alone, and set the viewer's
+   floor at Safari 16 / Firefox 110 (K18); the attribute reaches Safari 15.4.
+
+   Always inside `:where()`, so the attribute adds no specificity: a rule that
+   used to sit in an `@container` block weighed exactly what its selector
+   weighed, and these must keep losing to the same `:host([editor-view])` and
+   `:host([compact])` rules they lost to before. Measured: without `:where()`
+   the ≤400 card padding beat the miniature's `padding: 0`, and every node in
+   the visitor view grew 43 px. */
+:host(:where([data-under~="420"])[editor-view]) .guide-preview__card h2 {
+  font-size: var(--fw-font-size-xl);
+  line-height: 1.3;
+}
+
+:host(:where([data-under~="420"])[editor-view]) .guide-preview__card p {
+  margin-top: var(--fw-space-2);
+  font-size: var(--fw-font-size-sm);
+  line-height: 1.45;
+}
+
+:host(:where([data-under~="420"])[editor-view]) .guide-preview__step {
+  margin-bottom: 4px !important;
+  font-size: var(--fw-font-size-xs);
+}
+
+:host(:where([data-under~="420"])[editor-view]) .guide-preview__options {
+  gap: 2px;
+  margin-top: var(--fw-space-3);
+}
+
+:host(:where([data-under~="420"])[editor-view]) .guide-preview__options legend {
+  margin-bottom: 4px;
+  font-size: var(--fw-font-size-sm);
+}
+
+:host(:where([data-under~="420"])[editor-view]) .guide-preview__options label {
+  gap: 8px;
+  /* The canvas card's dense row: the visitor's 44 px floor (the answer row's
+     shared rule) is for a finger on a visitor's page, not for a picture of
+     one on the canvas. */
+  min-height: 0;
+  padding: var(--fw-space-1) var(--fw-space-2);
+  border-color: transparent;
+  font-size: var(--fw-font-size-base);
+}
+
+/* The boxes keep the base 18 px: shrinking them left the 12 px dot with
+   almost no ring and a fractional offset that read as off-centre (Johans
+   bild 2/9). The tick mixin centres itself; its proportions are its own. */
+
+:host(:where([data-under~="420"])[editor-view]) .guide-preview__value-answer {
+  margin-top: var(--fw-space-3);
+}
+
+/* The number field is `flex: 0 1 16ch` (≈254 px at 16 px), and an input's
+   intrinsic minimum keeps it from shrinking — measured 31 px outside a
+   206 px node, with the unit wrapped underneath. Let it shrink to the row. */
+:host(:where([data-under~="420"])[editor-view]) .guide-preview__value-answer input[data-number-answer] {
+  flex: 1 1 6ch;
+  min-width: 0;
+}
+
+:host(:where([data-under~="420"])[editor-view]) .guide-preview__page-field {
+  gap: 4px;
+  font-size: var(--fw-font-size-sm);
+}
+
+:host(:where([data-under~="420"])[editor-view]) .guide-preview__page-field :is(input, textarea, select) {
+  padding: var(--fw-space-2) var(--fw-space-3);
+  font-size: var(--fw-font-size-base);
+}
+
+:host(:where([data-under~="420"])[editor-view]) .guide-preview__navigation {
+  gap: 8px;
+  margin-top: 12px;
+}
+
+:host(:where([data-under~="420"])[editor-view]) .guide-preview__navigation button {
+  padding: var(--fw-space-2) var(--fw-space-3);
+  font-size: var(--fw-font-size-sm);
+}
+
+/* Och knappen i kortet skalar med kortets text, inte med tummen.
+
+   `min-height: 44px` är K6 — besökarens träffyta — och den gäller besökarens
+   sida. I ett nodkort på canvasen är knappen ingen kontroll: förhandsvisningen
+   är `inert`, och knappen finns där som en bild av vad besökaren ser. Kvar blev
+   en 44 px hög knapp runt 12 px text: 14 px luft över och under en rad på
+   16,8 px (mätt i renderad DOM). Johan 19/9, om läsläget: *"en aning höga,
+   mycket padding"*.
+
+   Måtten i `em` och inte i px, så knappen följer kortets textstorlek om den
+   ändras — det är just den kopplingen som saknades. Mätt: 44 → 31 px.
+
+   Inte när guiden PROVAS på canvasen (`proving`, berättelse 065): då går
+   knapparna att trycka på, och en knapp man kan trycka på lyder under K6. */
+:host(:where([data-under~="420"])[editor-view]:not([proving])) .guide-preview__navigation button {
+  min-height: 0;
+  padding: 0.5em 1em;
+  line-height: 1.4;
+}
+
+/* Men breddgolvet släpps även medan guiden provas.
+
+   `min(9rem, 100%)` är sidans golv: det finns för att knapparna inte ska bli
+   frimärken i ett brett kort. Ett kort på canvasen är aldrig brett — 206 px
+   innehåll — och 144 + 144 + 8 ryms inte, så det provade kortet staplade
+   "Föregående" över "Nästa" i 96 px medan grannkorten, inerta och utan golv,
+   visade samma knappar 31 px höga sida vid sida (mätt 1/10 2026 i promons
+   stillbild; Johan: "knapparna i visaren är staplade i editorn"). Knapparna
+   hoppade i storlek varje gång steget flyttade. K6 är höjden, och den står
+   kvar: 44 px hög och 86 px bred är en träffyta. */
+:host(:where([data-under~="420"])[editor-view][proving]) .guide-preview__navigation button {
+  min-width: 0;
+}
+:host([compact]) .guide-preview__card {
+  padding: var(--fw-space-4);
+  border-radius: 10px;
+  box-shadow: none;
+  /* Översikten ska inte animeras om vid varje klick. */
+  animation: none;
+
+  h2 {
+    font-size: 20px;
+  }
+}
+
+:host([compact]) .guide-preview__options {
+  margin-top: var(--fw-space-3);
+}
+
+// Fälten sätter egna display-värden, vilket annars vinner över
+// webbläsarens [hidden]-regel. Utan denna syns villkorsstyrda fält alltid.
+[hidden] {
+  display: none !important;
+}
+
+.guide-preview__page-fields {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--fw-space-4);
+  margin-top: 24px;
+}
+
+.guide-preview__page-field {
+  display: grid;
+  grid-column: span 12;
+  gap: 8px;
+  /* Packat upptill. Två halvbreda fält på en rad delar radens höjd, och ett
+     fel under det ena gjorde raden högre — grannens grid delade då ut
+     överskottet mellan etikett och ruta, så rutan sjönk 19 px under den
+     med felet (mätt 4/9). Det som växer flödar nedåt; rutorna står kvar. */
+  align-content: start;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-md);
+  /*
+   * The cell reads at the text's weight; its label carries its own 600 (the
+   * rule below). The cell used to carry 600 for the label's sake, and
+   * everything else inherited it: the visitor's own value through the
+   * control's `font: inherit` (*Kim Andersson* in bold, measured 30/9,
+   * GRAFISK-PROFIL *Hierarkin — roller*), and every note under the field,
+   * which then needed a 400 of its own to undo it — three such undoings
+   * stood here. The weight belongs to the role, not to the box.
+   */
+  font-weight: var(--fw-weight-text);
+
+  /* The field's label, in each of the four forms a cell draws it: `label`
+     (text fields, the consent row), `legend` (choices), and the two spans
+     that stand in where nothing can be labelled — a lookup's, and a file
+     field's under a run. */
+  > :is(label, legend, .guide-preview__page-label, .guide-preview__proving-label) {
+    font-weight: var(--fw-weight-strong);
+  }
+
+  /*
+   * Vald på elementet, inte på en uppräkning av typer.
+   *
+   * Regeln räknade upp `text` och `number`, och ett datumfält föll igenom till
+   * webbläsarens egen stil: mätt till `inset 2px rgb(118, 118, 118)` där de
+   * andra hade vår `solid 1px`. På en iPad är det ingen ram att tala om — och
+   * WCAG 1.4.11 vill ha 3:1 på en kontrollkant, vilket UA-grått inte lovar.
+   *
+   * Uppräkningen var fällan: varje ny fälttyp föll ur den under tystnad. Den
+   * här formen omfattar det som kommer sedan också.
+   */
+  input,
+  textarea,
+  select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: var(--fw-space-3) var(--fw-space-4);
+    border: 1px solid var(--fw-border-control);
+    border-radius: 8px;
+    /* Ytan uttryckligen, av samma skäl som kanten ovanför: utan den red
+       varje sidfälts-input på webbläsarens egen bakgrund — vit på
+       skrivbordet (osynligt), iOS kontrollton på telefonen (Johans bild i
+       ljust läge 31/8: grått fält mot vitt kort). */
+    background: var(--fw-surface);
+    color: var(--fw-text);
+    font: inherit;
+    font-size: var(--fw-font-size-xl);
+  }
+
+  /*
+   * Johan 21/9 (Fable-uppföljning): *Huvudrätt* och *Efterrätt* on the
+   * conference case's *Menyn* page sat with their list of options right
+   * under the label — 0px measured with `getBoundingClientRect`, not the
+   * 8px this fieldset's own `gap` above is meant to give every child.
+   *
+   * The reason `gap` never reaches here: a `<legend>` is laid out by its
+   * own UA algorithm (the "rendered legend" box that notches the border),
+   * not as an ordinary grid item, so the grid's row gap does not apply
+   * between it and the next child — measured, the same way `label`s own
+   * `margin-bottom` already compensates for it in `.guide-preview__options`
+   * below. Restoring the same 8px here (`--fw-space-2`, the token this
+   * fieldset already uses via `gap`) matches the label→field air on a text
+   * question on the very same page, instead of leaving the list glued to
+   * its own heading.
+   */
+  > legend {
+    margin-bottom: var(--fw-space-2);
+    /* The same 2 px as the step's legend: the question stood at 137 over
+       rows at 135 (Fia 1/10, B4 review). */
+    padding-inline: 0;
+  }
+
+  /*
+   * Mätt 22/9, samma vy som `.guide-preview__page-heading h3` ovan
+   * ("Organisationsnummer", `every-field.html`, 320 px, rot 32px/200 %):
+   * grid-elementets `min-width: auto`-standard bottnar i textens
+   * min-content — och för ETT ord utan brytpunkt är min-content lika brett
+   * som texten själv (351 px), bredare än cellen (246 px). `min-width: 0`
+   * släpper bottengränsen, `overflow-wrap: anywhere` gör att texten sedan
+   * faktiskt bryter i stället för att bara klippas osynligt.
+   */
+  > label {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+.guide-preview__page-fields--compact {
+  gap: 8px;
+}
+
+.guide-preview__page-field-summary {
+  box-sizing: border-box;
+  grid-column: span 12;
+  min-width: 0;
+  overflow: hidden;
+  padding: 8px 12px;
+  border: 1px solid var(--fw-border);
+  border-radius: 8px;
+  background: var(--fw-surface-subtle);
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-base);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &[data-summary-kind="heading"] {
+    padding: 8px 0 4px;
+    border: 0;
+    border-bottom: 1px solid var(--fw-border);
+    border-radius: 0;
+    background: none;
+    color: var(--fw-text);
+    font-size: var(--fw-font-size-lg);
+  }
+
+  &.guide-preview__page-field-summary--selected {
+    border-color: var(--fw-primary);
+    background: var(--fw-primary-surface);
+    color: var(--fw-primary-strong);
+
+    &[data-summary-kind="heading"] {
+      border-radius: 8px;
+      @include focus.ring;
+    }
+  }
+}
+
+.guide-preview__variables {
+  margin-top: 12px;
+  padding: var(--fw-space-3);
+  border: 1px solid var(--fw-border-subtle);
+  border-radius: 10px;
+  background: var(--fw-surface-subtle);
+
+  summary {
+    color: var(--fw-text-secondary);
+    font-size: var(--fw-font-size-base);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  dl {
+    display: grid;
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+    gap: var(--fw-space-1) var(--fw-space-3);
+    margin: var(--fw-space-2) 0 0;
+  }
+
+  dt code {
+    color: var(--fw-primary);
+    font-size: var(--fw-font-size-base);
+  }
+
+  dd {
+    margin: 0;
+    overflow: hidden;
+    color: var(--fw-text);
+    font-size: var(--fw-font-size-base);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    em { color: var(--fw-text-muted); }
+  }
+}
+
+.guide-preview__field-error {
+  color: var(--fw-danger-text);
+  font-size: var(--fw-font-size-base);
+  font-weight: 600;
+}
+
+/* Story 134, criterion 6, on a page: the cleared choice's note in the
+   correction row's place, in warning tones — see `.guide-preview__choice-redo`. */
+.guide-preview__field-redo {
+  display: block;
+  /* "Ramar för nära texten": 8/12 → 16. */
+  padding: var(--fw-space-4);
+  border: 1px solid var(--fw-warning-border);
+  border-radius: var(--fw-radius-field);
+  background: var(--fw-warning-surface);
+  color: var(--fw-warning-text);
+  font-size: var(--fw-font-size-base);
+}
+
+.guide-preview__page-field[data-invalid],
+.guide-preview__value-answer[data-invalid] {
+  /*
+   * The control's own edge in `--fw-danger` (GRAFISK-PROFIL, Fältgrupp) —
+   * radios and boxes excluded: in a group every unanswered option took the
+   * red frame and the 12 % glow, five red rings for one missing answer
+   * (Astra 1/10, bilaga 10 punkt 6: *"utan att varje obesvarat alternativ
+   * får en egen röd ruta"*). The group is marked instead, below.
+   *
+   * The glow (a literal 12 % red) is gone too: it was a second box-shadow on
+   * the field, and the focus ring is a box-shadow — the one that won hid the
+   * other, so fel and fokus could not be seen together (punkt 7).
+   */
+  input:not([type="radio"], [type="checkbox"]),
+  textarea,
+  select {
+    border-color: var(--fw-danger);
+  }
+
+  // A single box (the consent) is one control, not a group: its edge.
+  input[data-consent] {
+    border-color: var(--fw-danger);
+  }
+}
+
+/*
+ * Focus on a field the visitor types into: the one ring (GRAFISK-PROFIL,
+ * Fokus; Astra 1/10, bilaga 10 punkt 7). Text fields had no rule at all and
+ * drew the browser's own 1 px, so a text field and the search box beside it
+ * showed focus in two ways. Radios, boxes and the slider have their own
+ * rings where they are drawn.
+ *
+ * Error and focus at once: the ring is an outline and a box-shadow outside
+ * the field, the error is the field's own edge — neither covers the other
+ * (the error's old glow was a box-shadow, and lost to this one).
+ */
+:is(.guide-preview__page-field, .guide-preview__value-answer)
+  :is(input:not([type="radio"], [type="checkbox"], [type="range"], [type="file"]), textarea, select):focus-visible {
+  @include focus.ring;
+}
+
+/*
+ * A group in error — a page's choice or rating, a step's options, boxes or
+ * scale — is marked once, along its start edge, the way GOV.UK marks a form
+ * group. 3 px: the focus stroke's width, among the optical sizes the profile
+ * keeps outside the spacing scale (GRAFISK-PROFIL, Avstånd). The message
+ * under it says what is wrong; the bar says where, without a colour having to
+ * be seen on each option (K3: the text carries it).
+ */
+.guide-preview__page-field[data-invalid][data-group],
+.guide-preview__options[data-invalid],
+.guide-preview__rating[data-invalid] {
+  padding-inline-start: var(--fw-space-3);
+  border-inline-start: 3px solid var(--fw-danger);
+}
+
+/*
+ * A step's own refusal (`placeStepError`): directly under the control, in
+ * the card. The control above has its own top margin (24 under the heading);
+ * the message binds to it at the cell's distance, `--fw-space-2`.
+ */
+.guide-preview__card .guide-preview__step-error {
+  margin: var(--fw-space-2) 0 0;
+  color: var(--fw-danger-text);
+  line-height: var(--fw-line-body);
+}
+
+/*
+ * Under a marked group the message belongs to the group's bar, as it does on
+ * a page, where it sits inside the fieldset: the bar runs on past the last
+ * option and the message starts at the options' edge. Measured 1/10 (Fia,
+ * B4 review): on a page the message stood at the options' edge (150 px)
+ * inside the bar, on a step of its own at the heading's edge (135 px) under
+ * a bar that had already ended — one pattern drawn two ways. The 8 px moves
+ * from margin to padding so the bar has no gap.
+ */
+.guide-preview__card
+  :is(.guide-preview__options, .guide-preview__rating)[data-invalid]
+  + .guide-preview__step-error {
+  margin-top: 0;
+  padding-block-start: var(--fw-space-2);
+  padding-inline-start: var(--fw-space-3);
+  border-inline-start: 3px solid var(--fw-danger);
+}
+
+/* A conditional field, in the editor's picture of the viewer.
+
+   A visitor sees the field only once its rule holds; an author has to see it
+   always — otherwise half a form is invisible in the one place it can be fixed.
+   The dashed frame and the grey line say which of the two you are looking at,
+   and the rule is spelled out so nobody has to open the panel to learn why the
+   field is there. The site never sets `editor-view`, so a published guide looks
+   exactly as it did. */
+.guide-preview__conditional {
+  display: grid;
+  grid-column: span 12;
+  gap: var(--fw-space-2);
+  padding: 8px;
+  border: 1px dashed var(--fw-border-control);
+  border-radius: var(--fw-radius-sm);
+}
+
+.guide-preview__conditional.guide-preview__page-field--half { grid-column: span 6; }
+.guide-preview__conditional.guide-preview__page-field--third { grid-column: span 4; }
+
+.guide-preview__conditional-rule {
+  margin: 0;
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-sm);
+  line-height: 1.4;
+}
+
+/* A gap where an answer will stand. It carries the variable's label rather than
+   `{{applicantName}}`: no visitor has answered yet, and the braces say nothing
+   about what the page will look like. */
+.guide-preview__variable-gap {
+  display: inline-block;
+  /* A little room on top only: measured in a heading, the caps sat 3 px
+     below the border and the baseline 5.5 px above it — the descender space
+     pushes the word up. 0.1 em on top puts cap-to-baseline in the middle. */
+  padding: 0.1em var(--fw-space-2) 0;
+  border: 1px dashed var(--fw-primary);
+  border-radius: var(--fw-radius-sm);
+  background: var(--fw-primary-surface);
+  color: var(--fw-primary);
+  font-weight: normal;
+  /* Tighter than the text around it, so the box (border included) fits inside
+     the line: measured 22.3 px tall on a 20.3 px line, and two gaps on
+     consecutive lines touched (Johan 3/9: "går i varandra"). */
+  line-height: 1.15;
+
+  /* The mark follows the text size, so it holds its own in a heading too
+     (Johan 3/9: the fixed 10 px looked lost there). */
+  svg {
+    width: 0.7em;
+    height: 0.7em;
+    margin-right: 0.2em;
+    vertical-align: -0.05em;
+  }
+}
+
+.guide-preview__page-field--half { grid-column: span 6; }
+.guide-preview__page-field--third { grid-column: span 4; }
+
+.guide-preview__page-item--break { grid-column-start: 1; }
+
+.guide-preview__page-spacer {
+  grid-column: span 12;
+  height: 24px;
+}
+
+.guide-preview__page-field-summary[data-summary-kind="spacer"] {
+  border-style: dashed;
+  background: transparent;
+  color: var(--fw-text-muted);
+  font-style: italic;
+  font-weight: 400;
+  text-align: center;
+}
+
+.guide-preview__page-field--selected {
+  border-radius: 8px;
+  outline: 3px solid var(--fw-focus-ring, rgb(79 70 229 / 35%));
+  outline-offset: 4px;
+}
+
+.guide-preview__page-heading {
+  grid-column: span 12;
+  padding: 8px 0 4px;
+  border-bottom: 1px solid var(--fw-border);
+
+  /*
+   * Mätt 22/9 (samma klass av fel som `.examples-index`, `every-field.html`
+   * 320 px, rot 32px/200 %): en vanlig block-box, inte en `<legend>` — mätt
+   * via `getComputedStyle`/`getBoundingClientRect` innan något antogs. Ett
+   * `<h3>` med `display: block` (bekräftat, `.guide-preview__page-heading`
+   * ärver ingenting särskilt från fieldset/legend-algoritmen). "Kontaktuppgifter"
+   * är ett sammansatt ord utan blanksteg: `scrollWidth` 351 mot `clientWidth`
+   * 246. Sektionens egen `border-bottom` följer med ut eftersom rubrikens
+   * overflow breddar SEKTIONENS box, inte bara textens. `anywhere` på just
+   * `h3` (inte hela sektionen) är den minsta ändringen som håller — samma
+   * val som redan står i `.examples-index`.
+   */
+  h3 {
+    margin: 0;
+    color: var(--fw-text);
+    font-size: var(--fw-font-size-2xl);
+    overflow-wrap: anywhere;
+  }
+
+  .guide-preview__formatted { margin-top: 4px; }
+}
+
+/*
+ * A Text shown as a box (story 096). The kind is carried three ways — frame
+ * colour, icon and the word — because colour alone is not a message (K3):
+ * in print or greyscale the icon and the word still say *Viktigt*. The kind
+ * maps onto the semantic tokens the rest of the editor already uses
+ * (warning, success for a tip, info), so a host that recolours those
+ * recolours the boxes too. The thick left edge is a shape cue, not decoration.
+ */
+[data-callout-kind] {
+  --callout-ink: var(--fw-info-text);
+  --callout-surface: var(--fw-info-surface);
+  --callout-border: var(--fw-info-border);
+}
+
+[data-callout-kind="warning"] {
+  --callout-ink: var(--fw-warning-text);
+  --callout-surface: var(--fw-warning-surface);
+  --callout-border: var(--fw-warning-border);
+}
+
+[data-callout-kind="tip"] {
+  --callout-ink: var(--fw-success-text);
+  --callout-surface: var(--fw-success-surface);
+  --callout-border: var(--fw-success-border);
+}
+
+.guide-preview__callout {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: var(--fw-space-2);
+  align-items: start;
+  /*
+   * Variant C (Fable 21/9, Johan: "När det bara är en rad i rutan ser det
+   * konstigt utbredd, mer padding i toppen"). Calloutens ton och luft är
+   * densamma som variant A: symmetrisk 16 (--fw-space-4) baseline, 24 bara
+   * när ikonen faktiskt täcker en andra rad brödtext (regeln nedan).
+   */
+  padding: var(--fw-space-4);
+  border: 1px solid var(--callout-border);
+  border-left: 4px solid var(--callout-ink);
+  border-radius: 8px;
+  background: var(--callout-surface);
+
+  h3 {
+    font-size: var(--fw-font-size-lg);
+    line-height: 1.3;
+  }
+
+  /*
+   * The icon sits on the first line of text, whichever it is — the heading
+   * or, without one, the body. The kind line is given that line's size and
+   * line-height and is exactly one line tall, so centring the icon in it
+   * centres it on the text's first line. The word is read, not shown.
+   */
+  .guide-preview__callout-kind {
+    grid-row: 1 / span 2;
+    height: 1.6em;
+    margin: 0;
+    font-size: inherit;
+    line-height: 1.6;
+  }
+
+  .guide-preview__callout-kind--by-heading {
+    height: 1.3em;
+    font-size: var(--fw-font-size-lg);
+    line-height: 1.3;
+  }
+
+  .guide-preview__callout-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  > h3,
+  > .guide-preview__formatted { grid-column: 2; }
+
+  > .guide-preview__formatted {
+    margin-top: 0;
+
+    > :first-child { margin-top: 0; }
+  }
+
+  > h3 + .guide-preview__formatted { margin-top: 4px; }
+}
+
+/* Exception to the symmetric baseline: only a heading FOLLOWED by body text
+   needs the old headroom, since the two-row icon then spans a real second
+   line. A class from guide-preview.ts, not `:has()` — css-ratchet.test.ts
+   caps `:has()` at 3 uses on purpose (K18, webbläsargolvet inte mätt än),
+   and this needs no selector cleverness: the page already knows whether
+   there is body text when it builds the class list. */
+.guide-preview__callout--with-body {
+  padding-top: var(--fw-space-5);
+}
+
+/* Read but not seen — `display: none` would silence it for screen readers. */
+.guide-preview__callout-word {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The same box on the canvas card, at card size: the frame and the kind
+   line in front of the title, on one line. */
+.guide-preview__page-field-summary[data-callout-kind] {
+  padding: var(--fw-space-2) var(--fw-space-3);
+  border: 1px solid var(--callout-border);
+  border-left: 4px solid var(--callout-ink);
+  border-radius: 8px;
+  background: var(--callout-surface);
+  font-size: var(--fw-font-size-base);
+
+  .guide-preview__callout-kind {
+    display: inline-flex;
+    margin: 0 8px 0 0;
+    vertical-align: -3px;
+  }
+}
+
+.guide-preview__callout-kind {
+  display: flex;
+  align-items: center;
+  gap: var(--fw-space-2);
+  margin: 0 0 4px;
+  color: var(--callout-ink);
+  font-size: var(--fw-font-size-sm);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.guide-preview__callout-icon {
+  display: inline-flex;
+
+  /* The icon is a filled silhouette; the cut-outs show the box's surface
+     through it, the way the node icons show their badge. */
+  svg { display: block; }
+  .cut { fill: var(--callout-surface); }
+}
+
+.guide-preview__page-choices {
+  display: grid;
+  gap: 8px;
+}
+
+/*
+ * The answer row — ONE form, on a step of its own and on a page (Astra 1/10,
+ * bilaga 10 punkt 9: *"16 px, vikt 400, --fw-text, samma vänsterkant och
+ * minst 44 px träffhöjd"*). Two rules drew it: on a page the row inherited
+ * the cell's label voice, 14 px in `--fw-text-secondary`, while the same
+ * question on its own step read 16 px in `--fw-text` (genomgången 30/9, V8).
+ *
+ * K6: the row is the target. It measured 40 px (10 + 20 + 10) when the gate
+ * was built 6/9; the spacing sweep of 20/9 set the vertical padding to 12,
+ * and `min-height` holds the 44 whatever the type does.
+ */
+/*
+ * The answer row's frame (Astra 1/10, bilaga 10 punkt 12): a quiet edge at
+ * rest (`--fw-border`), the full accent and the tinted surface once chosen.
+ * The radio or the tick stays the choice's own mark — the outer frame is
+ * never what tells a visitor this row is a control (1,47 : 1 at rest is too
+ * faint to carry that, and need not: the radio's own edge is 3 : 1).
+ *
+ * A page's rows had only the quiet edge, chosen or not (measured 1/10: *Två
+ * dagar* chosen, #d0d5dd and no surface); the standalone rows had both. Now
+ * one rule for both, as the row itself is one rule.
+ *
+ * The chosen frame: a resident scanning a filled-in guide finds what they
+ * chose by these edges. `--fw-primary-muted` measured 1.99:1 in light and
+ * 2.74:1 in dark, and Johan decided a chosen answer should be plainly
+ * visible, so the border is the full primary, ~5:1 in both themes.
+ *
+ * `[data-chosen]`, set by the component, and not the `:has` pseudo-class on
+ * the checked input: that was the one rule holding the viewer's floor at
+ * Firefox 121 (K18). One attribute costs nothing and the frame is the same.
+ */
+:is(.guide-preview__options, .guide-preview__page-choices) > label[data-chosen],
+.guide-preview__rating-na[data-chosen] {
+  border-color: var(--fw-primary);
+  background: var(--fw-primary-surface);
+}
+
+:is(.guide-preview__options, .guide-preview__page-choices) > label,
+.guide-preview__rating-na {
+  display: flex;
+  align-items: center;
+  gap: var(--fw-space-2);
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: var(--fw-space-3) var(--fw-space-4);
+  border: 1px solid var(--fw-border);
+  border-radius: 8px;
+  color: var(--fw-text);
+  font-size: var(--fw-font-size-xl);
+  font-weight: var(--fw-weight-text);
+  cursor: pointer;
+
+  /*
+   * Ett rutnätsbarn krymper inte under sitt innehåll av sig självt. Utan det
+   * här sköt ett obrytbart svarsalternativ — en adress, ett långt sammansatt
+   * ord — ut alternativet 233px utanför en 320px skärm.
+   */
+  min-width: 0;
+
+  > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* The host's width, not the window's — same reasoning as the comment on
+   `data-under` below (a narrow host in a wide window is the ordinary case,
+   not the exception). */
+:host(:where([data-under~="560"])) :is(.guide-preview__page-field--half, .guide-preview__page-field--third) {
+  grid-column: span 12;
+}
+/* Varför-utfällaren (story 051): dämpad, under beskrivningen, före fältet.
+   En riktig details — bara utseendet är vårt. */
+.guide-preview__why {
+  margin: var(--fw-space-2) 0 0;
+  /* "Ramar för nära texten": 12 → 16. */
+  padding: var(--fw-space-4);
+  border: 1px solid var(--fw-border);
+  border-radius: 10px;
+  background: var(--fw-surface-subtle, var(--fw-surface));
+}
+
+/* På en sida står den sist i fältets cell: cellens gap är avståndet, inte
+   marginalen. (Cellen bar etikettens 600 till 30/9, och förklaringen fick
+   en egen 400 — mätt 6/9, texten blev fet. Nu ärver den textens vikt.) */
+.guide-preview__page-field > .guide-preview__why {
+  margin-top: 0;
+}
+
+.guide-preview__why summary {
+  font-size: var(--fw-font-size-md);
+  font-weight: 600;
+  color: var(--fw-primary-strong, var(--fw-primary));
+  cursor: pointer;
+}
+
+.guide-preview__why summary:focus-visible {
+  @include focus.ring;
+}
+
+.guide-preview__why p {
+  margin: 8px 0 0;
+  font-size: var(--fw-font-size-md);
+  line-height: 1.5;
+  color: var(--fw-text-secondary);
+}
+
+.guide-preview__formatted {
+  color: var(--fw-text-secondary);
+  line-height: 1.6;
+
+  p,
+  ul,
+  ol {
+    margin: 12px 0 0;
+  }
+
+  ul,
+  ol {
+    /* Följer texten, som listan ovan. */
+    padding-inline-start: 24px;
+  }
+
+  a {
+    color: var(--fw-primary-strong);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+  }
+}
+
+.guide-preview__email {
+  display: grid;
+  grid-template-columns: minmax(80px, auto) 1fr;
+  gap: 8px 12px;
+  margin-top: var(--fw-space-5);
+
+  dt {
+    font-weight: 700;
+  }
+
+  dd {
+    min-width: 0;
+    margin: 0;
+  }
+
+  pre {
+    margin: 0;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+    font: inherit;
+  }
+}
+/**
+ * "This guide has not been translated into Finnish. It is shown in Swedish."
+ *
+ * Deliberately quiet. It is an explanation, not a warning: nothing has gone
+ * wrong, and a red banner would tell a resident that something has. It sits
+ * above the step so it is read before the text it explains.
+ */
+.guide-preview__not-translated {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-inline-start: 3px solid var(--fw-border);
+  border-radius: 4px;
+  background: var(--fw-surface-subtle, rgb(127 127 127 / 8%));
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-md);
+  line-height: 1.5;
+}
+
+@include tick-boxes.fw-tick-boxes;
+
+/*
+ * Ett givet samtycke bär accentfamiljen, som varje annan ruta (Astra 1/10,
+ * bilaga 10 punkt 13). Det bekräftades i grönt (`--fw-success`) efter Johans
+ * regel 31/8 — av/på i grönt, val i indigo — men grönt var den enda rutan
+ * som inte följde färgskalan: med *skog*, *hav* eller en värds egna tokens
+ * stod samtycket kvar i samma gröna (genomgången 30/9, V12). Rutan tar nu
+ * mixinens `--fw-primary` med `--fw-on-primary` som bock, så den byter med
+ * temat och värdens val. Ingen egen regel behövs.
+ */
+
+/*
+ * Rutan och intyget är EN sak och står på EN rad (Johans beställning från
+ * telefonen 31/8: rutan låg ensam med hela texten under sig, och läsordningen
+ * sa "här är en ruta, och förresten, det här lovar du"). Texten får radbrytas,
+ * men den BÖRJAR bredvid rutan. Gäller båda samtyckets former — sidfältet och
+ * det egna steget bär samma klass.
+ */
+.guide-preview__page-field--consent {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 12px;
+  align-items: flex-start;
+  /* K6: hela etiketten är träffytan, och en enradig text gav 21 px (mätt 6/9). */
+  min-height: 44px;
+
+  input[type="checkbox"] {
+    /* I höjd med textens första rad, inte med blockets mitt. */
+    margin-top: 3px;
+  }
+
+  > span {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/*
+ * On a page the row's 44 px (K6) stood as empty space UNDER a one-line
+ * consent: the box and its text at the top, 23 px of label below them, then
+ * the cell's gap — the message for an unticked consent landed 31 px under
+ * the box (measured 1/10, every-field), where a text field's lands 8 under
+ * its edge. Astra 1/10 (bilaga 10, punkt 6): *"feltext direkt under
+ * kontrollen"*. The same height, split above and below the way an answer
+ * row splits it (`--fw-space-3`, 12 + 21 + 12): the message is 20 under the
+ * box now, and the row still measures ≥ 44 for the target-size gate.
+ */
+.guide-preview__page-field > .guide-preview__page-field--consent {
+  // The 44 is the whole row's, padding included.
+  box-sizing: border-box;
+  padding-block: var(--fw-space-3);
+}
+
+/*
+ * Ett finger är trubbigare än en pekare: där pekdonet är grovt växer visarens
+ * kryssrutor och radioknappar till 24px (WCAG 2.5.8:s golv som SYNLIG storlek,
+ * inte bara som träffyta — raden bär 44, se `min-height` ovan). Bara visaren: editorn på en
+ * platta har samma regel via samma fråga, men det är visarens besökare som
+ * möter rutan med tummen. Bocken skalas med, annars simmar den i rutan.
+ */
+@media (pointer: coarse) {
+  input[type="checkbox"],
+  input[type="radio"] {
+    width: 24px;
+    height: 24px;
+
+    &::before {
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  input[type="radio"]::before {
+    width: 11px;
+    height: 11px;
+  }
+}
+
+/*
+ * Enheten efter fältet.
+ *
+ * Ordningen i markup är etikett, enhet, fält — enheten står före inmatningen i
+ * dokumentet för att `aria-describedby` ska peka bakåt på ett stabilt element,
+ * och flyttas visuellt med `order`. En flexrad räcker; den behöver ingen egen
+ * behållare, och en behållare till hade varit ett element att hålla i linje.
+ */
+.guide-preview__value-answer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fw-space-2);
+
+  > span:first-child { flex-basis: 100%; }
+
+  /*
+   * Valt på vad fältet *är*, inte på hur det är skrivet.
+   *
+   * Regeln sa `input[type="number"]`, och beloppsfältet blev text den dagen det
+   * började grupperas medan man skriver. Då matchade ingenting: fältet tog hela
+   * bredden från den generella regeln och enheten föll ned på egen rad. Mätt:
+   * fältet 29–571 px, `kr/mån` på raden under.
+   */
+  input[data-number-answer] { order: 1; width: auto; flex: 0 1 16ch; }
+
+  /*
+   * Allt som säger något *om* fältet kommer efter det, på egen rad.
+   *
+   * Fältet fick `order: 1` och enheten `order: 2` när enheten flyttades intill
+   * talet. Resten av etiketten behöll `order: 0` — felmeddelandet och
+   * skrivformsnotisen bland dem — så med ett fel på plats mätte raden:
+   *
+   *     input  y=136  x=257–511      fältet 228 px in från kanten
+   *     error  y=151  x=29–247       meddelandet till vänster om fältet
+   *     unit   y=191  x=29–88        enheten nedtryckt till en tredje rad
+   *
+   * Utan fel såg samma rad rätt ut, vilket är varför det inte upptäcktes när
+   * enheten placerades: layouten faller isär först när någon gör fel.
+   *
+   * Det är också WCAG 1.3.2 — läsordningen på skärmen slutade stämma med
+   * ordningen i markupen, och en skärmläsare följer markupen.
+   *
+   * Skrivformsnotisen stod här också, men bor inte längre i etiketten — ett
+   * `<p>` i en `<label>` bryter innehållsmodellen och läckte in i fältets
+   * tillgängliga namn. Den ligger nu efter etiketten och behöver ingen order.
+   */
+  .guide-preview__field-error {
+    order: 3;
+    flex-basis: 100%;
+  }
+}
+
+.guide-preview__unit {
+  order: 2;
+  flex: none;
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-lg);
+  white-space: nowrap;
+}
+
+/*
+ * Reglaget och stegknapparna bredvid ett talfält (story 095, K6).
+ *
+ * Träffytan är hela elementet: reglaget är 44 px högt fast spåret är 6 —
+ * det som syns får vara tunt om ytan runt det tar trycket. `touch-action:
+ * pan-y` så ett drag längs spåret flyttar tummen och inte sidan, medan ett
+ * drag uppåt fortfarande rullar. På pekskärm växer allt ett snäpp: Johan 5/9,
+ * "för mobil måste man ha extra stora ytor att dra i".
+ *
+ * Fältets egna regler (`.guide-preview__page-field input`) ger reglaget ram
+ * och stoppning — de tas bort här, med en klass mer i specificitet.
+ */
+.guide-preview__stepper {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.guide-preview__step-button {
+  box-sizing: border-box;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--fw-border-control);
+  border-radius: 8px;
+  background: var(--fw-surface);
+  color: var(--fw-text);
+  font: inherit;
+  font-size: var(--fw-font-size-xl);
+  line-height: 1;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--fw-primary);
+    background: var(--fw-surface-subtle);
+  }
+
+  &:focus-visible {
+    @include focus.ring;
+  }
+}
+
+.guide-preview__page-field .guide-preview__range,
+.guide-preview__value-answer .guide-preview__range {
+  box-sizing: border-box;
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  appearance: none;
+  touch-action: pan-y;
+  cursor: pointer;
+
+  &::-webkit-slider-runnable-track {
+    height: var(--fw-space-1);
+    border-radius: 3px;
+    background: var(--fw-border-control);
+  }
+
+  &::-moz-range-track {
+    height: var(--fw-space-1);
+    border-radius: 3px;
+    background: var(--fw-border-control);
+  }
+
+  /*
+   * Tummen centreras över spåret: `margin-top` är -(tumme − spår) / 2.
+   * Spåret var 6px innan avståndssvepet 20/9 (kompensation -11px, utanför
+   * skalan); 4px landar kompensationen på -12 utan att tummen ändras.
+   */
+  &::-webkit-slider-thumb {
+    appearance: none;
+    width: 28px;
+    height: 28px;
+    margin-top: calc(var(--fw-space-3) * -1);
+    border: 2px solid var(--fw-surface);
+    border-radius: 50%;
+    background: var(--fw-primary);
+  }
+
+  &::-moz-range-thumb {
+    width: 28px;
+    height: 28px;
+    border: 2px solid var(--fw-surface);
+    border-radius: 50%;
+    background: var(--fw-primary);
+  }
+
+  &:focus-visible {
+    @include focus.ring;
+  }
+}
+
+/* Sidans fält: knapparna på fältets rad, reglaget på raden under. */
+.guide-preview__page-field--stepper {
+  grid-template-columns: minmax(0, 1fr) auto;
+
+  > label:first-child,
+  .guide-preview__field-error,
+  .guide-preview__why {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Det fristående steget: efter fältet och enheten, som allt som hör till fältet. */
+.guide-preview__value-answer .guide-preview__stepper {
+  order: 2;
+}
+
+.guide-preview__value-answer .guide-preview__range {
+  order: 2;
+  flex-basis: 100%;
+}
+
+@media (pointer: coarse) {
+  .guide-preview__step-button {
+    width: 52px;
+    height: 52px;
+  }
+
+  .guide-preview__page-field .guide-preview__range,
+  .guide-preview__value-answer .guide-preview__range {
+    height: 56px;
+
+    /*
+     * Tummen växer 4px till för pekskärm (K6-anda: "extra stora ytor att
+     * dra i", Johan 5/9) — och de fyra extra pixlarna gör att kompensationen
+     * mot spårets 4px också landar på skalan: (36 − 4) / 2 = 16.
+     */
+    &::-webkit-slider-thumb {
+      width: 36px;
+      height: 36px;
+      margin-top: calc(var(--fw-space-4) * -1);
+    }
+
+    &::-moz-range-thumb {
+      width: 36px;
+      height: 36px;
+    }
+  }
+}
+
+/*
+ * Smal yta: ge tillbaka plats, och håll handlingen i tumzonen.
+ *
+ * ## Vad som mättes
+ *
+ * På 360×780, mot bostadsbidragsguiden: frågan börjar **422 px ned** och kortet
+ * tar resten. Över hälften av skärmen är förbrukad innan frågan börjar — och det
+ * är på vår egen exempelsida, som har mindre topp än en riktig kommunsida. Mätt
+ * över tretton steg låg "Nästa" **helt under vikten i fem av dem** vid scroll 0,
+ * och efter varje steg står `scrollY` kvar på 0: ingenting flyttar vyn tillbaka.
+ *
+ * En 40-teckensfråga är 595 px text i 26/32,5 px — tre rader, 98 px. I 22/28 px
+ * blir den två rader, 56 px. Kortets padding 28 → 16 ger 24 px på höjden och
+ * 24 px på bredden (innehållet växer 262 → 286 px). Skuggan gör ingen nytta på
+ * en yta som ändå är hela bredden.
+ *
+ * ## Container query, inte media query
+ *
+ * Visaren kan sitta i en smal spalt på en bred skärm — en kommuns sidopanel är
+ * det vanliga fallet. `@media` mäter fönstret och skulle ge full padding i en
+ * 300 px bred spalt, alltså precis fel svar på precis den frågan.
+ *
+ * ## Varför `sticky` och inte fast
+ *
+ * `position: sticky` klistrar bara när kortet faktiskt sträcker sig under
+ * vikten. Ett steg som får plats ser ingen skillnad; ett som inte gör det får
+ * knappen i tumzonen. Ingen JS, ingen mätning vid körning — och därför inget som
+ * kan bli fel i en storlek vi inte provat.
+ */
+/* `data-under` and not `@container`: the host's own width, measured by the
+   component (`watchWidth` in guide-preview.ts) — see the miniature rules above
+   for why it is not a container query in CSS. */
+:host(:where([data-under~="400"])) .guide-preview__card {
+  padding: var(--fw-space-4);
+  /* Skuggan står kvar. Den togs bort här i augusti ("en skugga under något
+     som är hela bredden ser ut som en kant, inte som djup"), och utan den
+     lästes kortet knappt i telefonen — Johan 25/9 valde skugga plus
+     kontrollkant av fyra utföranden. Skuggan ligger utanför lådan och
+     kostar inget utrymme. */
+
+  h2 {
+    font-size: 22px;
+    line-height: 1.27;
+  }
+}
+
+/* Not the miniature in a node: it is always under 400 px, and sticky lifted
+   the buttons up over the answers whenever the card ran below the canvas's
+   visible edge (Johan's phone, 3/9). And not the receipt: there the visitor
+   is reading what was sent, and "Nytt ärende" pinned over that list is the
+   one button nobody needs in the thumb zone (Flowbasket's 390 px still, 8/9).
+   See guide-preview-narrow.browser.test.ts. */
+:host(:where([data-under~="400"]):not([editor-view]))
+  .guide-preview__card:not([data-node-type="submit-result"])
+  .guide-preview__navigation {
+  position: sticky;
+  bottom: 0;
+  /* Bandet måste måla en botten, annars syns texten under det igenom. */
+  padding: 12px 0 max(12px, env(safe-area-inset-bottom));
+  margin-bottom: -16px;
+  border-top: 1px solid var(--fw-border);
+  background: var(--fw-surface);
+}
+
+/*
+ * Raden ett formaterat fält säger när det tyst kastat något.
+ *
+ * Tom när den inte har något att säga, och tar då ingen plats — annars skulle
+ * varje formaterat fält bära ett hål under sig i väntan på ett fel som kanske
+ * aldrig kommer. Dämpad och inte röd: det är en upplysning om vad fältet tar
+ * emot, inte ett besked om att något är fel.
+ */
+.guide-preview__shape-note {
+  margin: 4px 0 0;
+  font-size: var(--fw-font-size-base);
+  color: var(--fw-text-muted);
+}
+
+.guide-preview__shape-note:empty {
+  display: none;
+}
+
+/*
+ * I sidans rutnät är noten ett eget rutnätsbarn sedan den flyttade ut ur
+ * etiketten — utan hela raden skulle den ta en kolumncell och knuffa fälten.
+ */
+.guide-preview__page-fields > .guide-preview__shape-note {
+  grid-column: 1 / -1;
+}
+
+/*
+ * Vägen hit: det man redan svarat, att läsa.
+ *
+ * Ingen ram och inget kort. Visaren står i en kommuns egen sida, och en låda
+ * runt det här hade gjort den till en främmande ruta inuti en främmande ruta.
+ * En hårfin linje i vänsterkanten binder ihop raderna i stället, och den slutar
+ * där sista svaret slutar — den ritar aldrig framåt, för grafen förgrenar sig
+ * och vi vet inte vad som kommer.
+ *
+ * Dämpad med flit: den är sammanhang för frågan man står på, inte något som ska
+ * konkurrera med den.
+ */
+.guide-preview__trail {
+  /*
+   * Egen botten, och det är inte en smaksak.
+   *
+   * Listan ritas utanför kortet, direkt i `.guide-preview`, som inte målar
+   * något. Texten stod alltså på **värdsidans** färg medan komponenten följde
+   * operativsystemets mörka läge — mätt till 1,18:1 på en vit sida, alltså
+   * ljusgrått på vitt. Kortet klarade sig för att det målar sin egen yta.
+   *
+   * Vi lovar att äga vår rendering (K12b). Då kan ingenting vi ritar luta sig
+   * mot en färg någon annan valde.
+   */
+  margin: 0 0 20px;
+  padding: var(--fw-space-3);
+  border-radius: 10px;
+  border-left: 2px solid var(--fw-border-subtle);
+  /*
+   * `surface-subtle` och inte `surface`: kortets egen färg hade gjort listan
+   * till ett kort till, och ett kort ser tryckbart ut. Den är läsning, inte
+   * navigering — se `guide-preview-trail.browser.test.ts`.
+   */
+  background: var(--fw-surface-subtle);
+  list-style: none;
+}
+
+.guide-preview__trail li + li {
+  margin-top: 8px;
+}
+
+.guide-preview__trail-question {
+  display: block;
+  font-size: var(--fw-font-size-base);
+  color: var(--fw-text-muted);
+}
+
+.guide-preview__trail-answer {
+  display: block;
+  font-size: var(--fw-font-size-lg);
+  color: var(--fw-text);
+}
+
+/* Kartfrågan (story 046): stillbilden är leverantörens, aldrig vår. */
+.guide-preview__map-still {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 16px;
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-md);
+  background: var(--fw-surface-subtle);
+}
+
+.guide-preview__map-still:not([src]) {
+  display: none;
+}
+
+.guide-preview__map-pick {
+  margin-top: 12px;
+  min-height: 44px;
+  padding: var(--fw-space-3) var(--fw-space-4);
+  border: 1px solid var(--fw-border-control);
+  border-radius: 8px;
+  background: var(--fw-surface);
+  color: var(--fw-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.guide-preview__map-pick:hover {
+  border-color: var(--fw-primary);
+  background: var(--fw-surface-subtle);
+}
+
+.guide-preview__map-pick:focus-visible {
+  @include focus.ring;
+}
+
+.guide-preview__map-note,
+.guide-preview__map-status {
+  margin: var(--fw-space-2) 0 0;
+  color: var(--fw-text-muted);
+  font-size: var(--fw-font-size-base);
+}
+
+.guide-preview__map-status:empty {
+  display: none;
+}
+
+/*
+ * Provets knappar och raden under dem (story 065:s uppföljning).
+ *
+ * Samma form som kartans egen välj-knapp — det är samma sorts handling på
+ * samma sorts plats, och en knapp till med egen form hade läst som ett annat
+ * slags kontroll. Raden under är dämpad och liten, som fältens övriga
+ * biupplysningar: den ska gå att läsa, inte tas för ett fel.
+ */
+/* Story 108: värdens knapp i besökarens formulär. Samma form som provets
+   knapp — en knapp bredvid ett fält är en knapp bredvid ett fält — men ett eget
+   namn, för den ena finns bara på arbetsytan och den andra bara på en sida där
+   värden bjuder på ett exempelfoto. */
+.guide-preview__example-button,
+.guide-preview__proving-button,
+.guide-preview__file-button {
+  margin-top: 12px;
+  min-height: 44px;
+  padding: var(--fw-space-3) var(--fw-space-4);
+  border: 1px solid var(--fw-border-control);
+  border-radius: 8px;
+  background: var(--fw-surface);
+  color: var(--fw-text);
+  font: inherit;
+  /* A button's text is 600 wherever it stands. It had it only on a page,
+     inherited from the field cell until 30/9. */
+  font-weight: var(--fw-weight-strong);
+  cursor: pointer;
+}
+
+/* Egen rad under filväljaren: knappen är ett annat sätt att svara på frågan,
+   inte en del av väljaren. */
+.guide-preview__example-button {
+  display: block;
+}
+
+.guide-preview__example-button:hover,
+.guide-preview__proving-button:hover,
+.guide-preview__file-button:hover {
+  border-color: var(--fw-primary);
+  background: var(--fw-surface-subtle);
+}
+
+.guide-preview__example-button:focus-visible,
+.guide-preview__proving-button:focus-visible,
+.guide-preview__file-button:focus-visible {
+  @include focus.ring;
+}
+
+/*
+ * *Välj fil* and the chosen name on one row (punkt 11): the button the same
+ * neutral outline as the example photo's beside it, the name in the text ink
+ * after it — what the browser's own picker showed, in our words and type. The
+ * name wraps rather than pushing the row out (a phone's photo names are long).
+ */
+.guide-preview__file-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fw-space-2) var(--fw-space-3);
+}
+
+.guide-preview__file-button {
+  margin-top: 0;
+}
+
+/*
+ * A file step of its own draws the page's cell straight into the card
+ * (`renderDeclarativeFile`), without the page's field list and its 24 px.
+ * With the label hidden (punkt 11) *Välj fil* stood 0 px under the
+ * description (Fia 1/10, B4 review, 900 and 390 px); every other step's
+ * control stands 24 under it (`.guide-preview__options`,
+ * `.guide-preview__value-answer`). Heading → content, `--fw-space-5`.
+ */
+.guide-preview__card > .guide-preview__page-field {
+  margin-top: var(--fw-space-5);
+}
+
+/* The picker it opens: out of sight, and out of the field rule's padding and
+   border, which made the hidden box 26 px tall in measurements. */
+.guide-preview__page-field input.guide-preview__visually-hidden {
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+}
+
+.guide-preview__file-chosen {
+  min-width: 0;
+  color: var(--fw-text);
+  font-size: var(--fw-font-size-xl);
+  overflow-wrap: anywhere;
+}
+
+.guide-preview__proving-note {
+  margin: var(--fw-space-2) 0 0;
+  color: var(--fw-text-muted);
+  font-size: var(--fw-font-size-base);
+}
+
+/* Samma text som fältets <label>, men inte ett <label>: knappen får sitt namn
+   av sin egen text, och den här är dess beskrivning. Rutan stylar sin text
+   själv, så det syns ingen skillnad. */
+.guide-preview__proving-label {
+  display: block;
+}
+
+.guide-preview__proving-chosen {
+  margin: 8px 0 0;
+  color: var(--fw-text);
+  font-weight: 600;
+}
+
+.guide-preview__proving-chosen:empty {
+  display: none;
+}
+
+/* Markeringsytan (story 047): fotot är ytan, prickarna är riktiga knappar. */
+.guide-preview__marking {
+  margin-top: 12px;
+}
+
+.guide-preview__marking-hint {
+  margin: 0 0 8px;
+  color: var(--fw-text-muted);
+  font-size: var(--fw-font-size-base);
+}
+
+.guide-preview__marking-canvas {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  border-radius: var(--fw-radius-md);
+  overflow: hidden;
+  /* Ett tryck ska bli en prick, inte en zoom eller panorering. */
+  touch-action: manipulation;
+}
+
+.guide-preview__marking-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.guide-preview__marking-dot {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  /* Deliberately literal white, both themes: the ring cuts against the
+   * imagery beneath the dot, and imagery does not flip in dark mode. */
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--fw-primary);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 40%);
+  cursor: pointer;
+  translate: -50% -50%;
+}
+
+.guide-preview__marking-dot:focus-visible {
+  @include focus.ring;
+}
+
+.guide-preview__marking-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 0;
+}
+
+.guide-preview__marking-clear {
+  min-height: 36px;
+  padding: var(--fw-space-2) var(--fw-space-3);
+  border: 1px solid var(--fw-border-control);
+  border-radius: 8px;
+  background: var(--fw-surface);
+  color: var(--fw-text);
+  font: inherit;
+  font-size: var(--fw-font-size-base);
+  /* As the example button's: 600 wherever it stands. */
+  font-weight: var(--fw-weight-strong);
+  cursor: pointer;
+}
+
+.guide-preview__marking-count {
+  color: var(--fw-text-muted);
+  font-size: var(--fw-font-size-base);
+}
+
+/* Markeringsraderna: siffran i pricken, texten på raden. */
+.guide-preview__marking-dot {
+  display: grid;
+  place-items: center;
+  color: var(--fw-on-primary);
+  font: 700 13px/1 var(--fw-font, sans-serif);
+}
+
+.guide-preview__marking-rows {
+  display: grid;
+  gap: 8px;
+  margin-top: var(--fw-space-2);
+}
+
+.guide-preview__marking-item {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+
+  label {
+    display: grid;
+    gap: 4px;
+    flex: 1;
+    font-size: var(--fw-font-size-base);
+    color: var(--fw-text-secondary);
+  }
+
+  input {
+    min-height: 40px;
+    padding: var(--fw-space-2) var(--fw-space-3);
+    border: 1px solid var(--fw-border-control);
+    border-radius: 8px;
+    background: var(--fw-surface);
+    color: var(--fw-text);
+    font: inherit;
+  }
+}
+
+.guide-preview__marking-remove {
+  min-height: 40px;
+  padding: var(--fw-space-2) var(--fw-space-3);
+  border: 1px solid var(--fw-border-control);
+  border-radius: 8px;
+  background: var(--fw-surface);
+  color: var(--fw-text);
+  font: inherit;
+  font-size: var(--fw-font-size-base);
+  cursor: pointer;
+}
+
+/*
+ * Safaris datumfält storleksätter sig efter sitt innehåll och struntar i
+ * width — med ett valt datum växte det ur kortet på plattan (Johan,
+ * 2026-08-25). appearance: none ger fältet vanliga fältregler; Chromium
+ * mäter oförändrat.
+ */
+input[type="date"] {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/*
+ * Datumfältets viloläge (design A, 31/8): spöktext och kalenderikon ovanpå
+ * fältet, båda pekar-genomsläppliga så hela ytan förblir fältets. Ikonen
+ * lämnar plats via fältets högerpadding; spöket står där texten skulle stå.
+ */
+.guide-preview__date {
+  position: relative;
+  display: block;
+
+  input[type="date"] {
+    position: relative;
+    padding-right: 44px;
+    /*
+     * Textfältets uppmätta höjd (45px) som golv: iOS låter inte ett datumfält
+     * växa med padding som ett textfält gör — det föll ihop till sin inre
+     * höjd på Johans iPhone (31/8, mot skissen). Med golvet står de två
+     * fältsorterna lika höga på varje plattform.
+     */
+    min-height: 45px;
+
+    /*
+     * Tomt och oberört: plattformens egen text (Chromiums mm/dd/yyyy-segment,
+     * Firefox motsvarighet) göms under vårt spöke — färgen, inte elementet,
+     * så segmenten finns kvar för den som fokuserar och skriver.
+     */
+    &.guide-preview__date-empty:not(:focus) {
+      color: transparent;
+    }
+
+    /*
+     * Chromiums egen kalenderindikator blir vår ikons osynliga träffyta:
+     * utspänd över hela fältet och genomskinlig, så ett klick var som helst
+     * öppnar väljaren medan den ritade ikonen är den enda som syns.
+     */
+    &::-webkit-calendar-picker-indicator {
+      position: absolute;
+      inset: 0;
+      width: auto;
+      height: auto;
+      margin: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+  }
+}
+
+.guide-preview__date-ghost {
+  position: absolute;
+  top: 50%;
+  left: 15px;
+  transform: translateY(-50%);
+  color: var(--fw-text-disabled);
+  font-size: var(--fw-font-size-xl);
+  font-weight: 400;
+  pointer-events: none;
+}
+
+.guide-preview__date-icon {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  display: block;
+  height: 20px;
+  color: var(--fw-text-secondary);
+  pointer-events: none;
+}
+
+/* Felsummeringen (story 051): räknat och länkat överst när en sida har
+   flera fel. Länkarna är knappar i länkdräkt — målet är fokus, inte
+   navigering.
+
+   Variant C (Fable 21/9, Johan: "Felrutan blir för skrikig, nyansen passar
+   inte med resten"). GOV.UK:s egen form (förlagan, `govuk-error-summary`):
+   en tjock hel ram i rött men VIT/vanlig yta — ingen röd bakgrund — rubriken
+   i vanlig textfärg, bara länkarna röda. Elementet är redan fokusbart och
+   får fokus vid render (`tabindex="-1"`, `.focus()` i guide-preview.ts rad
+   1606, `role="alert"`) — ingen JS-ändring behövs för det kravet.
+
+   Ramen 4px `--fw-danger-text` mot `--fw-surface`: 6.57:1 ljust / 9.08:1
+   mörkt (contrast-ratio.ts) — långt över 1.4.11:s 3:1, och starkare än
+   förlagans egna `#d92d20`-motsvarighet hade gett i mörkt läge (3.57:1,
+   snävt). Paddingen till 16 (samma "kortets inre"-skala som callouten). */
+.guide-preview__error-summary {
+  margin: var(--fw-space-4) 0 var(--fw-space-1);
+  padding: var(--fw-space-4);
+  /* 2 px since Astra 1/10 (bilaga 10, punkt 6: *"tunnare ram, tydlig
+     rubrik"*): the 4 px frame shouted over the fields it pointed at. The
+     colour is the same `--fw-danger-text`, so the 3 : 1 above still holds. */
+  border: 2px solid var(--fw-danger-text);
+  border-radius: 8px;
+  background: var(--fw-surface);
+}
+
+/* Johan 21/9: the box is not a button — nothing happens when you press it.
+   `tabindex="-1"` and `.focus()` on render (guide-preview.ts, see the
+   comment above) stay, because the screen reader and reading order need
+   the alert to land there. But a visible focus ring on top of the box's
+   own 4px border promised an action that does not exist — two frames
+   stacked on the same element read as "this can be pressed", and it
+   cannot. The links inside keep their own ring: they DO do something. */
+.guide-preview__error-summary:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+/*
+ * Reserverar plats åt den klistrande knappraden nedan, som webbläsarens egen
+ * scrollning inte vet om.
+ *
+ * `[data-error-summary].focus()` (guide-preview.ts, rad ~1606) har ingen
+ * `preventScroll` — det ÄR poängen, elementet ska scrollas i vy — men
+ * `scrollIntoView` (som `.focus()` gör åt oss) räknar bara med fönstrets
+ * kant, inte med att `.guide-preview__navigation` några rader ned lägger sig
+ * `position: sticky; bottom: 0` ovanpå de sista bildpunkterna.
+ *
+ * Uppdrag 21/9 (designgrunden, del C1, WCAG 1.4.12/200 %/återflöde): mätt på
+ * `examples/every-field.html` vid 320 px och vid 200 % textförstoring —
+ * felsummeringens SISTA rad (oftast den längsta: ett kryssvillkor radbryter
+ * mest) hamnade bakom knapparna direkt vid render, innan besökaren hunnit
+ * scrolla. Inget gick permanent förlorat (att scrolla vidare visar resten),
+ * men just det meddelandet besökaren skickades dit för att läsa öppnade
+ * delvis dolt.
+ *
+ * Värdet är satt med marginal ovanför det uppmätta: knappraden renderade
+ * 89 px hög vid 200 % zoom (kontrollhöjden växer med texten, radhöjden
+ * också) mot 69 px i normalstorlek. `--fw-control-height` dubblad plus
+ * `--fw-space-4` gav 104 px — femton över det uppmätta värsta fallet, inte en
+ * exakt boxmodell av knappraden (den har egna paddingvärden ovan).
+ *
+ * Ommätt 22/9 (Johan, "knapparna först"): sedan Föregående/Nästa fick ett
+ * eget golv (`min-width: min(10rem, 100%)`, `.guide-preview__navigation
+ * button` nedan) bryter de rad även HÄR — samma `flex-wrap` som redan fanns,
+ * fast oftare, eftersom två 160 px-knappar + mellanrum sällan får plats under
+ * 400 px. Knappraden renderade om 165 px vid 200 % (var 89), 127 px i
+ * normalstorlek (var 69) — den gamla marginalen (104 px) skulle ha dolt
+ * meddelandet igen. `--fw-control-height` tredubblad plus `--fw-space-4`
+ * tredubblad ger 180 px, samma "+15 över uppmätt värsta fall"-marginal som
+ * innan.
+ *
+ * Ommätt IGEN samma dag, efter att golvet sänktes 10rem → 9rem
+ * (bildgranskning, Johan): vid 100 % ryms nu Föregående+Nästa på en rad från
+ * ~360 px och uppåt — knappraden är tillbaka på 70 px där. Men 320 px/100 %
+ * bryter fortfarande (127 px: 144+144+12=300 är mer än de ~246 px kortet har
+ * kvar där), och 200 % bryter OAVSETT breddtal — "Föregående" är ett enda
+ * ord utan brytpunkt vars egen bredd (248 px vid 200 %) styr, inte golvet.
+ * Uppmätt värsta fall i hela `<400`-intervallet är därför fortfarande
+ * 165 px, oförändrat av golvsänkningen. Marginalen (180 px) är alltså
+ * fortfarande rätt tal — inte en tredubbling "i onödan", utan exakt samma
+ * "+15 över uppmätt värsta fall" som alltid, med ett värsta fall som råkar
+ * vara detsamma som innan.
+ */
+:host(:where([data-under~="400"])) .guide-preview__error-summary {
+  scroll-margin-bottom: calc(var(--fw-control-height) * 3 + var(--fw-space-4) * 3);
+}
+
+/* The summary's heading (punkt 6: *"tydlig rubrik"*): a real heading, one
+   level under the step's own, at the visitor's section-heading size
+   (GRAFISK-PROFIL, Hierarkin, nivå 2: `2xl`, 700, tight). It was a 16 px
+   bold paragraph, the size of the text around it. */
+.guide-preview__card .guide-preview__error-summary-title {
+  margin: 0 0 var(--fw-space-2);
+  color: var(--fw-text);
+  font-size: var(--fw-font-size-2xl);
+  font-weight: var(--fw-weight-heading);
+  line-height: var(--fw-line-tight);
+}
+
+.guide-preview__error-summary ul {
+  margin: 0;
+  padding-left: var(--fw-space-4);
+  color: var(--fw-text);
+}
+
+/*
+ * Mätt i 390 px (dev/callout-rig.html, Johan 21/9: "när en rad bryts blir
+ * texten centrerad och punkten hamnar på sista raden").
+ *
+ * Elementet var en `<button>`. Tre mätningar, i tur och ordning:
+ *
+ *   1. `getComputedStyle`: `display: inline-block`, `text-align: center` —
+ *      ingen regel satte någotdera, så `<button>`s egen UA-standard styrde.
+ *      Vid 900 syns det aldrig, för en rad som inte bryter fyller sin egen
+ *      shrink-to-fit-bredd exakt.
+ *   2. Satte `display: inline` + `appearance: none` (annars vägrar en
+ *      `<button>` bli en ren inline-box i Chromium — `computed display`
+ *      förblev `inline-block` med bara `display: inline`). Det RÄTTADE
+ *      vänsterkanten (båda radernas textrects fick samma `left`), men
+ *      punkten satt fortfarande på rad två.
+ *   3. `button.getClientRects()` avslöjade varför: EN enda rect, `{top,
+ *      height: 42, left: 61}` — knappen är en atomisk box över HELA sin
+ *      höjd oavsett `display`-värdet, som en `inline-block`. Ett sådant
+ *      barns baslinje är per spec dess SISTA rads baslinje, och `<li>`s
+ *      punkt riktar sig efter den — därför rad två. Det går inte att
+ *      CSS:a bort: Chromium behandlar en ersatt kontroll som `<button>`
+ *      som atomisk oavsett vad `display` sätts till.
+ *
+ * Lösning: elementet är nu `<a href="#">` (guide-preview.ts, se
+ * toppkommentaren på `renderPageErrorSummary`) — en `<a>` har ingen sådan
+ * atomisk box. Mätt efteråt: samma vänsterkant på båda raderna, och
+ * webbläsarens inbyggda hängande indrag för en `<li>` som bryter
+ * (fortsättningsraden börjar under texten, inte under punkten) fungerar
+ * utan extra CSS. `event.preventDefault()` i klicklyssnaren (guide-preview.ts)
+ * gör att `#` aldrig når adressfältet — samma "fokus, inte navigering" som
+ * knappformen skulle ge, fast med en box som faktiskt kan vara inline.
+ */
+/*
+ * K6 (genomgången 30/9, rad V2): the links stand one per row, so they are a
+ * list of targets and not links in running text — the exception K6 makes
+ * for those does not cover them. Measured before: 23 px tall at 900 px, and
+ * each overlapped the next by 4 px (the 2 px padding of an inline box
+ * reaches into the neighbouring lines).
+ *
+ * `flex` rather than `block` so a one-line link sits in the middle of its
+ * 44 px instead of at the top. The text is still an anonymous box with real
+ * line fragments, so the hanging indent and the bullet on the first line
+ * (above) hold — measured on the text, since the link itself is now one box.
+ */
+.guide-preview__error-summary [data-error-link] {
+  display: flex;
+  align-items: center;
+  /* The text's width, not the row's: empty space right of a short link
+     should not follow it. */
+  width: fit-content;
+  min-height: var(--fw-control-height);
+  color: var(--fw-danger-text);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.guide-preview__error-summary [data-error-link]:focus-visible {
+  @include focus.ring;
+}
+
+/* Granskningssteget (story 049): raderna som dl, Ändra-knappen i länkdräkt,
+   deklarationen som dämpat block med primärkant — samma formspråk som
+   varför-utfällaren. */
+.guide-preview__review {
+  margin: var(--fw-space-5) 0 0;
+}
+
+.guide-preview__review-list {
+  margin: 0;
+}
+
+/* En sida är en grupp (story 089): sidans rubrik med sin enda Ändra, fälten
+   som rader under. Rubrikraden har samma rutnät som en rad, så Ändra står i
+   samma kolumn vare sig den hör till en fråga eller en sida. */
+.guide-preview__review-group {
+  margin-top: 8px;
+}
+
+.guide-preview__review-group-head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0 4px;
+}
+
+.guide-preview__review-group-head [data-review-edit] {
+  grid-row: auto;
+}
+
+/* The viewer's section heading, 18 px / 700 (Astra 1/10, bilaga 12, point
+   2): it was 15, the editor's size, one step over the 14 px questions under
+   it. *Pass 1* stays the subordinate 14/700 below. */
+.guide-preview__review-group-head h3 {
+  margin: 0;
+  font-size: var(--fw-font-size-2xl);
+  font-weight: var(--fw-weight-heading);
+  color: var(--fw-text-strong, var(--fw-text));
+}
+
+/* A repeated page's record in the review (punkt 18): *Pass 1* as the
+   group's heading, the record's questions as rows under it — the receipt's
+   form (`.guide-preview__submit-group`). */
+.guide-preview__review-record h4 {
+  margin: var(--fw-space-3) 0 0;
+  color: var(--fw-text-strong);
+  font-size: var(--fw-font-size-md);
+  font-weight: var(--fw-weight-heading);
+  line-height: var(--fw-line-tight);
+}
+
+.guide-preview__review-group .guide-preview__review-row {
+  padding-left: 12px;
+  border-left: 2px solid var(--fw-border-subtle, var(--fw-border));
+  border-bottom: 0;
+}
+
+/*
+ * Question and answer (Astra 1/10, bilaga 11, point 2; GRAFISK-PROFIL,
+ * *Fråga och svar i granskning och kvitto*): the question 14 px in the
+ * secondary ink, the answer 16 px / 400 in the text ink — a value the
+ * visitor gave is read, never 600 (it was 15/600 here, 500 in a group).
+ * The pair binds at `--fw-space-1`; the row's own `--fw-space-3` above and
+ * below puts 24 px and the divider between two pairs.
+ */
+.guide-preview__review-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--fw-space-1) var(--fw-space-3);
+  padding: var(--fw-space-3) 0;
+  border-bottom: 1px solid var(--fw-border-subtle, var(--fw-border));
+}
+
+.guide-preview__review-row dt {
+  grid-column: 1;
+  font-size: var(--fw-font-size-md);
+  color: var(--fw-text-secondary);
+}
+
+/* The receipt's line height, so a pair is built the same in both: a
+   record's rows inherited a tighter one than the loose rows had (16 and
+   18.5 px for the same 14 px question, measured 1/10). */
+.guide-preview__review-row :is(dt, dd) {
+  line-height: var(--fw-line-body);
+}
+
+.guide-preview__review-row dd {
+  grid-column: 1;
+  margin: 0;
+  font-size: var(--fw-font-size-xl);
+  font-weight: var(--fw-weight-text);
+  color: var(--fw-text);
+  overflow-wrap: anywhere;
+}
+
+.guide-preview__review-row [data-review-edit],
+.guide-preview__review-group-head [data-review-edit] {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  /* K6: 44 px to hit on the visitor's surface. Measured 30/9 at 27 px — the
+     text and 4 px of padding (GRAFISK-PROFIL, avvikelse 11). The height
+     grows, the form stays: still underlined text, no frame. */
+  min-height: var(--fw-control-height);
+  padding: 4px 8px;
+  border: 0;
+  background: none;
+  color: var(--fw-primary-strong, var(--fw-primary));
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.guide-preview__review-row [data-review-edit]:focus-visible,
+.guide-preview__review-group-head [data-review-edit]:focus-visible {
+  @include focus.ring;
+}
+
+.guide-preview__review-declaration {
+  margin-top: var(--fw-space-5);
+  /* "Ramar för nära texten": 12/16 → 16 (symmetriskt). */
+  padding: var(--fw-space-4);
+  border: 1px solid var(--fw-border);
+  border-left: 4px solid var(--fw-primary);
+  border-radius: 10px;
+  background: var(--fw-surface-subtle, var(--fw-surface));
+}
+
+.guide-preview__review-declaration h3 {
+  margin: 0 0 var(--fw-space-2);
+  font-size: var(--fw-font-size-md);
+}
+
+.guide-preview__review-declaration ul {
+  margin: 0;
+  padding-left: var(--fw-space-4);
+}
+
+.guide-preview__review-declaration li,
+.guide-preview__review-declaration p {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--fw-text-secondary);
+}
+
+.guide-preview__review-declaration p {
+  margin: 8px 0 0;
+}
+
+/* Inlämningen (story 050): referensen stor och kopierbar med ögat,
+   felet ärligt, försök igen i primärdräkt. */
+.guide-preview__submit-reference {
+  display: inline-block;
+  margin: var(--fw-space-2) 0;
+  padding: var(--fw-space-3) var(--fw-space-4);
+  border-radius: 10px;
+  background: var(--fw-primary-surface, var(--fw-surface-subtle));
+  color: var(--fw-primary-strong, var(--fw-primary));
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  user-select: all;
+}
+
+.guide-preview__submit-sent {
+  margin: 8px 0 0;
+  padding-left: var(--fw-space-4);
+}
+
+.guide-preview__submit-sent li {
+  font-size: var(--fw-font-size-md);
+  line-height: 1.5;
+  color: var(--fw-text-secondary);
+}
+
+/*
+ * The question, and its answer on the line under it (punkt 18) — no colon
+ * after a question mark. The roles are the review's (Astra 1/10, bilaga 11,
+ * point 2): the question 14 px in the secondary ink, the answer 16 px / 400
+ * in the text ink, 4 px between them and 12 between two pairs.
+ *
+ * While the receipt is on its way (story 144, criterion 3: the sent answers
+ * stand *dämpade*) the answers take the secondary ink; size and spacing
+ * carry the hierarchy then, and nothing moves when the receipt comes. The
+ * card is `aria-busy` exactly while it waits, so that is the hook — no
+ * second flag for the same state.
+ */
+.guide-preview__submit-sent li + li {
+  margin-top: var(--fw-space-3);
+}
+
+.guide-preview__submit-question,
+.guide-preview__submit-answer {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.guide-preview__submit-answer {
+  margin-top: var(--fw-space-1);
+  color: var(--fw-text);
+  font-size: var(--fw-font-size-xl);
+  font-weight: var(--fw-weight-text);
+}
+
+[aria-busy="true"] .guide-preview__submit-answer {
+  color: var(--fw-text-secondary);
+}
+
+/* A repeated page's record: *Pass 1* as the group's heading, its questions
+   under it as a list of their own. */
+.guide-preview__submit-group {
+  list-style: none;
+  margin-left: calc(-1 * var(--fw-space-4));
+
+  h4 {
+    margin: 0;
+    color: var(--fw-text-strong);
+    font-size: var(--fw-font-size-md);
+    font-weight: var(--fw-weight-heading);
+    line-height: var(--fw-line-tight);
+  }
+
+  ul {
+    margin: var(--fw-space-1) 0 0;
+    padding-left: var(--fw-space-4);
+  }
+}
+
+/*
+ * Väntan på kvittot (story 144, kriterium 3). Platshållaren och en dold
+ * kopia av kvittots topp (`__submit-ghost`) delar samma rutnätscell, så
+ * platshållaren får kvittots höjd ur kvittots egna stilar.
+ *
+ * Formen är Astras A (1/10, bedömd i mörkt läge): bara texten, i innehållets
+ * vänsterlinje. B (dämpad yta) och C (skelettrader) är bedömda och borttagna.
+ *
+ * Pulsen färgar texten mellan två bläck och rör aldrig täckningen. Hennes
+ * villkor är "texten fullt läsbar genom hela rörelsen", och det lägsta
+ * läget är sekundärbläcket, som är sidans egen brödtextfärg. Mätt 1/10 mot
+ * kortet genom hela pulsen (submit-waiting.browser.test.ts): 7,69 till
+ * 10,46:1 i ljust, 9,06 till 11,63:1 i mörkt (K3 kräver 4,5). Talen och
+ * bläcken står här, på ett ställe, tills de förs in i profilen (PRAXIS 39).
+ */
+$waiting-pulse-period: 1.6s;
+$waiting-pulse-floor: var(--fw-text-secondary);
+$waiting-pulse-peak: var(--fw-text-strong);
+
+.guide-preview__submit-waiting {
+  display: grid;
+}
+
+.guide-preview__submit-waiting > * {
+  grid-area: 1 / 1;
+}
+
+.guide-preview__submit-ghost {
+  visibility: hidden;
+}
+
+/* The waiting heading and the receipt's own title in one cell: the heading
+   is as tall as the one that replaces it (see renderHeadingAndDescription). */
+.guide-preview__heading-stack {
+  display: grid;
+}
+
+.guide-preview__heading-stack > * {
+  grid-area: 1 / 1;
+}
+
+.guide-preview__heading-ghost {
+  visibility: hidden;
+}
+
+.guide-preview__card .guide-preview__submit-waiting-text {
+  align-self: center;
+  margin: 0;
+  color: $waiting-pulse-floor;
+  animation: guide-preview-waiting-text $waiting-pulse-period var(--fw-motion-ease) infinite;
+}
+
+@keyframes guide-preview-waiting-text {
+  50% {
+    color: $waiting-pulse-peak;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guide-preview__card .guide-preview__submit-waiting-text {
+    animation: none;
+  }
+}
+
+/* Mätt 22/9: 145 px på både 900 och 390 (ordet "Försök igen" bestämmer
+   bredden, kortet är bredare på 900 utan att knappen märker det) — samma
+   frimärke-mönster som navigeringen och ask-actions. 9rem (144 px, samma
+   tal som de tre andra golven) ligger i praktiken under ordets egen bredd
+   här, så innehållet bär golvet snarare än tvärtom — det ändrar inget i
+   den här specifika knappen men håller talet gemensamt. */
+.guide-preview__submit-retry {
+  margin-top: 12px;
+  padding: var(--fw-space-3) 20px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--fw-primary);
+  color: var(--fw-on-primary);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  min-width: min(9rem, 100%);
+}
+
+.guide-preview__submit-retry:focus-visible {
+  @include focus.ring;
+}
+
+/*
+ * Flervalslistans ram. Kontrollen bor i `chip-picker` och bär sina egna
+ * stilar — det här är bara luften runt den och dess rubrik.
+ */
+.guide-preview__pillbox {
+  display: grid;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.guide-preview__pillbox-legend {
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-md);
+  font-weight: 600;
+}
+
+/*
+ * Luft mellan etiketten och uppslagsfältet.
+ *
+ * Fältet är syskon till sin etikettrad, inte barn, så radens `gap` når det
+ * inte. Utan marginalen klipptes fokusringen — 3px plus 1px förskjutning — rakt
+ * genom texten "Välj ett eller flera (obligatoriskt)". Sett i en skärmbild på
+ * telefonbredd; ingenting i sviten frågade efter det.
+ */
+.guide-preview__card > chip-picker[data-text-lookup] {
+  display: block;
+  margin-top: 8px;
+}
+
+/* En sida som upprepas (story 084): en grupp per post, *Barn 1*, *Barn 2*.
+ * Gruppen är ett `fieldset` med `legend` (K4) — ramen är för ögat vad
+ * rubriken är för skärmläsaren: var en post börjar och slutar. Ta bort står
+ * sist i sin grupp och Lägg till efter den sista. Nästa förblir det enda
+ * fyllda valet; de två andra har var sin form ur profilens rolltabell (B3,
+ * Astra 30/9) — de var båda Föregåendes neutrala kontur, och tre knappar i
+ * samma form gick inte att skilja åt. */
+.guide-preview__repeat {
+  margin: 20px 0 0;
+  padding: 4px 16px 16px;
+  border: 1px solid var(--fw-border-subtle);
+  border-radius: 12px;
+  min-width: 0;
+
+  .guide-preview__page-fields {
+    margin-top: 12px;
+  }
+}
+
+.guide-preview__repeat-legend {
+  padding: 0 var(--fw-space-2);
+  color: var(--fw-text-strong);
+  font-size: var(--fw-font-size-md);
+  font-weight: 700;
+}
+
+/* Mätt 22/9: "Lägg till" 155 px, samma frimärke-mönster i mindre — under
+   160 px men nära, vilket ändå räckte för att gå upp till golvet på en bred
+   sida. Samma regel som resten. Talet sänkt 10rem → 9rem samma dag (se
+   `.guide-preview__navigation button` ovan) — "Lägg till"s egen ordbredd
+   (155 px) ligger redan över 9rem (144 px), så ordet bär golvet här precis
+   som för Försök igen; "Ta bort" är kortare och får sin bredd av 9rem. */
+.guide-preview__repeat-remove,
+.guide-preview__repeat-add {
+  min-height: 44px;
+  min-width: min(9rem, 100%);
+  padding: var(--fw-space-3) var(--fw-space-4);
+  border: 1px solid var(--fw-border-control);
+  border-radius: 8px;
+  background: var(--fw-surface);
+  color: var(--fw-text-strong);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--fw-surface-subtle);
+  }
+
+  &:focus-visible {
+    @include focus.ring;
+  }
+}
+
+/* Destruktiv handling (GRAFISK-PROFIL, Visuell hierarki): ord och soptunna i
+   `--fw-danger-text`, ingen fyllning och ingen ram, 44 px — samma form som
+   panelens Ta bort alternativ. `--fw-space-4` ovanför skiljer den från
+   gruppens sista fält; gruppens ram skiljer den från Lägg till. */
+.guide-preview__repeat-remove {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fw-space-1);
+  min-width: 0;
+  margin-top: var(--fw-space-4);
+  padding: var(--fw-space-2);
+  border: 0;
+  background: transparent;
+  color: var(--fw-danger-text);
+  font-weight: var(--fw-weight-text);
+
+  svg {
+    flex: none;
+    width: 18px;
+    height: 18px;
+  }
+
+  &:hover {
+    background: var(--fw-danger-surface);
+  }
+}
+
+/* Lokal tilläggshandling (GRAFISK-PROFIL, Visuell hierarki): primär kontur
+   med plus-ikonen, aldrig fylld — fylld är Nästa. Innehållets bredd i
+   visaren (Astra 30/9); var neutral kontur utan plus, samma form som
+   Föregående (GENOMGANG V9). */
+.guide-preview__repeat-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fw-space-2);
+  margin-top: 16px;
+  border-color: var(--fw-primary);
+  background: transparent;
+  color: var(--fw-primary-strong);
+
+  svg {
+    flex: none;
+    width: 18px;
+    height: 18px;
+  }
+
+  &:hover {
+    background: var(--fw-primary-surface);
+  }
+}
+
+/* Statusraden: tom tar den ingen plats, och den göms aldrig med display —
+ * en live-region som växlar från `display: none` läses inte upp. */
+.guide-preview__repeat-status {
+  margin: 0;
+  color: var(--fw-text-muted);
+  font-size: var(--fw-font-size-base);
+}
+
+/*
+ * The rating's scale (story 115): ONE object, the way out under it.
+ *
+ * A segmented bar — shared borders, rounded ends, the chosen segment filled —
+ * and not a row of boxes each with its own radio. The first take drew a radio,
+ * a number and a word in every box, and four of those read as four small
+ * forms (Johan 13/9). A scale is one control with several positions, and it
+ * should look like one.
+ *
+ * The radio is still real (arrow keys, group name, *n of m*) but visually
+ * hidden in the pattern the viewer already uses for such inputs; the focus
+ * ring is drawn on the segment instead.
+ *
+ * Words mode hides the number for the eye and keeps it for the reader, so
+ * the review still hears *2, Ganska bra*. Numbers mode shows the numbers and
+ * hangs the first and last words under the ends of the bar.
+ *
+ * `flex-wrap` used to break the row into 6 + 4; a bar broken unevenly reads
+ * as a mistake. Eight steps or more then split into two even rows at 420 /
+ * 400 px (`data-split`). Since 1/10 the scale stands as a list at 480 px and
+ * under (below), which covers both widths, so the split is gone.
+ */
+.guide-preview__rating {
+  /* All four sides: a fieldset's own 2 px inline margin set the scale and its
+     ways out 2 px in from every other answer (measured 1/10: 137 against
+     135), the same slip the options had (punkt 9). */
+  margin: 24px 0 0;
+  padding: 0;
+  border: 0;
+
+  legend {
+    margin-bottom: var(--fw-space-2);
+    /* A legend's own 2 px inline padding set the question 2 px in from the
+       rows under it and from a text field's label (Fia 1/10, B4 review). */
+    padding-inline: 0;
+    color: var(--fw-text-secondary);
+    font-size: var(--fw-font-size-md);
+    font-weight: 600;
+  }
+}
+
+.guide-preview__rating-row {
+  display: grid;
+  grid-template-columns: repeat(var(--rating-steps, 4), minmax(0, 1fr));
+}
+
+.guide-preview__rating-step {
+  position: relative;
+  margin-left: -1px;
+  cursor: pointer;
+
+  &:first-child {
+    margin-left: 0;
+  }
+
+  /* Hidden for the eye, present for the keyboard and the reader. */
+  input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+.guide-preview__rating-mark {
+  display: flex;
+  box-sizing: border-box;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  /* K6: 44 in both directions, per segment, measured with the guide's own gate. */
+  min-width: 44px;
+  min-height: 48px;
+  padding: var(--fw-space-2) var(--fw-space-1);
+  /*
+   * `--fw-border-control`, not `--fw-border`: this edge is the only thing that
+   * says where one segment ends and the next begins — a boundary someone
+   * needs to find, not a divider. Measured with `--fw-border` (tillganglighet
+   * sweep, 13/9): 1.47:1 in light, 1.95:1 in dark, so two unchosen segments
+   * shared an edge no sighted visitor could actually see. Same token, same
+   * reasoning, as the checkbox border in `_tokens-mixins.scss`.
+   *
+   * The checked state overrides this with `--fw-primary` below and is
+   * unaffected; so is the chosen segment's contrast against an unchosen
+   * neighbour (guide-preview-rating-contrast.browser.test.ts checks both,
+   * because a fix to one of the two already broke the other once today, on
+   * the progress meter's track).
+   */
+  border: 1px solid var(--fw-border-control);
+  background: var(--fw-surface);
+  color: var(--fw-text);
+  /* An answer's text is read, 400 like every other answer row; the chosen
+     state is the filled segment, never the weight (Astra 1/10, bilaga 11:
+     the steps were 600 beside *Inte aktuellt* and *Vet ej* in 400). */
+  font-weight: var(--fw-weight-text);
+  text-align: center;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.guide-preview__rating-step:first-child .guide-preview__rating-mark {
+  border-radius: 10px 0 0 10px;
+}
+
+.guide-preview__rating-step:last-child .guide-preview__rating-mark {
+  border-radius: 0 10px 10px 0;
+}
+
+.guide-preview__rating-number {
+  font-size: var(--fw-font-size-xl);
+}
+
+.guide-preview__rating-word {
+  /* 16 px, the answers' size (bilaga 11) — it was 12 on the bar, 14 in a
+     standing list. */
+  font-size: var(--fw-font-size-xl);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+/* Words mode: the word is the segment; the number is for the reader only. */
+.guide-preview__rating-row[data-mode="words"] .guide-preview__rating-mark {
+  min-height: 52px;
+}
+
+.guide-preview__rating-row[data-mode="words"] .guide-preview__rating-number {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.guide-preview__rating-step:hover .guide-preview__rating-mark {
+  background: var(--fw-surface-subtle);
+}
+
+/*
+ * The chosen segment, filled in the primary the guide's buttons already use —
+ * no colour of its own, so a host that retunes the palette retunes this too.
+ * Raised above its neighbours so its border wins the shared edge.
+ *
+ * `input:checked ~ span`, never the parent-matching pseudo-class the ratchet
+ * counts: the sibling combinator holds the floor at Chrome 98 / Safari 15.4.
+ */
+.guide-preview__rating-step input:checked ~ .guide-preview__rating-mark {
+  position: relative;
+  z-index: 1;
+  border-color: var(--fw-primary);
+  background: var(--fw-primary);
+  color: var(--fw-on-primary);
+}
+
+.guide-preview__rating-step input:focus-visible ~ .guide-preview__rating-mark {
+  position: relative;
+  z-index: 2;
+  @include focus.ring;
+}
+
+/* The words on the ends of a numbers bar: the direction of the scale, read
+   BEFORE the numbers — above the bar, not under it (Johan 13/9). */
+.guide-preview__rating-ends {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: var(--fw-space-2);
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-sm, 0.875rem);
+
+  span:last-child {
+    text-align: right;
+  }
+}
+
+/*
+ * The scale standing on its end (Johan 13/9): one step per line, each with its
+ * own corners and its own air — a list of choices rather than one bar.
+ *
+ * The word carries the answer and the number stands muted at the right: on a
+ * line of its own there is room for the place on the scale, and seeing it is
+ * what makes *3 av 4* readable to somebody who is about to be told their
+ * average. On the bar the same number is for the reader only, which is why
+ * this block has to come AFTER the words-mode rule — same specificity, and
+ * order is what settles it.
+ *
+ * A chosen line fills like a chosen segment; the number then follows the
+ * filled surface's own ink rather than staying grey on it.
+ *
+ * **And on a narrow host, every scale stands this way** (Astra 1/10, bilaga
+ * 10 punkt 16: *"staplad lista under 480 px tillgänglig komponentbredd"*):
+ * at 390 px four segments of ~78 px broke *Ganska bra* over two lines in
+ * 13 px (genomgången 30/9, V20). The host's own width, through `data-under`
+ * (K18 — no `@container`), never the window's. Johan's yes 1/10, which
+ * rewrote story 115's criteria 2 and 8 (the row "aldrig en lodrät lista").
+ * `[data-mode]` is on every row and lifts the selector over the words-mode
+ * rules for the number and the mark.
+ */
+.guide-preview__rating-row[data-layout="column"],
+:host([data-under~="480"]) .guide-preview__rating-row[data-mode] {
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--fw-space-2);
+
+  .guide-preview__rating-step {
+    margin-left: 0;
+  }
+
+  .guide-preview__rating-mark {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 44px;
+    padding: var(--fw-space-2) var(--fw-space-4);
+    border-radius: 8px;
+    text-align: left;
+  }
+
+  .guide-preview__rating-word {
+    flex: 1;
+  }
+}
+
+.guide-preview__rating-row[data-layout="column"] .guide-preview__rating-number,
+:host([data-under~="480"]) .guide-preview__rating-row[data-mode] .guide-preview__rating-number {
+  /*
+   * Last in the line, first in the markup. The word is what the answer IS and
+   * belongs at the left edge where the eye starts; the place on the scale is a
+   * fact about it and sits quietly at the right. `order` and not a reordered
+   * template, because the label's text is the control's accessible name and a
+   * reader should still hear *3, Ganska bra* — the number before the word, the
+   * way the row says it too.
+   */
+  order: 2;
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip-path: none;
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-md);
+  font-weight: 400;
+}
+
+/*
+ * A numbers scale standing: steps 2 to 4 have no word, so the number IS the
+ * answer's text there, and takes an answer's form — 16 px in the text ink
+ * (bilaga 11: *"svarstexterna 16 px / 400 genomgående"*). Beside a word the
+ * number stays the quiet fact above. Same specificity as the rule above,
+ * so it comes after it.
+ */
+.guide-preview__rating-row[data-layout="column"][data-mode="numbers"] .guide-preview__rating-number,
+:host([data-under~="480"]) .guide-preview__rating-row[data-mode="numbers"] .guide-preview__rating-number {
+  color: var(--fw-text);
+  font-size: var(--fw-font-size-xl);
+}
+
+.guide-preview__rating-row[data-layout="column"]
+  input:checked
+  ~ .guide-preview__rating-mark
+  .guide-preview__rating-number,
+:host([data-under~="480"]) .guide-preview__rating-row[data-mode]
+  input:checked
+  ~ .guide-preview__rating-mark
+  .guide-preview__rating-number {
+  color: inherit;
+}
+
+/*
+ * A numbers scale's end words (*Långt ifrån … Precis*): above the bar while
+ * it is a bar, on their own first and last line once it stands — the ends row
+ * has no ends to anchor then, and a standing list kept every label but those
+ * two (punkt 16: *"Behåll ordningen och hela etiketterna"*).
+ */
+.guide-preview__rating-end-word {
+  display: none;
+}
+
+.guide-preview__rating-row[data-layout="column"] .guide-preview__rating-end-word,
+:host([data-under~="480"]) .guide-preview__rating-row[data-mode] .guide-preview__rating-end-word {
+  display: block;
+}
+
+:host([data-under~="480"]) .guide-preview__rating-ends {
+  display: none;
+}
+
+/*
+ * The ways out, in plain sight under the bar and never behind a "…".
+ *
+ * One row each, in the order they were offered — *Inte aktuellt* (the question
+ * does not apply), then *Vet ej* (the person has no answer). They keep their
+ * radios visible where the bar's are hidden: on the bar the whole segment IS
+ * the control and reads as one object, while these are two ordinary choices
+ * under it.
+ *
+ * Since 1/10 they ARE the answer row (Astra, bilaga 10 punkt 15: *"samma
+ * kontrollform och textvikt som övriga svar"*) — the shared rule above draws
+ * them, frame and chosen state included. They were bare text, 14 px in the
+ * secondary ink with no edge, a different kind of control for the same kind
+ * of choice (genomgången 30/9, V13). Still in the scale's radio group.
+ *
+ * *"Placera dem efter skalan med 16 px mellanrum"*: `--fw-space-4` from the
+ * scale, under a bar or a column alike; the two rows bind to each other at
+ * the page's row gap, `--fw-space-2`.
+ */
+.guide-preview__rating-row + .guide-preview__rating-na {
+  margin-top: var(--fw-space-4);
+}
+
+.guide-preview__rating-na + .guide-preview__rating-na {
+  margin-top: var(--fw-space-2);
+}
+
+/* Frågan om ett fält som besökaren inte rört (berättelse 118, kriterium 7).
+ *
+ * Plattformens `<dialog>` med `showModal()`: översta lagret, fokusfällan,
+ * Escape och bakgrunden är dess, och varje sak vi INTE skriver här är en sak
+ * som inte kan bli fel. Bara ytan är vår.
+ *
+ * Tokens hela vägen, som resten av kortet, så färgskalan och mörkt läge gäller
+ * dialogen utan en enda egen rad för dem. */
+.guide-preview__ask {
+  max-width: min(32rem, calc(100vw - 32px));
+  padding: 20px;
+  border: 1px solid var(--fw-border);
+  border-radius: 12px;
+  background: var(--fw-surface);
+  color: var(--fw-text);
+
+  &::backdrop {
+    /* Egen färg och inte bara opacitet: en genomskinlig svart platta över ett
+     * mörkt tema blir nästan osynlig, och då ser man inte att resten av sidan
+     * är avstängd. */
+    background: rgb(15 23 42 / 55%);
+  }
+
+  h2 {
+    margin: 0;
+    font-size: 1.0625rem;
+    line-height: 1.5;
+    /* Frågan ÄR rubriken och läses som en mening, inte som en etikett över en
+     * brödtext som säger samma sak en gång till. */
+    font-weight: 600;
+  }
+}
+
+.guide-preview__ask-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  /* Det säkra valet först i läsordningen, den framåtriktade sist och fylld —
+   * samma ordning och samma klädsel som Föregående och Nästa i kortet (delad
+   * regel ovan, `.guide-preview__navigation button`), så en besökare känner
+   * igen vilken som är vilken. */
+  justify-content: flex-end;
+  margin-top: 20px;
+
+  /* Mätt 22/9 (samma uppdrag som navigeringens golv): "Ändra" 88 px, "Gå
+     vidare" 120 px, i en dialog med gott om plats (max-width 32rem) —
+     frimärken av samma orsak som Föregående/Nästa hade innan de fick ett
+     golv. Samma regel, samma skäl — och samma tal, 9rem (se
+     `.guide-preview__navigation button` för varför 10rem sänktes). */
+  button {
+    min-width: min(9rem, 100%);
+  }
+
+  button[data-ask="continue"] {
+    border-color: var(--fw-primary);
+    background: var(--fw-primary);
+    color: var(--fw-on-primary);
+
+    &:hover {
+      border-color: var(--fw-primary-hover);
+      background: var(--fw-primary-hover);
+    }
+  }
+}

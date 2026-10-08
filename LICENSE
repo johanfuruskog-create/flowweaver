@@ -1,0 +1,19 @@
+FlowWeaver is licensed in two parts, along the line between the two trees
+of the library (docs/ARCHITECTURE.md, "Två träd"):
+
+  src/editor/, src/entries/editor.ts, and the editor bundles built from them
+  (flowweaver-editor.js, flowweaver-editor.global.js):
+      Mozilla Public License 2.0 — see src/editor/LICENSE
+
+  everything else — the viewer and its bundles, tokens.css, the type
+  declarations, the reference host, the integrations, the documentation,
+  the tooling:
+      MIT — see LICENSE-MIT
+
+Each bundle states its licence on its first line.
+
+The viewer never contains a line from src/editor/: src/entries/entries.test.ts
+follows the import graph from src/entries/viewer.ts and fails on any file
+under src/editor/. So the MIT-licensed viewer bundle is MIT all the way down.
+
+Copyright (c) 2026 Johan Furuskog

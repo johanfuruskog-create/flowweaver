@@ -1,0 +1,51 @@
+@use "tokens-mixins" as *;
+
+/*
+ * Bibliotekets tokens — ett steg ner från `:root`.
+ *
+ * Variablerna sätts på FlowWeavers **egna taggar**, inte på dokumentet. En
+ * editor eller visare inbäddad i någon annans sida ska klä sig själv och
+ * ingenting annat. `color-scheme` är den som märks mest: på `:root` ändrar den
+ * värdens rullister, formulärkontroller och standardbakgrunder — i mörkt
+ * OS-läge blev de svarta.
+ *
+ * Förut låg allt på `:root`, och varje värd som bäddade in oss fick skriva ett
+ * eget skript som bytte ut selektorn. Det skriptet behövs inte längre.
+ *
+ * ## Att ändra en färg som värd
+ *
+ * Stylea elementet, inte dokumentet:
+ *
+ *     guide-editor { --fw-primary: #b45309; }
+ *
+ * Selektorerna nedan ligger i `:where()` och har därför noll specificitet, så
+ * vilken regel som helst hos värden vinner utan `!important`.
+ *
+ * ## Opt-in-klassen
+ *
+ * `.flowweaver-scope` finns för den som vill klä ett helt område — en dialog,
+ * en panel — där flera av våra element bor. Den behövs inte för att elementen
+ * själva ska fungera.
+ */
+
+/* Varje element en värd monterar själv måste stå här. `guide-versions` gjorde
+   inte det när den flyttade in i biblioteket, och en kontroll utan tokens är
+   inte halvfärgad — den är ofärgad: menyns bakgrund blev genomskinlig och
+   sidan under lyste rakt igenom. Syntes först på en skärmbild, aldrig i
+   testerna, eftersom en `var()` utan värde bara försvinner. */
+$fw-scope: ":where(guide-editor, guide-preview, guide-versions, .flowweaver-scope)";
+
+#{$fw-scope} { @include fw-light; }
+
+/* Uttalat mörkt läge, satt av `setTheme()` eller `theme`-attributet. */
+#{$fw-scope}[data-fw-theme="dark"],
+#{$fw-scope} [data-fw-theme="dark"] { @include fw-dark; }
+
+/* Uttalat ljust, för ett element som står i ett mörkt sammanhang. */
+#{$fw-scope}[data-fw-theme="light"],
+#{$fw-scope} [data-fw-theme="light"] { @include fw-light; }
+
+/* Utan uttalat val följer vi operativsystemet. */
+@media (prefers-color-scheme: dark) {
+  #{$fw-scope}:not([data-fw-theme="light"]) { @include fw-dark; }
+}

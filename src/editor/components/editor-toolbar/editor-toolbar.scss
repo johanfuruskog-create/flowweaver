@@ -1,0 +1,308 @@
+@use "../../../viewer/styles/focus" as focus;
+@use "../../styles/chevron";
+
+:host {
+  display: block;
+  position: relative;
+  /* The sticky toolbar bar — exactly --fw-z-sticky, not the popover role its
+     old literal (20) happened to number-match. Checked before the repoint
+     (Johan 20/9): nothing between 10 and 20 overlaps the bar's own rectangle.
+     .guide-editor__list-view sits at 15, but it is contained by
+     <main class="guide-editor__canvas">, a sibling of <editor-toolbar> in
+     the layout — it covers the canvas region, never the header row, so the
+     two never compete for the same pixels regardless of which number wins. */
+  z-index: var(--fw-z-sticky);
+  /* Så topmenyn kan smalna av mot sin egen bredd (inte hela sidan). */
+  container-type: inline-size;
+}
+
+/*
+ * With a menu open the bar is a popover, not a sticky bar: the canvas's own
+ * toolbar is sticky too and, later in the page, painted over the view menu
+ * once that menu opened to the left inside the bar (measured 28/9, 900 × 600:
+ * "Anpassa till innehåll" hit `node-editor__canvas-toolbar`). Still under the
+ * properties panel (25), whose decision stands — the menus keep inside the
+ * bar instead (`keepInside`).
+ */
+:host([data-menu-open]) {
+  z-index: var(--fw-z-popover);
+}
+
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  height: var(--fw-editor-header-height, 56px);
+  padding: var(--fw-space-2) var(--fw-space-4);
+  border-bottom: 1px solid var(--fw-border);
+  background: var(--fw-surface);
+}
+
+/* Varumärkesmark längst till vänster i verktygsfältet. Bläcktråden ärver
+   currentColor, guldtråden token, och väv-hålet matchar ytan. */
+.editor-toolbar__brand {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  margin-right: var(--fw-space-3);
+  padding-right: var(--fw-space-3);
+  border-right: 1px solid var(--fw-border);
+  color: var(--fw-text-strong);
+}
+
+.editor-toolbar__brand-mark {
+  display: block;
+  width: 34px;
+  height: auto;
+}
+
+/* Smal topmeny: komprimera menyn (dölj språketikett och ⌄-pilar, tightare
+   padding/font) så alla menyer får plats utan att spilla över eller gömmas
+   bakom sidopanelen. Dropdownerna påverkas inte. */
+@container (max-width: 700px) {
+  .editor-toolbar {
+    padding: var(--fw-space-2);
+  }
+
+  .editor-toolbar__menus {
+    gap: 0;
+  }
+
+  .editor-toolbar__menu > button {
+    padding: var(--fw-space-2);
+    font-size: var(--fw-font-size-base);
+  }
+
+  /* ⌄-pilen tar plats utan att tillföra mycket på smal skärm. */
+  .editor-toolbar__menu > button::after {
+    display: none;
+  }
+}
+
+/* På riktigt smala verktygsfält får marken vika för menyutrymmet. */
+@container (max-width: 560px) {
+  .editor-toolbar__brand {
+    display: none;
+  }
+}
+
+.editor-toolbar__menus {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+
+  /*
+   * Vänsterställda, direkt efter märket.
+   *
+   * Förut trycktes de dit av språkvalets `margin-left: auto`. När det flyttade
+   * till kontextraden fanns inget kvar som höll dem, och de drev mot mitten av
+   * ett i övrigt tomt fält.
+   */
+  margin-right: auto;
+}
+
+.editor-toolbar__menu {
+  position: relative;
+
+  > button {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--fw-space-2) var(--fw-space-3);
+    border: 0;
+    border-radius: var(--fw-radius-sm);
+    background: transparent;
+    color: var(--fw-text);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  /* The chevron — drawn, see the partial for why. */
+  > button::after {
+    @include chevron.drawn;
+
+    margin-left: var(--fw-space-2);
+    border-color: var(--fw-text-secondary);
+  }
+
+  > button[aria-expanded="true"]::after {
+    @include chevron.open;
+  }
+
+  > button:hover,
+  > button[aria-expanded="true"] {
+    background: var(--fw-bg);
+  }
+
+  /*
+   * Samordnad med den godkända plusmenyn (`.menu` i
+   * `rich-text-field.scss`, UPPDRAG-2026-09-25-TEXTREDIGERING varv 8–12,
+   * facit i UPPDRAG-2026-09-28-ENHETLIGHET Del 2). Ingen delad partial
+   * fanns i `src/viewer/styles/` att lägga facit i (mätt) — reglerna
+   * kopieras hit i stället. Skuggan (`--fw-shadow-raised`) och
+   * typografin (16 px/400) var redan rätt här, mätt innan ändringen;
+   * bara yta, ram, radie, padding och radhöjd ändras.
+   */
+  [role="menu"] {
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 0;
+    display: grid;
+    box-sizing: border-box;
+    min-width: 210px;
+    // Astras krav: "Behåll innehållsberoende bredd" — långa etiketter SKA
+    // KUNNA radbrytas, inte TVINGAS. Ett första försök satte ett tak
+    // (`max-width` + `minmax(0, 1fr)`) som tvingade ALLA rader — även
+    // "Exportera inlämningens schema" (Arkiv), som rymdes på en rad —
+    // att brytas, eftersom en `1fr`-kolumn i en ihopkrympt behållare väljer
+    // sin minsta möjliga bredd (min-content, bredaste ordet) när inget
+    // tvingar den bredare, inte sin max-content-bredd. Rättat av Johan 28/9,
+    // mätt mot en före/efter-jämförelse.
+    //
+    // `width: max-content` (i stället för grid-kolumnens fr-enhet) är vad
+    // som faktiskt ger "bredd efter innehåll, tak vid behov": nu VÄXER
+    // menyn till den bredaste radens enradiga bredd, och `max-width`
+    // fortsätter fungera som ett riktigt tak ovanför den — verifierat
+    // direkt (utan `width: max-content` stannade menyn på sin `min-width`-
+    // golv och bröt ändå, trots ett höjt tak).
+    //
+    // Taket 310px är mätt, inte gissat — varje rads egen enradsbredd pluss
+    // menyns padding och ram (en klonad kopia per rad, tvingad enradig och
+    // `width: max-content`, mätt isolerat så grid-layoutens egna kvirkar
+    // inte stör måttet). Bredast av alla sex menyers rader: Vy-menyns
+    // "Visa alla som besökaren ser dem" behöver 302px meny; Arkiv-menyns
+    // "Exportera inlämningens schema" 297px. 310 ger någon pixels marginal
+    // utan att öppna för en verkligt lång framtida etikett. (Ett första
+    // mått, 300px, missade knappt — 2px för lite för just Vy-menyns rad —
+    // eftersom det mätte hela menyns `scrollWidth` med alla rader
+    // nowrap:ade SAMTIDIGT i den gamla `minmax(0, 1fr)`-uppställningen,
+    // inte varje rad isolerat mot den nya `max-content`-bredden.)
+    width: max-content;
+    max-width: 310px;
+    padding: 10px 6px;
+    border: 1px solid var(--fw-border);
+    border-radius: var(--fw-radius-xl);
+    background: var(--fw-surface-raised);
+    box-shadow: var(--fw-shadow-raised);
+  }
+
+  [role="menu"][hidden] {
+    display: none;
+  }
+
+  [role="menuitem"],
+  [role="menuitemcheckbox"] {
+    display: flex;
+    align-items: center;
+    gap: var(--fw-space-3);
+    width: 100%;
+    // Grid-radens egen automatiska minsta bredd (`min-width: auto`) faller
+    // annars tillbaka på innehållets min-content — mätt: en post kunde
+    // fortsätta ligga på EN rad, bredare än menyns egen `max-width`, i
+    // stället för att krympa och radbryta som den fick plats till.
+    min-width: 0;
+    box-sizing: border-box;
+    min-height: 46px;
+    padding: 0 var(--fw-space-3);
+    border: 0;
+    // 7px matchar ingen radie-token (mitt emellan --fw-radius-sm 6 och
+    // --fw-radius-md 8) — samma literal som plusmenyns rader, se `.menu button`.
+    border-radius: 7px;
+    background: transparent;
+    color: var(--fw-text-strong);
+    font: inherit;
+    text-align: left;
+    // Facit (Astra, 28/9): långa etiketter radbryts i stället för att tvinga
+    // menyn bred eller klippa texten. `white-space: nowrap` (borttagen här)
+    // höll varje rad på en enda rad genom att göra HELA menyn så bred som
+    // den längsta etiketten — vilket också var vad som gjorde `max-width`
+    // ovan verkningslös innan denna rad togs bort.
+    cursor: pointer;
+  }
+
+  [role="menuitem"]:hover,
+  [role="menuitemcheckbox"]:not([disabled]):hover {
+    background: var(--fw-primary-surface);
+    color: var(--fw-primary-hover);
+  }
+
+  /* Modulmenyn: en synlig checklista med en kryssruta per modul. */
+  [role="menuitemcheckbox"] {
+    display: flex;
+    align-items: center;
+    gap: var(--fw-space-2);
+  }
+
+  [role="menuitemcheckbox"]::before {
+    content: "";
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid var(--fw-border-control);
+    /* 4px matches no radius role (button/field 8, card 12, dialog 16) — a
+       small drawn checkbox, kept literal rather than guessed onto one. */
+    border-radius: 4px;
+  }
+
+  [role="menuitemcheckbox"][aria-checked="true"]::before {
+    content: "✓";
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-color: var(--fw-primary-strong);
+    background: var(--fw-primary-strong);
+    color: var(--fw-on-primary);
+    font-size: var(--fw-font-size-sm);
+    /* 1 matches neither line-height role — a deliberate zero-leading trick so
+       the ✓ glyph centres in its 16px box. */
+    line-height: 1;
+  }
+
+  [role="menuitemcheckbox"][disabled] {
+    opacity: 0.65;
+    cursor: default;
+  }
+}
+
+button:focus-visible {
+  @include focus.ring;
+}
+
+.editor-toolbar__file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+
+/* Genvägen där handlingen bor (toppmenygranskningen 2/9): muted och
+   KOLUMNJUSTERAD mot högerkanten — margin-left: auto kräver att posten
+   är flex, annars hänger hinten efter ordet (designbilden). */
+[role="menuitem"].has-kbd {
+  display: flex;
+  align-items: center;
+  gap: var(--fw-space-4);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* An item's own `display` (the flex above, the checkbox row) beats the
+   `hidden` attribute, so a zoom item hidden for the list view still drew
+   (measured 3/9). Last, and at least as specific as either. */
+[role="menuitem"][hidden],
+[role="menuitemcheckbox"][hidden] {
+  display: none;
+}
+
+[role="menuitem"] kbd {
+  margin-left: auto;
+  color: var(--fw-text-muted);
+  font-family: inherit;
+  font-size: var(--fw-font-size-sm);
+  /* 1 matches neither line-height role — a deliberate zero-leading trick so
+     the shortcut hint stays on the menu row's own line. */
+  line-height: 1;
+}

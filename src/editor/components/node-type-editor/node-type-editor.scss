@@ -1,0 +1,405 @@
+@use "../../../viewer/styles/focus" as focus;
+@use "../../styles/select";
+
+/*
+ * Del 5 (UPPDRAG-2026-09-28-ENHETLIGHET, 28/9): samordnad med de andra fem
+ * dialogerna. Mätt före ändringen: radien var `--fw-radius-xl` (12px, inte
+ * de andra fem dialogernas `--fw-radius-dialog` 16px), skuggan
+ * `--fw-shadow-md` (samma som en upphöjd meny, inte det tyngre
+ * `--fw-shadow-floating` skalet ger de andra fem — "det enda ovanför
+ * sidan", per tokenfilens egen kommentar), och en egen 1px ram som ingen
+ * annan dialog har (skalet är kantlöst, skuggan ensam bär "ovanför sidan").
+ * Rubrikens 20px var också en egen literal, inte skalets `--fw-font-size-
+ * 2xl` (18px).
+ */
+dialog {
+  width: min(500px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  padding: 24px;
+  border: 0;
+  border-radius: var(--fw-radius-dialog);
+  background: var(--fw-surface);
+  color: var(--fw-text);
+  box-shadow: var(--fw-shadow-floating);
+  font-family: var(--fw-font);
+}
+
+dialog::backdrop {
+  background: rgb(16 24 40 / 55%);
+}
+
+/* display-värden nedan vinner annars över hidden-attributet. */
+[hidden] {
+  display: none !important;
+}
+
+h2 {
+  margin: 0;
+  font-size: var(--fw-font-size-2xl);
+}
+
+h3 {
+  margin: 0 0 12px;
+  font-size: var(--fw-font-size-lg);
+}
+
+.node-type-editor__intro {
+  margin: 6px 0 16px;
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-md);
+  line-height: 1.5;
+}
+
+.node-type-editor__list {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--fw-border-subtle);
+    border-radius: var(--fw-radius-md);
+    background: var(--fw-surface-subtle);
+  }
+
+  strong {
+    color: var(--fw-text-strong);
+    font-size: var(--fw-font-size-md);
+  }
+
+  span {
+    color: var(--fw-text-muted);
+    font-size: var(--fw-font-size-base);
+  }
+}
+
+.node-type-editor__empty {
+  color: var(--fw-text-muted);
+  font-size: var(--fw-font-size-md);
+}
+
+.node-type-editor__list-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+}
+
+/*
+ * *Ta bort* in the profile's destructive form (Visuell hierarki, B3 Astra
+ * 30/9): words and bin in `--fw-danger-text`, no fill and no frame, 44 px.
+ * It was a neutral outline in `--fw-border`, 27 px — the same form as
+ * *Redigera* beside it, so the row's two acts looked alike (GENOMGANG E5).
+ * Its own class: the inline confirmation's *Ta bort* is a different button
+ * with its own form (`.node-type-editor__confirm-actions`).
+ */
+.node-type-editor__remove {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--fw-space-1);
+  min-height: var(--fw-control-height);
+  padding: var(--fw-space-2);
+  border: 0;
+  border-radius: var(--fw-radius-sm);
+  background: transparent;
+  color: var(--fw-danger-text);
+  font: inherit;
+  font-size: var(--fw-font-size-base);
+  cursor: pointer;
+
+  svg {
+    flex: none;
+    width: 18px;
+    height: 18px;
+  }
+
+  /* The list's caption rule makes every span muted; these words are the
+     button's. */
+  span {
+    color: inherit;
+    font-size: inherit;
+  }
+
+  &:hover {
+    background: var(--fw-danger-surface);
+  }
+}
+
+.node-type-editor__edit,
+.node-type-editor__delete {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-sm);
+  background: var(--fw-surface);
+  color: var(--fw-text-secondary);
+  font: inherit;
+  font-size: var(--fw-font-size-base);
+  cursor: pointer;
+}
+
+.node-type-editor__edit:hover {
+  border-color: var(--fw-primary);
+  color: var(--fw-text-strong);
+}
+
+.node-type-editor__delete:hover {
+  border-color: var(--fw-danger-border);
+  color: var(--fw-danger-text);
+}
+
+/*
+ * Bekräftelsen tar över listraden i stället för att lägga sig ovanpå. Den som
+ * ska svara på frågan ser då exakt vilken mall det gäller, och inget annat
+ * flyttar sig.
+ */
+.node-type-editor__confirm {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--fw-danger-border);
+  border-radius: var(--fw-radius-md);
+  background: var(--fw-danger-surface, var(--fw-surface));
+}
+
+.node-type-editor__confirm-title {
+  margin: 0;
+  color: var(--fw-text-strong);
+}
+
+.node-type-editor__confirm-body {
+  margin: 0;
+  color: var(--fw-text);
+}
+
+.node-type-editor__confirm-note {
+  margin: 0;
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-base);
+}
+
+.node-type-editor__confirm-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+
+  button {
+    padding: 8px 14px;
+    border: 1px solid var(--fw-border-control);
+    border-radius: var(--fw-radius-sm);
+    background: var(--fw-surface);
+    color: var(--fw-text-strong);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* Den farliga knappen bär färgen; "Behåll" är den lugna vägen ut. */
+  .node-type-editor__delete {
+    border-color: var(--fw-danger-border);
+    color: var(--fw-danger-text);
+  }
+}
+
+.node-type-editor__form {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--fw-border-subtle);
+  border-radius: var(--fw-radius-lg);
+  background: var(--fw-surface-subtle);
+}
+
+.node-type-editor__name {
+  display: grid;
+  gap: 6px;
+  font-size: var(--fw-font-size-md);
+  font-weight: 600;
+  color: var(--fw-text-secondary);
+}
+
+input[type="text"] {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--fw-border-control);
+  border-radius: var(--fw-radius-md);
+  background: var(--fw-surface);
+  color: var(--fw-text);
+  font: inherit;
+  font-size: var(--fw-font-size-lg);
+}
+
+select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--fw-border-control);
+  border-radius: var(--fw-radius-md);
+  background: var(--fw-surface);
+  color: var(--fw-text);
+  font: inherit;
+  font-size: var(--fw-font-size-lg);
+}
+
+/* Same drawn chevron as the properties panel's selects (Astra 29/9). */
+.node-type-editor__select {
+  @include select.wrap;
+}
+
+input:focus-visible,
+select:focus-visible {
+  @include focus.ring(1px);
+}
+
+.node-type-editor__icon {
+  display: grid;
+  gap: 10px;
+
+  input {
+    width: 96px;
+    text-align: center;
+    font-size: var(--fw-font-size-2xl);
+  }
+}
+
+.node-type-editor__icon-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+
+  button {
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--fw-border-control);
+    border-radius: var(--fw-radius-md);
+    background: var(--fw-surface);
+    color: var(--fw-text);
+    font-size: var(--fw-font-size-2xl);
+    line-height: 1;
+    cursor: pointer;
+
+    &:hover {
+      border-color: var(--fw-primary);
+      background: var(--fw-primary-surface);
+    }
+  }
+}
+
+.node-type-editor__list-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.node-type-editor__list-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--fw-radius-sm);
+  background: var(--fw-primary-surface);
+  color: var(--fw-primary-strong);
+  font-size: var(--fw-font-size-lg);
+  font-weight: 700;
+}
+
+.node-type-editor__capture-note {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--fw-radius-sm);
+  background: var(--fw-primary-surface);
+  color: var(--fw-primary-strong);
+  font-size: var(--fw-font-size-base);
+}
+
+.node-type-editor__error {
+  margin: 0;
+  color: var(--fw-danger-text);
+  font-size: var(--fw-font-size-base);
+}
+
+/*
+ * Del 5: primärknappen bar `--fw-primary` (#4f46e5), en annan nyans än de
+ * andra dialogernas fyllda primärknapp — publiceringens och länkdialogens
+ * "Publicera"/"Lägg till länk" (`.publish-dialog__confirm`,
+ * `.prompt-dialog__confirm`) använder båda redan `--fw-primary-strong`
+ * (#3538cd). Fias fynd 3 (tre primärnyanser): den tredje var e-postutdata-
+ * dialogens gamla knapp (en nodfärg, fixad separat i
+ * email-output-dialog.scss) — den här är den andra. Textfärgen byter från
+ * `--fw-on-primary` till `--fw-surface`, av samma skäl: matchar vad de två
+ * andra redan använder, inte en teoretiskt "riktigare" token som ingen
+ * annan dialog delar.
+ */
+.node-type-editor__create {
+  justify-self: start;
+  padding: 10px 18px;
+  border: 1px solid var(--fw-primary-strong);
+  border-radius: var(--fw-radius-button);
+  background: var(--fw-primary-strong);
+  color: var(--fw-surface);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--fw-primary-hover);
+    border-color: var(--fw-primary-hover);
+  }
+}
+
+.node-type-editor__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+
+  button {
+    padding: 10px 18px;
+    border: 1px solid var(--fw-border);
+    border-radius: var(--fw-radius-button);
+    background: var(--fw-surface);
+    color: var(--fw-text-strong);
+    font: inherit;
+    font-weight: var(--fw-weight-strong);
+    cursor: pointer;
+  }
+
+  /* "Lägg till nodmall" ligger till vänster: den lokala tilläggshandlingen
+     (GRAFISK-PROFIL, Visuell hierarki; B3 Astra 30/9) — primär kontur, plus
+     som ikon, aldrig fylld, 44 px. Innehållets bredd: den står i
+     dialogens knapprad, inte under en samling kort. */
+  .node-type-editor__add-new {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--fw-space-2);
+    min-height: var(--fw-control-height);
+    margin-right: auto;
+    padding-inline: var(--fw-space-4);
+    border-color: var(--fw-primary);
+    background: transparent;
+    color: var(--fw-primary-strong);
+
+    svg {
+      flex: none;
+      width: 18px;
+      height: 18px;
+    }
+
+    &:hover {
+      background: var(--fw-primary-surface);
+    }
+  }
+}
+
+button:focus-visible {
+  @include focus.ring;
+}

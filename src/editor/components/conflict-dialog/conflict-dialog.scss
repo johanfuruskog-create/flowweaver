@@ -1,0 +1,109 @@
+@use "../../styles/dialog-shell";
+@use "../../../viewer/styles/focus" as focus;
+
+/*
+ * Valen är knappar, och de ser ut som knappar.
+ *
+ * Johan 18/9 i genomgången av ytan: *"Titta på knapparna som mer ser ut som
+ * inputfält."* En ljus yta med en tunn grå ram och rundade hörn ÄR ett fält i
+ * varje gränssnitt någon har sett, och en knapp som ser ut som ett fält är en
+ * knapp man försöker skriva i. Så: tydlig kant, egen yta, och en hovring som
+ * rör sig — ett fält gör inget av det.
+ */
+/*
+ * Rubriken tar fokus när rutan öppnas, och ringen är verktygets egen.
+ *
+ * Utan raden ritar webbläsaren sin — en svart kantlinje tvärs över den första
+ * meningen, vilket i en skärmbild ser ut som ett fel i stället för som ett
+ * fokus. Samma regel och samma mått som `publish-dialog`, där rubriken tar
+ * fokus av samma skäl.
+ */
+h2:focus-visible {
+  @include focus.ring(4px);
+}
+
+.conflict-dialog__choices {
+  display: grid;
+  /* 10px stod mitt emellan --fw-space-2 (8) och -3 (12); tre skilda och
+     tydligt åtskilda vägar väger tyngre än ett tätt knapp-par, så valet föll
+     på det större steget. */
+  gap: var(--fw-space-3);
+  /* 20px: på det fyrpixel-rastret men utan en egen namngiven roll (mellan
+     -4:s 16 och -5:s 24) — oförändrat. */
+  margin-top: 20px;
+}
+
+.conflict-dialog__choice {
+  /* K6: hela ytan går att träffa, och den är stor för att den bär två rader. */
+  display: grid;
+  gap: 2px;
+  padding: var(--fw-space-3) var(--fw-space-4);
+  min-height: 44px;
+  /*
+   * Tyst i vila, och det är ett val (Johan, om ovana användare): bara
+   * förstahandsvalet har en egen yta, så ordningen syns innan någon läst ett
+   * ord. Ramen finns men är genomskinlig — den ska inte flytta något när den
+   * blir synlig vid hovring.
+   */
+  border: 1px solid transparent;
+  /* 10px: mellan fält/knapp (8) och kort (12) — ingen av rollerna, och en
+     ändring åt endera hållet hade synts som en annan rundning. Oförändrat. */
+  border-radius: 10px;
+  background: transparent;
+  text-align: start;
+  transition: background var(--fw-motion-duration) var(--fw-motion-ease),
+    border-color var(--fw-motion-duration) var(--fw-motion-ease);
+}
+
+.conflict-dialog__choice:hover {
+  border-color: var(--fw-border-control);
+  background: var(--fw-surface-subtle, var(--fw-bg));
+}
+
+/*
+ * Förstahandsvalet — det som inte förlorar något.
+ *
+ * Fylld, som *Publicera* i granskningen: det finns en knapp att trycka på utan
+ * att ha läst de andra två, och den är rätt. Färgen är inte ensam bärare (K3)
+ * — den står överst, den har fokus när rutan öppnas, och dess egen text säger
+ * vad som händer.
+ */
+.conflict-dialog__choice--primary {
+  border-color: var(--fw-primary-strong);
+  background: var(--fw-primary-strong);
+  color: var(--fw-surface);
+}
+
+.conflict-dialog__choice--primary:hover {
+  border-color: var(--fw-primary-strong);
+  background: var(--fw-primary-strong);
+  filter: brightness(1.08);
+}
+
+.conflict-dialog__label {
+  /* Inte en rubriktagg, men den mest framträdande texten i valet — samma
+     vikt som en rubrik, via samma token. */
+  font-weight: var(--fw-weight-heading);
+}
+
+.conflict-dialog__note {
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-md);
+  font-weight: var(--fw-weight-text);
+  line-height: var(--fw-line-body);
+}
+
+/*
+ * Konsekvensen på den fyllda knappen ärver dess färg i stället för den grå
+ * — grått på fyllt är det enda stället i rutan där kontrasten kan falla under
+ * kravet, och den texten är hela skälet att knappen går att trycka på i blindo.
+ */
+.conflict-dialog__choice--primary .conflict-dialog__note {
+  color: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .conflict-dialog__choice {
+    transition: none;
+  }
+}

@@ -1,0 +1,375 @@
+@use "../../../viewer/styles/focus" as focus;
+@use "../../styles/select";
+@use "../../styles/menu-surface";
+
+/*
+ * The field picker of story 143 — see `field-picker.ts`. Facit is Astras
+ * three concept pictures (`docs/STORIES/143-*.png`, 30/9); the measures they
+ * give are estimates from a picture of unknown scale (the closed field, 45 px
+ * here, is the ruler), each mapped to the nearest token.
+ */
+
+/* The open surface is placed against the host (see `.popup`). */
+:host {
+  position: relative;
+  display: block;
+  min-width: 0;
+  /* The panel's `<label>` around a condition control is small caps; that
+     crosses the shadow boundary as any inherited property does (the same
+     trap `rich-text-field.scss` notes on `.frame`). */
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: var(--fw-weight-text);
+}
+
+/* The select mixin's wrapper: the drawn chevron, 18 px, 12 px in. */
+.field {
+  @include select.wrap;
+}
+
+/* Open, the chevron points up (skiss 1 and 3). */
+.field--open::after {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+/*
+ * Closed: the panel's field (`.properties-panel__field select`) — 12 px
+ * padding, 16 px text, `--fw-border-control`, `--fw-radius-sm`,
+ * `--fw-surface` — with the mixin's right padding for the chevron. The
+ * question's name alone (skiss 2). The placeholder *Välj fråga eller
+ * variabel* is in the text's own ink, as skiss 3 draws it and as the
+ * select's disabled first row did.
+ */
+.control {
+  /* No platform button face under the drawn field, as the select mixin's `appearance: none`. */
+  appearance: none;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--fw-space-3);
+  padding-right: calc(var(--fw-space-3) * 2 + 18px);
+  border: 1px solid var(--fw-border-control);
+  border-radius: var(--fw-radius-sm);
+  background: var(--fw-surface);
+  color: var(--fw-text);
+  font: inherit;
+  font-size: var(--fw-font-size-xl);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+
+  &:focus {
+    outline: none;
+    border-color: var(--fw-primary);
+    /* The panel's focus glow, the same literal (see properties-panel.scss). */
+    box-shadow: 0 0 0 3px rgb(79 70 229 / 15%);
+  }
+}
+
+/*
+ * A long name ends in … (Astra 30/9, bilaga 2: the sketch cut it mid-letter).
+ * Johan's 29/9 "snyggare utan punkter" was about the `<select>`, where
+ * WebKit ignored the dots anyway; this field is an element of its own, so
+ * the ellipsis draws in every browser. The whole name reads in the open list.
+ * Cut at the text's own box, so it stops before the chevron's room.
+ */
+.control__text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * Open: the plus menu's surface (`_menu-surface.scss`: `--fw-border`,
+ * `--fw-surface-raised`, `--fw-shadow-raised`) in the plus menu's layer
+ * (`--fw-z-popover`, absolute — why not `popover` or fixed stands in
+ * `field-picker.ts`). Exactly the field's width and 4 px under it (skiss 1:
+ * aligned edges; the gap reads 3–7 px across the pictures), or 4 px over it
+ * when `place()` finds the room above (`data-side`). Corner 8 px (skiss 1,
+ * estimated). No padding of its own: the search zone and the list run edge
+ * to edge, as the tinted row does. The height is `place()`'s.
+ */
+.popup {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: var(--fw-z-popover);
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border-radius: var(--fw-radius-md);
+  @include menu-surface.surface;
+  color: var(--fw-text);
+  overflow: hidden;
+
+  &[data-side="above"] {
+    top: auto;
+    bottom: calc(100% + 4px);
+  }
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+/* The search zone: 12 px round, a line under it, and it never scrolls (point 3). */
+.search {
+  flex: none;
+  padding: var(--fw-space-3);
+  border-bottom: 1px solid var(--fw-border);
+}
+
+.search__box {
+  position: relative;
+}
+
+/* 20 px, 12 px in (skiss 1 reads 15; 12 keeps the placeholder whole at 380 px). */
+.search__icon {
+  position: absolute;
+  top: 50%;
+  left: var(--fw-space-3);
+  width: 20px;
+  height: 20px;
+  color: var(--fw-text-muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+/*
+ * The panel field's box at the control height; text 12 px after the
+ * magnifier (skiss 1). Focused: the frame in `--fw-primary`, drawn 2 px
+ * (skiss 3) — a border and a 1 px ring, so nothing moves.
+ */
+.search input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--fw-control-height);
+  padding: 0 var(--fw-control-height) 0 calc(var(--fw-space-3) + 20px + var(--fw-space-2));
+  border: 1px solid var(--fw-border-control);
+  border-radius: var(--fw-radius-sm);
+  background: var(--fw-surface);
+  color: var(--fw-text);
+  font: inherit;
+  font-size: var(--fw-font-size-xl);
+
+  &::placeholder {
+    color: var(--fw-text-muted);
+  }
+
+  /* Empty, the cross is hidden and its room goes to the placeholder: at a
+     380 px panel the box is 245 px, and *Sök fråga eller variabel* needs it. */
+  &:placeholder-shown {
+    padding-right: var(--fw-space-3);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--fw-primary);
+    box-shadow: 0 0 0 1px var(--fw-primary);
+  }
+}
+
+/* The clear cross at the box's end (skiss 3): a 44 px target, an 18 px mark. */
+.search__clear {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: var(--fw-control-height);
+  height: var(--fw-control-height);
+  padding: 0;
+  border: 0;
+  border-radius: var(--fw-radius-sm);
+  background: none;
+  color: var(--fw-text-muted);
+  cursor: pointer;
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  &:hover {
+    color: var(--fw-text);
+  }
+
+  &:focus-visible {
+    @include focus.ring-inset(-2px);
+  }
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+/* "1 träff av 8" under the box, 8 px down, 4 px in (skiss 3). */
+.search__count {
+  margin: var(--fw-space-2) 0 0;
+  padding-left: var(--fw-space-1);
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-md);
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+/* The list scrolls, with a scrollbar that shows (skiss 1). */
+.list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--fw-border) transparent;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.group[hidden] {
+  display: none;
+}
+
+/* One full-width line between groups (skiss 1), none under the last. */
+.group + .group:not([hidden]) {
+  border-top: 1px solid var(--fw-border);
+}
+
+/*
+ * *Svar från guiden*, *Uträkningar*: the plus menu's heading role
+ * (`--fw-text-secondary`, strong) at 14 px (skiss 1, estimated), 16 px in
+ * like the rows, 12 px above and 8 below.
+ */
+.group__label {
+  margin: 0;
+  padding: var(--fw-space-3) var(--fw-space-4) var(--fw-space-2);
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-md);
+  font-weight: var(--fw-weight-strong);
+}
+
+/*
+ * A row: the name over the chip, 12 px above and below, 16 px in, and room
+ * at the end for the tick (skiss 1). Edge to edge and square — the chosen
+ * row's tint runs the list's width — with no frame or shadow of its own.
+ */
+.option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--fw-space-2);
+  min-height: 46px;
+  box-sizing: border-box;
+  padding: var(--fw-space-3) calc(var(--fw-space-4) * 3) var(--fw-space-3) var(--fw-space-4);
+  color: var(--fw-text);
+  font-size: var(--fw-font-size-xl);
+  line-height: var(--fw-line-tight);
+  cursor: pointer;
+  /*
+   * A row is one thing to press, not text to mark (Johan 30/9: a press on
+   * the chip marked its text; Astra: `user-select: none` on the rows, the
+   * chips included). Inherited by the name and the chip; the search box
+   * keeps ordinary selection.
+   */
+  -webkit-user-select: none;
+  user-select: none;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.option__label {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+/*
+ * The variable chip (`.chip` in rich-text-field.scss): primary surface and
+ * border, the chip radius, 14 px. Here it is information, not a control, and
+ * it wraps instead of the chip's `nowrap` — a pill per line — so a long
+ * technical name is read whole without sideways scrolling (point 4).
+ */
+.chip {
+  display: inline;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  padding: 0 var(--fw-space-2);
+  border: 1px solid var(--fw-primary-border);
+  border-radius: var(--fw-radius-chip);
+  background: var(--fw-primary-surface);
+  color: var(--fw-primary-strong);
+  font-size: var(--fw-font-size-md);
+  line-height: var(--fw-line-body);
+  overflow-wrap: anywhere;
+}
+
+/* Chosen: tinted in the primary surface, a drawn tick at the end (skiss 1). */
+.option[aria-selected="true"] {
+  background: var(--fw-primary-surface);
+}
+
+.option__tick {
+  position: absolute;
+  top: 50%;
+  right: var(--fw-space-4);
+  width: 18px;
+  height: 18px;
+  color: var(--fw-primary);
+  transform: translateY(-50%);
+}
+
+.option:hover {
+  background: var(--fw-primary-surface);
+}
+
+/*
+ * The keyboard's row (point 5): once the arrows move it (`data-keyboard`),
+ * the tint and an inset ring — so it
+ * never rests on colour alone and is never the tick. The pictures show no
+ * keyboard state: on opening the active row is the chosen one, already
+ * tinted and ticked (skiss 1), and typing leaves none (skiss 3).
+ */
+/*
+ * The focus ring's own mixin, inside the row. The lead asked (30/9) to try
+ * 2 px in `--fw-primary` as lighter: measured 5.62 : 1 light / 4.99 : 1 dark
+ * against the row, but a hand-written outline is what the CSS ratchet stops
+ * ("focus rings come from the one definition"), and `_focus.scss` chose the
+ * text colour on purpose. A primary variant is a question for the shared
+ * definition, not for this component — pictures of both went to Johan.
+ */
+.popup[data-keyboard] .option--active {
+  background: var(--fw-primary-surface);
+  @include focus.ring-inset(-2px);
+}
+
+/* The search's hit (skiss 3): bold on a tint, a small corner. */
+.hit {
+  border-radius: var(--fw-radius-xs);
+  background: var(--fw-primary-surface);
+  color: inherit;
+  font-weight: var(--fw-weight-strong);
+}
+
+/* In the chip, already on the tint: bold is the mark. */
+.chip .hit {
+  background: none;
+}
+
+.empty {
+  margin: 0;
+  padding: var(--fw-space-3) var(--fw-space-4);
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-xl);
+
+  &[hidden] {
+    display: none;
+  }
+}

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="sv">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>FlowWeaver — guiden</title>
+    <link rel="stylesheet" href="../dist-lib/tokens.css">
+    <link rel="stylesheet" href="./demo.css">
+    <script src="../dist-lib/flowweaver-viewer.global.js"></script>
+  </head>
+  <body>
+    <nav class="demo-bar" aria-label="Demo">
+      <a class="demo-back" href="./index.html">Tillbaka till demon</a>
+      <a href="./editor.html">Bygg om guiden</a>
+    </nav>
+    <main class="demo-viewer">
+      <guide-preview active-locale="sv"></guide-preview>
+    </main>
+    <script type="module">
+      import { loadGuide } from "./demo.js";
+
+      document.querySelector("guide-preview").graph = await loadGuide();
+    </script>
+  </body>
+</html>

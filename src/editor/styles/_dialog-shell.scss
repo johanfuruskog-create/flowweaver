@@ -1,0 +1,88 @@
+/**
+ * The look a dialog has in this tool, shared by the elements that are one.
+ *
+ * A confirmation and a question are different controls — one asks whether to
+ * proceed, the other asks for a word — and making one element do both meant a
+ * hidden field and a branch. What they share is not behaviour but **appearance**:
+ * the same box, the same backdrop, the same buttons in the same corner.
+ *
+ * So the chrome lives here and each element imports it. Change how a dialog
+ * looks in one place; keep two controls that each do one thing.
+ */
+@use "../../viewer/styles/focus" as focus;
+
+:host {
+  display: contents;
+}
+
+dialog {
+  width: min(440px, calc(100vw - 32px));
+  padding: 0;
+  border: 0;
+  /* Dialogrollen (16). Var 14 till 20/9 kväll, och de två breda dialogerna
+     hade egna 22; Johan valde ett hörn för alla sex efter bilder av tre
+     varianter (LOGG 20/9 sen kväll). */
+  border-radius: var(--fw-radius-dialog);
+  /*
+   * Del 5 (UPPDRAG-2026-09-28-ENHETLIGHET, 28/9): ingen `background` stod
+   * här alls — mätt: en dialog byggd på skalet fick webbläsarens egen
+   * `Canvas`-systemfärg (rgb(255,255,255) ljust, rgb(18,18,18) mörkt),
+   * inte `--fw-surface`. Det märktes mest i mörkt läge, där knapparna
+   * (redan `--fw-surface`, #161b26) fick en annan, kallare mörk ton än
+   * ytan bakom dem. `--fw-surface`, inte `-raised`: tre av fem dialoger
+   * (publiceringen, nodmallarna, e-postutdata) satte redan
+   * `var(--fw-surface)` uttryckligen innan den här ändringen — det är
+   * den etablerade konventionen, inte en gissning.
+   */
+  background: var(--fw-surface);
+  color: var(--fw-text);
+  box-shadow: var(--fw-shadow-floating);
+}
+
+dialog::backdrop {
+  background: rgb(16 24 40 / 55%);
+}
+
+form {
+  padding: var(--fw-space-5);
+}
+
+h2 {
+  margin: 0 0 var(--fw-space-2);
+  font-weight: var(--fw-weight-heading);
+  /* 2xl (18). Rubriken låg på 20 px, utanför rampen. Johan valde 18 framför
+     24 efter bilder av tre varianter 20/9 (först B, sedan C): titlarna bär
+     ett namn — *Ta över guiden från Anna Andersson?* — och i 24 px bryter
+     nästan varje riktig titel på två rader i den smala dialogen, vilket
+     trycker ner faktaraderna man svarar utifrån. Vikt 700 och färg skiljer
+     rubriken från faktarutan ändå. Gäller alla sex dialoger — värdet bor här. */
+  font-size: var(--fw-font-size-2xl);
+}
+
+p {
+  margin: 0;
+  color: var(--fw-text-secondary);
+  line-height: var(--fw-line-body);
+}
+
+.dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--fw-space-2);
+  margin-top: var(--fw-space-5);
+}
+
+button {
+  padding: var(--fw-space-2) var(--fw-space-3);
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-button);
+  background: var(--fw-surface);
+  color: var(--fw-text-strong);
+  font: inherit;
+  font-weight: var(--fw-weight-strong);
+  cursor: pointer;
+}
+
+button:focus-visible {
+  @include focus.ring;
+}

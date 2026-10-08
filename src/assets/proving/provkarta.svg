@@ -1,0 +1,22 @@
+<!-- The run's stand-in for a required map location: a drawn map, "PROVKARTA" as a label, the pin in the middle — story 065, drawn 2026-09-01. -->
+<svg viewBox="0 0 420 300" width="420" height="300" xmlns="http://www.w3.org/2000/svg">
+      <rect width="420" height="300" fill="#f5f3ff"/>
+      <!-- river -->
+      <path d="M-10 60 C 80 40, 120 120, 200 100 S 340 40, 430 90 L 430 130 C 340 90, 260 150, 190 140 S 60 90, -10 110 Z" fill="#c7d2fe"/>
+      <!-- park -->
+      <ellipse cx="320" cy="215" rx="70" ry="44" fill="#dcfce7"/>
+      <circle cx="300" cy="205" r="9" fill="#4ade80"/><circle cx="330" cy="225" r="11" fill="#22c55e"/><circle cx="345" cy="200" r="7" fill="#4ade80"/>
+      <!-- roads -->
+      <g stroke="#ffffff" stroke-width="10" stroke-linecap="round" fill="none"><path d="M40 300 L 60 20"/><path d="M0 200 L 420 170"/><path d="M150 300 C 170 220, 200 200, 230 20"/><path d="M0 260 L 420 250"/></g>
+      <g stroke="#e0e7ff" stroke-width="2" fill="none"><path d="M40 300 L 60 20"/><path d="M0 200 L 420 170"/><path d="M150 300 C 170 220, 200 200, 230 20"/><path d="M0 260 L 420 250"/></g>
+      <!-- blocks -->
+      <g fill="#e9e5ff" stroke="#c4b5fd" stroke-width="1.5"><rect x="78" y="180" width="50" height="34" rx="3"/><rect x="82" y="222" width="40" height="26" rx="3"/><rect x="250" y="130" width="46" height="30" rx="3"/><rect x="100" y="120" width="34" height="28" rx="3"/><rect x="180" y="230" width="52" height="22" rx="3"/><rect x="330" y="120" width="54" height="30" rx="3"/></g>
+      <!-- pin -->
+      <path d="M210 118 c -16 0 -26 12 -26 26 c 0 20 26 46 26 46 s 26 -26 26 -46 c 0 -14 -10 -26 -26 -26 z" fill="#4f46e5" stroke="#fff" stroke-width="3"/>
+      <circle cx="210" cy="144" r="8" fill="#fff"/>
+      <!-- label -->
+      <rect x="14" y="254" width="104" height="30" rx="6" fill="#fff" stroke="#c7d2fe" stroke-width="2"/>
+      <text x="66" y="274" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="800" letter-spacing="1.2" fill="#3730a3">PROVKARTA</text>
+      <!-- compass -->
+      <circle cx="384" cy="34" r="14" fill="#fff" stroke="#c7d2fe" stroke-width="2"/><path d="M384 24 l5 10 -5 -3 -5 3 z" fill="#4f46e5"/>
+    </svg>

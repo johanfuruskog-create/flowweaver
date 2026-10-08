@@ -1,0 +1,83 @@
+/*
+ * The keyboard focus indicator. One definition, used by every `:focus-visible`
+ * rule in the package and on the site.
+ *
+ * ## Why it has two bearers
+ *
+ * It used to be one: `outline: 3px solid var(--fw-focus-ring)`, and
+ * `--fw-focus-ring` is a 35 % wash of indigo. Measured against the surfaces it
+ * lands on, that wash comes out at **1.76 : 1 in light and 1.34 : 1 in dark**
+ * — against a requirement of 3 : 1 (WCAG 2.2 1.4.11, non-text contrast; K3).
+ * A visitor tabbing through a form in dark mode had an indicator they could
+ * barely see, and the suite was green because nothing measured an outline.
+ *
+ * So the indicator is now a stroke **and** a ring:
+ *
+ *   - `outline: 3px solid var(--fw-text)` — opaque, in the text colour, which
+ *     is by definition the highest-contrast ink we have against that surface.
+ *     This is the bearer that carries the requirement.
+ *   - `box-shadow: 0 0 0 5px var(--fw-focus-ring)` — the indigo wash, filling
+ *     the two px between the element and the stroke. It is what makes focus
+ *     read as *ours* rather than as a browser default, and it is decoration:
+ *     take it away and the indicator still passes.
+ *
+ * The shape is not new. Three rules already drew focus this way —
+ * `_tick-boxes.scss` and two in `node-editor.scss` — because the ring alone
+ * was invisible on a checked box and on the canvas. This makes that shape the
+ * rule instead of the exception.
+ *
+ * ## What it costs
+ *
+ * `box-shadow` is a whole declaration, so an element with a resting shadow
+ * loses it while focused. That is accepted and checked by eye: the four
+ * surfaces in the before/after pictures (button, field, list row, node card)
+ * are the ones where it could have shown.
+ *
+ * The stroke is drawn outside the border box, so an ancestor with
+ * `overflow: hidden` can clip it. Checked on the card and the list row, which
+ * are the two places that clip — both leave room.
+ */
+
+/**
+ * Keyboard focus: an opaque stroke, and our ring in the gap it leaves.
+ *
+ * `$offset` is the distance from the element, and the ring's spread follows it
+ * so the wash always fills exactly the gap the stroke leaves. Most rules want
+ * the default; the ones that pass a number do it because their shape needs it
+ * — a chip sits tight, a dialog's button sits loose — and that number is the
+ * one they already had.
+ */
+@mixin ring($offset: 2px) {
+  outline: 3px solid var(--fw-text);
+  outline-offset: $offset;
+  box-shadow: 0 0 0 ($offset + 3px) var(--fw-focus-ring);
+}
+
+/*
+ * The same indicator where the stroke cannot be the text colour: on the canvas
+ * a node is focused against its own fill, and `--fw-on-node` is that surface's
+ * ink. Measured against the five node colours it lands on: 5.02 : 1 at worst
+ * (service amber), 9.93 : 1 at best. Same two bearers, same geometry — only
+ * the pigment differs, for the same reason `--fw-text` was chosen above.
+ */
+@mixin ring-on-node($offset: 2px) {
+  outline: 3px solid var(--fw-on-node);
+  outline-offset: $offset;
+  box-shadow: 0 0 0 ($offset + 3px) var(--fw-focus-ring);
+}
+
+/*
+ * And the indicator for anything that cannot draw outside itself.
+ *
+ * A row in a scrolling list, a panel section, the version list: each sits in
+ * an ancestor with `overflow: hidden`, which clips anything drawn beyond the
+ * border box. Those rules already carried a negative `outline-offset` for
+ * exactly that reason, and they keep it. The second bearer goes inward too —
+ * an inset ring instead of an outer one — so the pair still reads as one
+ * indicator rather than as a stroke that lost its ring.
+ */
+@mixin ring-inset($offset) {
+  outline: 3px solid var(--fw-text);
+  outline-offset: $offset;
+  box-shadow: inset 0 0 0 3px var(--fw-focus-ring);
+}

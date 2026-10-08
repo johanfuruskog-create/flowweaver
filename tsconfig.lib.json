@@ -1,0 +1,18 @@
+{
+  // Typdeklarationer för det PUBLICERADE biblioteket. Rot-tsconfigen har
+  // noEmit och täcker hela src/ för typkontroll; den här bygger .d.ts för de
+  // två distributionsingångarna och deras transitiva beroenden, så en
+  // TypeScript-konsument får riktiga typer i stället för implicit any.
+  //
+  // Körs av npm-scriptet build:lib:types, efter bundlarna.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "declarationMap": false,
+    "rootDir": "src",
+    "outDir": "dist-lib/types"
+  },
+  "include": ["src/entries/viewer.ts", "src/entries/editor.ts", "src/entries/pro-viewer.ts", "src/entries/pro-editor.ts"]
+}

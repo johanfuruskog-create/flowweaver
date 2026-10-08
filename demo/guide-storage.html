@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="sv">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>FlowWeaver — guiden hos värden</title>
+  </head>
+  <body>
+    <main class="has-editor">
+      <!--
+        Sidans egen remsa: vägen tillbaka till vänster, vem du är till höger.
+
+        Identiteten låg i editorns rad till 18/9 kväll och hörde aldrig hemma
+        där. Editorns rad handlar om GUIDEN — vilket läge den står i och de två
+        handlingar som ändrar det — medan *vem är jag* är en uppgift om sidan.
+        Johans skärmbild samma kväll visade priset: historikpopovern lade sig
+        över raden och klippte namnet till "m Johan Furuskog". Här uppe kan det
+        inte hända, för popovern hänger under sin knapp längre ned.
+      -->
+      <div class="strip">
+        <!--
+          Samma länk byter mål: med en inloggning är vägen tillbaka listan man
+          kom ifrån, utan en är det startsidan. Två länkar bredvid varandra hade
+          varit två svar på en fråga.
+        -->
+        <a class="demo-back" id="back-link" href="./index.html">Tillbaka till demon</a>
+
+        <span class="strip__who" id="who" hidden>
+          <span id="who-name"></span>
+          <button type="button" class="strip__button" id="signout"></button>
+        </span>
+      </div>
+
+      <p class="dev__lead" id="where"></p>
+
+      <p class="dev__lead" id="missing" hidden>
+        Sidan behöver veta vilken guide den ska öppna. Öppna en ur
+        <a href="./guides.html">Mina guider</a> när värden har inloggning — då
+        räcker <code>?guide=&lt;id&gt;</code>. På en värd utan inloggning bär
+        adressen även hemligheten:
+        <code>?guide=&lt;id&gt;&amp;key=&lt;hemlighet&gt;</code>, båda ur
+        <code>guides.mjs new</code> på servern, och hemligheten sägs bara den
+        gången.
+      </p>
+
+      <!--
+        `mode="readonly"` som förval, och sidan höjer det när värden sagt vilken
+        roll man har (berättelse 128).
+
+        Läget i markupen är det som gäller innan `/auth/me` svarat. Stod det
+        `administrator` där hade en läsare fått hela paletten under tiden — och
+        en palett man hunnit se är en palett man har sett. Åt andra hållet
+        kostar förvalet ingenting: en förvaltare får sin palett en tur senare.
+
+        På en värd utan inloggning (`?key=` i adressen) finns inga roller alls,
+        och sidan sätter `administrator` direkt — hemligheten är hela
+        legitimationen där.
+      -->
+      <!--
+        `mode-notice="off"`: panelens ruta om läsläget står inte där när
+        sidans egen rad redan säger det (berättelse 129, Johans genomgång av
+        ytan 18/9).
+
+        Fyra ytor sa samma sak: brickan, raden, canvasens märke och panelens
+        ruta. En bärare per yta — raden säger VEM och sedan när, canvasens
+        märke säger *läsläge* för den som tittar på grafen, och panelens ruta
+        går. Regeln från K3 är att färg aldrig får bära något ensam, inte att
+        varje yta ska upprepa orden.
+
+        Av som förval i biblioteket: en editor utan en värd som säger något
+        har bara panelen att förklara med.
+      -->
+      <guide-editor id="editor" mode="readonly" mode-notice="off" feature-level="advanced" active-locale="sv" editor-locale="sv" context-fill>
+        <!--
+          Värdens rad, i editorns egen övre rad.
+
+          Slotten fanns redan (`slot="context"`, mellan verktygsraden och
+          canvasen) och är byggd för precis det här: värden säger vad som
+          redigeras, editorn vet ingenting om versioner. Raden följer därför med
+          in i helskärm, vilket en rad ovanför editorn aldrig gjorde — och det
+          är i helskärm man är djupast i arbetet och lättast glömmer vilken
+          version man står i.
+        -->
+        <div slot="context" class="row" id="row">
+          <div class="row__head">
+            <span class="row__title">
+              <h1 class="row__name" id="open-name">Guiden hos värden</h1>
+
+              <span class="row__badge" id="badge">
+                <span class="row__mark" id="mark" aria-hidden="true"></span>
+                <span id="badge-text"></span>
+              </span>
+            </span>
+
+            <span class="row__actions">
+              <button type="button" class="row__button" id="history" aria-expanded="false" aria-controls="history-popover"></button>
+              <!--
+                *Ta över* och *Välj* står bland handlingarna och inte i raden
+                under: raden är `role="status"` och läses upp varje gång den
+                ritas om, och en knapp inuti den hade lästs med.
+              -->
+              <button type="button" class="row__button row__button--primary" id="takeover" hidden></button>
+              <button type="button" class="row__button row__button--primary" id="choose" hidden></button>
+              <button type="button" class="row__button row__button--primary" id="publish"></button>
+              <button type="button" class="row__button row__button--primary" id="adopt" hidden></button>
+              <button type="button" class="row__button" id="back" hidden></button>
+
+              <span class="row__menu">
+                <button type="button" class="row__button row__button--more" id="more" aria-expanded="false" aria-haspopup="menu" aria-controls="more-list">…</button>
+                <div class="row__menu-list" id="more-list" role="menu" hidden>
+                  <button type="button" role="menuitem" id="preview"></button>
+                  <!--
+                    Anteckningen till kollegor (berättelse 130). Står hos den
+                    som arbetar i guiden: hen vet vad som inte är klart. Den
+                    som redan skrivit en ser i stället *Ändra anteckningen* —
+                    samma dörr, och dörren säger vad som finns bakom den.
+                  -->
+                  <button type="button" role="menuitem" id="note" hidden></button>
+                  <button type="button" role="menuitem" id="note-remove" hidden></button>
+                  <button type="button" role="menuitem" id="discard" hidden></button>
+                </div>
+              </span>
+            </span>
+          </div>
+
+          <!--
+            Andra raden: hela beskedet, orört och aldrig avklippt (variant B,
+            Johans val 18/9). Ingenting annat — identiteten flyttade upp till
+            sidans remsa 18/9 kväll, och raden handlar sedan bara om guiden.
+          -->
+          <p class="row__status" id="status" role="status"></p>
+
+          <!--
+            Arbetsanteckningen (berättelse 130): en mening från en människa
+            till nästa, under beskedet den gäller.
+
+            EGEN RAD och inte hängd på statusraden — UX:s val 18/9, och skälet
+            är mätbart: en anteckning på samma rad wrappar, och en rad som
+            ibland är två rader flyttar allt under sig.
+
+            Ingen `role`: beskedet ovanför är sidans `status`, och två
+            områden som annonserar sig själva om vartannat är en sida som
+            pratar i mun på sig själv. Anteckningen läses när man läser raden.
+          -->
+          <p class="row__note" id="note-line" hidden></p>
+
+          <!--
+            Det som inte hann sparas, och valen om det (berättelse 129).
+
+            En egen rad och inte en del av statusraden: den erbjuder två val, och
+            `role="status"` är för besked och inte för beslut. Den står under
+            statusraden för att den handlar om det raden just sagt.
+
+            Texten frågade till 19/9 — *Fortsätta där du var, eller börja från
+            Annas version?* — och det var rätt så länge knapparna stod ensamma.
+            Sedan priset kom under var och en av dem sa frågan samma sak en
+            tredje gång (129:s skärning, punkt 3). Kvar står det enda raden vet
+            som knapparna inte säger: var arbetet ligger.
+
+            Knapparna göms när de inte får tryckas: håller någon annan låset
+            finns ingen väg tillbaka in i guiden utan att först ta över, och då
+            står *Fortsätt där jag var* inte här. En avstängd knapp är en fråga
+            om varför som ingen svarar på.
+
+            Varje knapp bär sin kostnad under sig, i ett eget stycke: raden
+            frågar om ett val, och ett val utan pris är en gissning. Samma
+            grepp som krockrutan, som säger det under vart och ett av sina val.
+
+            Ingen `role`: en `group` utan tillgängligt namn är en gruppering som
+            annonseras och inte säger vad den grupperar. Texten står före sina
+            knappar, vilket är hela sambandet som behövs.
+          -->
+          <div class="row__rescue" id="rescue" hidden>
+            <p class="row__rescue-text" id="rescue-text"></p>
+            <div class="row__rescue-choices">
+              <!--
+                *Slå ihop ändringar* (berättelse 131), förstahandsvalet när det
+                går: kopian bär sin utgångspunkt, så bådas arbete kan behållas.
+                Det står i stället för *Fortsätt där jag var* och aldrig bredvid
+                det — *Fortsätt* är samma sak som *Min* på varje rad i
+                sammanslagningen, fast utan att se vad man skriver över, och ett
+                val som gör mindre än ett annat ska inte stå bredvid det.
+              -->
+              <p class="row__rescue-choice" id="rescue-merge-choice" hidden>
+                <button type="button" class="row__button row__button--primary" id="rescue-merge"></button>
+                <span class="row__rescue-cost" id="rescue-merge-cost"></span>
+              </p>
+              <p class="row__rescue-choice" id="rescue-keep-choice" hidden>
+                <button type="button" class="row__button row__button--primary" id="rescue-keep"></button>
+                <span class="row__rescue-cost" id="rescue-keep-cost"></span>
+              </p>
+              <p class="row__rescue-choice" id="rescue-drop-choice" hidden>
+                <button type="button" class="row__button row__button--quiet" id="rescue-drop"></button>
+                <span class="row__rescue-cost" id="rescue-drop-cost"></span>
+              </p>
+            </div>
+          </div>
+
+          <!--
+            Historiken hänger under sin knapp och täcker aldrig den.
+
+            `position: fixed` med koordinater ur knappens ruta: den ligger kvar
+            i slotten och följer med i helskärm, men kan inte klippas av någon
+            behållares `overflow`. Under 640 px blir den ett ark nerifrån —
+            samma innehåll, en form som går att nå med en tumme.
+          -->
+          <div class="pop" id="history-popover" role="dialog" aria-labelledby="history-title" tabindex="-1" hidden>
+            <div class="pop__head">
+              <h2 class="pop__title" id="history-title"></h2>
+              <span class="pop__count" id="history-count"></span>
+              <button type="button" class="row__button" id="history-close"></button>
+            </div>
+            <p class="pop__note" id="history-note"></p>
+            <guide-versions id="versions" editor-locale="sv"></guide-versions>
+            <button type="button" class="pop__older" id="history-older" hidden></button>
+          </div>
+        </div>
+      </guide-editor>
+    </main>
+    <script type="module">
+      import "./host-setup.js";
+      import "../src/host/guide-storage.ts";
+    </script>
+  </body>
+</html>

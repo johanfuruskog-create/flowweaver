@@ -1,0 +1,890 @@
+@use "../../styles/cursors";
+/* The version table. Design tokens only, like every other component: it has to
+   survive a theme switch, and a table of versions has nothing to add to the
+   palette.
+
+   A table rather than cards. Every version answers the same questions, and a
+   line each says that — cards said it in a paragraph each, and a year of
+   versions was a scroll.
+
+   The row is read far more often than it is acted on, so the reading has the
+   width and the acting has a menu. Three columns: what it is, when it was
+   saved, and one control. */
+@use "../../../viewer/styles/focus" as focus;
+@use "../../styles/select";
+
+/* The list carries its own surface, and that is not decoration.
+   It used to draw text and buttons straight onto whatever it was mounted on. In
+   a host whose page is light while the operating system is dark — a CMS admin
+   dialog, which is most of them — our light text landed on their white panel and
+   the rows read as empty, with two black pills floating in them.
+   A surface of our own means the palette is answered by the thing it was chosen
+   against: whatever the host's page is, the list is legible inside its own
+   edges. */
+:host {
+  display: block;
+  /*
+   * The list adapts to the box it is in, not to the window.
+   *
+   * Measured 17/9, in a screenshot: dropped into a 480 px side panel on a
+   * 900 px screen, none of the narrow rules below applied — they asked the
+   * viewport, and the viewport was wide. The date column and the file name
+   * kept their room, the version's own name was squeezed to "Versio…", and the
+   * *Publicerad* badge was drawn straight across the date beside it.
+   *
+   * A component a host may put anywhere cannot ask how big the window is. It
+   * asks how big it is itself.
+   */
+  container-type: inline-size;
+  /*
+   * `10px 12px` — 10 matchar inget skalsteg (skalan vill 12) och lämnas med
+   * flit i det här svepet: paddningen är en del av samma namn/bricka-budget
+   * som `guide-storage.scss`s `.pop` bär vidare i sin egen kommentar (den
+   * håller `.namebox` vid 150px i popoverns bredd, se den kommentaren) —
+   * att flytta den utan att mäta om marginalen håller vore att gissa.
+   */
+  padding: 10px 12px;
+  border: 1px solid var(--fw-border-subtle);
+  border-radius: var(--fw-radius-md);
+  background: var(--fw-surface);
+  font: inherit;
+  color: var(--fw-text);
+}
+
+/* An open menu leaves the element's box, and anything the host drew after us
+   paints over it. A z-index inside the shadow root cannot fix that: the element
+   itself is what sits too low. So it takes a place in the stack, and only while
+   a menu is open.
+
+   The number has to clear what an editor puts beside it. `<guide-editor>` sets
+   no z-index on its own host, so it makes no stacking context and its insides
+   compete here directly: the toolbar at 20 and the sidebar at 25 were both
+   above a 2, and the menu vanished behind them.
+
+   30 clears those and stays under the tour overlay at 1000 — which covers the
+   whole page on purpose, and a menu that outranked it would be a menu floating
+   over a thing meant to be alone on screen. */
+:host([data-menu-open]) {
+  position: relative;
+  z-index: 30;
+}
+
+/* The colour is set here and not left to `:host`.
+   Inheriting it meant the rows took the host page's own text colour — #333 from
+   a CMS dialog — while our surface was the dark palette's. Dark grey on near
+   black: the version names were the least readable thing in the list, and they
+   are the reason the list exists. A surface and the text on it are one decision,
+   so they are made in one place. */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95em;
+  color: var(--fw-text);
+}
+
+thead th {
+  /* 10px hör till namn/bricka-budgeten (se `:host` ovan) — rört inte. */
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--fw-border);
+  color: var(--fw-text-secondary);
+  font-size: 0.85em;
+  font-weight: var(--fw-weight-strong);
+  text-align: start;
+  white-space: nowrap;
+}
+
+/* Beskedet om en flyttad rad — läses upp, syns aldrig. Samma greppa-och-dölj
+   som `.sr-only-head` nedan (`clip-path`, inte `display: none`, som en
+   skärmläsare hoppar rakt över), men utan tabellcellens tvingande 1px-golv:
+   det här är ett fristående stycke, inte en cell. */
+.guide-versions__announce {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The actions heading is for screen readers: on screen the buttons say what
+   they are, and a word above them is noise. */
+.sr-only-head {
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  /*
+   * `line-height: 0` också, sedan BÅDA rubrikerna göms (18/9 kväll).
+   *
+   * `height: 1px` är ett minimum på en tabellcell, inte ett tak: raden blir så
+   * hög som sitt innehåll, och med en cell kvar som syntes spelade det ingen
+   * roll. Med båda dolda stod rubrikraden och tog arton pixlar som ingen kunde
+   * se — mätt, inte gissat. Radhöjden är textens, så det är texthöjden som ska
+   * bort. Ingenting här döljer den för en skärmläsare: `clip-path` målar inte,
+   * och texten finns kvar i trädet.
+   */
+  line-height: 0;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+tbody td,
+tbody th {
+  /* 10px hör till namn/bricka-budgeten (se `:host` ovan) — rört inte. */
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--fw-border-subtle);
+  text-align: start;
+  font-weight: var(--fw-weight-text);
+  vertical-align: middle;
+}
+
+tbody tr:last-child td,
+tbody tr:last-child th {
+  border-bottom: 0;
+}
+
+/*
+ * Första posten står mot listans övre kant, inte mot en granne — och den
+ * kanten behöver mer luft än en skiljelinje.
+ *
+ * Mätt i popovern 18/9 kväll, i bildpixlar och inte i lådor: under en
+ * radskiljare börjar nästa namn 8 px ned, för versalen sitter tre pixlar in i
+ * sin radlåda. Under listans översta linje började den publicerade radens
+ * *Publicerad*-bricka direkt — 5 px — för brickans ruta är 20 px i en 20,5 px
+ * hög rad och fyller den helt. Lådorna var alltså lika, fem pixlars vaddering
+ * överallt, medan ögat såg tre pixlar mindre. Det var de tre Johan såg.
+ *
+ * Tre pixlar på namnraden och inte på cellens vaddering: vadderingen delas med
+ * den staplade vyn, där tabellen är block och raden bär sin egen. Brickan
+ * lämnas som den är — den är listans enda färg och dess mått är valda mot
+ * namnets bredd (kommentaren vid `.badge`), och en stramare radhöjd där lät
+ * *Öppen*s prickar och stapel gå ut genom pillrets ram (mätt samma kväll).
+ *
+ * Utan bricka får första posten 11 px i stället för 8. Det är avsiktligt: luft
+ * vid en listas överkant är inte samma fel som ojämn luft mellan poster.
+ */
+tbody tr:first-child .namebox {
+  margin-top: 3px;
+}
+
+/* The published one carries a green label and nothing else. A washed row said
+   the same thing a second time, in a weaker way — and a list where one row is
+   a block of colour reads as a warning rather than as an answer.
+   The row is marked by an edge instead: enough to find while scanning a long
+   list, quiet enough to be a fact rather than an alarm. */
+tbody tr[data-current] th.name {
+  box-shadow: inset 2px 0 0 var(--fw-success);
+}
+
+/* The row the editor is working from, marked without colour: colour in this
+   list means *residents get this*, and one meaning per colour is what keeps the
+   green worth looking for. A recessed row and a word are enough to find it. */
+tbody tr[data-open] {
+  background: var(--fw-bg);
+}
+
+.state[data-draft="true"] {
+  border-color: var(--fw-warning-border);
+  background: var(--fw-warning-surface);
+  color: var(--fw-warning-text);
+}
+
+/* The row's action when something is waiting on it. Outlined like the other, in
+   the colour that already means *unsaved* two centimetres to the left. */
+.primary.urgent {
+  border-color: var(--fw-warning-border);
+  color: var(--fw-warning-text);
+}
+
+.primary.urgent:hover {
+  border-color: var(--fw-warning);
+  color: var(--fw-warning-text);
+}
+
+.state {
+  flex: none;
+  margin-left: auto;
+  padding: 1px 8px;
+  border: 1px solid var(--fw-border);
+  /* A label, not an action — chips and badges keep the pill (Johan 20/9). */
+  border-radius: var(--fw-radius-chip);
+  color: var(--fw-text-secondary);
+  font-size: 0.78em;
+  font-weight: var(--fw-weight-strong);
+  white-space: nowrap;
+}
+
+/* Both marks on one row: the state gives up the auto margin so they read as a
+   pair at the end of the name rather than pushing each other apart. */
+/* The marks travel as a set: the first claims the space, the rest follow it.
+   Öppen and Utkast appear together or not at all, so they are one group rather
+   than three things competing for the same edge. */
+.state + .state,
+.state + .badge {
+  /* 4px, not 6: a set travels tighter than the row's other gaps — one step
+     down the scale. */
+  margin-left: 4px;
+}
+
+/* A row you can open says so before you press it. Quiet: the list is read far
+   more often than it is acted on, and a table that lights up under every pass of
+   the pointer is a table that fidgets. */
+tbody tr.openable {
+  cursor: pointer;
+}
+
+tbody tr.openable:hover th.name .text,
+.name .text:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+tbody tr[data-missing] {
+  opacity: 0.6;
+}
+
+/* The name takes the room the others do not — and gives way first.
+   Everything else on the row is either fixed (a date) or the one control; a
+   long version name is the only thing that can be shortened without losing
+   something, so it truncates rather than pushing anything off the edge. */
+.name {
+  width: 100%;
+  max-width: 0;
+  font-weight: var(--fw-weight-strong);
+}
+
+.namebox {
+  display: flex;
+  align-items: center;
+  /* 6px hör till namn/bricka-budgeten (se `:host` ovan) — rört inte. */
+  gap: 6px;
+  min-width: 0;
+  /*
+   * Namnet och brickan delar rad, och det är namnet som ger vika.
+   *
+   * Här stod `flex-wrap: wrap` i ett dygn, för att hindra brickan från att
+   * ritas över kolumnen bredvid. Det löste överlappet och skapade ett annat
+   * fel: en flexrad bryter INNAN den krymper, så i popovern (namnet 68 px,
+   * brickan 78, boxen 150) hoppade *Publicerad* ner på egen rad och den raden
+   * blev tre rader hög medan de andra var två. Mätt 18/9.
+   *
+   * Utan brytning krymper namnet i stället, ner till sitt golv, och båda står
+   * kvar på rad ett. Golvet är sänkt till 4ch av samma skäl: det ska finnas
+   * marginal att krympa i innan något annat måste ge vika.
+   */
+  flex-wrap: nowrap;
+}
+
+/* Giving way first is not the same as disappearing.
+   The badge is `flex: none` and wider than this box gets on a full row, so
+   flex handed it everything and left the name zero — and zero width has
+   nothing to put an ellipsis on, so the row that says *shown to visitors*
+   said only that. It is the live row that carries a badge, and the live row
+   is the one whose name matters most when its file has also gone.
+   A floor keeps the first few characters no matter what stands beside them.
+   The column still gives way; it just stops at something readable. */
+.name .text {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  /*
+   * Golvet: några tecken, inte sju. Sju räckte när namnet var radens enda text;
+   * med brickan bredvid sig på samma rad är marginalen mellan dem det som
+   * avgör om raden håller ihop, och fyra tecken plus tre punkter är fortfarande
+   * något att känna igen raden på.
+   */
+  min-width: 4ch;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/*
+ * Utom på en krockfrysning, som **bryts i stället för att klippas**.
+ *
+ * Regeln ovan finns för att en versions namn är kort — *Version 4* — och för
+ * att brickan bredvid ska rymmas på samma rad. En krockfrysnings namn är en
+ * mening med en människas namn i: *Sparad vid krock · Anna Anderssons kopia*.
+ * Klippt blir den *Anna Anderss…*, och då går de två raderna per krock inte
+ * att skilja åt — vilket är hela skälet namnet står där (Johans bild 20/9 i
+ * 390 px).
+ *
+ * Rättat **i** regeln som klipper och inte med en ny ovanpå: två regler om
+ * samma text är två som en dag säger olika saker. De tre egenskaperna hör
+ * ihop — `overflow: visible` utan `white-space: normal` hade bara flyttat
+ * texten utanför rutan — så alla tre ställs tillbaka.
+ *
+ * Raden blir högre på smala skärmar, och det är rätt pris: höjden är radens
+ * att ge, namnet är det man letar efter.
+ */
+tr[data-reason="conflict"] .name .text {
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+}
+
+/* Rad två: anteckningen, i vanlig storlek.
+   Det är den man läser — varför versionen finns — och den stod i 0.9em bredvid
+   två andra dämpade rader, så raden blev fyra lika stora upplysningar där
+   ingen av dem var den viktiga (Johan 18/9 kväll). Nu bär rad ett namnet, rad
+   två det man läser, och rad tre fakta om handlingen.
+
+   En rad och inte flera: hela texten ligger i `title` för den som vill ha den,
+   och radens höjd står stilla oavsett hur mycket någon skrev. */
+.note {
+  overflow: hidden;
+  margin-top: 3px;
+  color: var(--fw-text);
+  font-weight: var(--fw-weight-text);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Rad tre: vem och när, i en dämpad mening.
+   De svarar på en fråga tillsammans — vem ändrade det här, och när — så de står
+   på en rad med en prick emellan. Datumet hade en egen kolumn till 18/9 kväll
+   och tog bredd från namnet, som är det man letar efter. */
+.meta {
+  display: flex;
+  overflow: hidden;
+  /* 4px, not 6: who and when answer one question together, a tighter pair
+     than the row's other gaps — one step down the scale. */
+  gap: 4px;
+  margin-top: 2px;
+  color: var(--fw-text-secondary);
+  font-size: 0.85em;
+  font-weight: var(--fw-weight-text);
+  white-space: nowrap;
+}
+
+/* Pricken sätts av stilmallen och inte av texten: utan `by` ska raden vara
+   bara datumet, aldrig en prick som inleder ingenting. */
+.meta > span + span::before {
+  content: "· ";
+}
+
+.meta > [data-by] {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meta > [data-when] {
+  flex: none;
+}
+
+/* Pushed to the end of the name cell, so the badges line up down the list and
+   the answer to "which one do residents get" is found by scanning one edge
+   rather than reading every row.
+
+   Green, and the only colour in the list. Everything else here is text on a
+   surface, so the one thing wearing a colour is the one thing worth spotting
+   from across the desk. A second coloured state would cost this one its
+   meaning. */
+.badge {
+  flex: none;
+  margin-left: auto;
+  /*
+   * Smal med flit. Brickan och namnet delar rad ett, och i popovern (namnbox
+   * 150 px) gick det jämnt upp på fyra pixlar: med bredare vaddering kortades
+   * *Version 2* till *Versio…* för att märket skulle få plats. Ett märke som
+   * äter radens namn har bytt bort det viktigare mot det mindre viktiga.
+   */
+  padding: 1px 7px;
+  border: 1px solid var(--fw-success-border);
+  /* A label, not an action — chips and badges keep the pill (Johan 20/9). */
+  border-radius: var(--fw-radius-chip);
+  background: var(--fw-success-surface);
+  color: var(--fw-success-text);
+  font-size: 0.78em;
+  font-weight: var(--fw-weight-strong);
+  white-space: nowrap;
+}
+
+/* Shrink-to-fit: `width: 1%` on a table cell means "as narrow as the content
+   allows", so the actions take exactly the width of their buttons and the
+   version name absorbs whatever is left.
+   Without it the browser split the width evenly, the buttons wrapped one per
+   line, and a row that should be 32px tall was 130. */
+td.actions,
+/*
+ * The heading counts too — a column is as wide as the widest cell in it, and
+ * the heading is a cell. Measured in a 544 px panel, where a column heading
+ * took a share of the width its own cells never asked for and the version's
+ * name was truncated to pay for it.
+ */
+thead th:nth-child(2) {
+  width: 1%;
+  white-space: nowrap;
+}
+
+/*
+ * Handlingen står på metaraden, alltså längst ned i cellen.
+ *
+ * Raden är tre rader hög och knappen är en; mitten hade lagt *Återställ
+ * version 5* i höjd med anteckningen, som är det man läser. Nederkant sätter
+ * den i linje med raden om vem och när — fakta bredvid fakta.
+ */
+td.actions {
+  vertical-align: bottom;
+}
+
+/* The cell holds two things now: the one action worth a press of its own, and
+   the control that holds the rest. The flex sits in a box inside the cell —
+   a `<td>` told to be a flex container drops out of the table's width
+   calculation and draws itself across the columns beside it. */
+.rowactions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  /* 8px, not 6: off the 4px scale, rounded up. */
+  gap: 8px;
+  /*
+   * Room for the widest set a row can hold — Spara, Kasta and the control —
+   * kept whether or not the row holds it.
+   *
+   * Without it every keystroke that creates a draft widens one cell, the table
+   * re-lays out, and the name column jumps sideways while somebody is reading
+   * it. A list that moves under the eye is a list that feels unreliable, and
+   * the fix costs nothing but a number that follows the text rather than the
+   * pixels.
+   *
+   * The number is the widest set measured in the shipped words, and the test
+   * beside it fails the day a translation outgrows it — which is the only way a
+   * magic number earns its place.
+   */
+  min-width: 26ch;
+}
+
+/* The second way out of a draft. Quieter than saving, because throwing work
+   away is the answer to a question and not the expected one. */
+.primary.quiet {
+  border-color: transparent;
+  background: transparent;
+  color: var(--fw-text-secondary);
+}
+
+.primary.quiet:hover {
+  border-color: var(--fw-border);
+  color: var(--fw-text);
+}
+
+/* Switching version is what the list is for, so it stays on the row. Outlined
+   rather than filled: it changes what residents see, and a solid button reads
+   as the safe thing to press. */
+.primary {
+  /* 8px, not 9: 9 matches no scale step and sits closest to 8. */
+  padding: 3px 8px;
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-sm);
+  background: var(--fw-bg);
+  color: var(--fw-text-strong);
+  font: inherit;
+  font-size: 0.82em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.primary:hover {
+  border-color: var(--fw-primary);
+  color: var(--fw-primary-strong);
+}
+
+.menu {
+  position: relative;
+}
+
+/* One control, and it says what it is. The caret is the toolbar's, so a menu
+   looks like a menu wherever the editor meets one. */
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--fw-radius-sm);
+  background: transparent;
+  color: var(--fw-text-secondary);
+  font: inherit;
+  font-size: 0.82em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.trigger::after {
+  /* 4px, not 5: off the 4px scale, nearest is 4. */
+  margin-left: 4px;
+  content: "⌄";
+  font-size: var(--fw-font-size-xs);
+  line-height: 1;
+  /* U+2304 sits low in its box — lift it a little for optical centring. */
+  transform: translateY(-2px);
+}
+
+/* The row it belongs to answers first: the control appears on hover or focus
+   and is otherwise quiet, so a list at rest is a list of versions rather than a
+   column of buttons. It stays visible while its own menu is open, and on touch
+   — where nothing hovers — every row shows it. */
+tbody tr:hover .trigger,
+tbody tr:focus-within .trigger,
+.trigger[aria-expanded="true"] {
+  border-color: var(--fw-border);
+  background: var(--fw-bg);
+  color: var(--fw-text);
+}
+
+@media (hover: none) {
+  .trigger {
+    border-color: var(--fw-border);
+    background: var(--fw-bg);
+    color: var(--fw-text);
+  }
+}
+
+.trigger:hover,
+.trigger[aria-expanded="true"] {
+  border-color: var(--fw-primary);
+}
+
+/* The panel. Right-aligned to its control, since the control sits at the row's
+   end and a menu that opened leftwards off the table would be a menu nobody
+   could read. */
+.buttons {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 1;
+  display: grid;
+  min-width: 200px;
+  /* 4px, not 5: off the 4px scale, nearest is 4. */
+  padding: 4px;
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius-md);
+  /* The panel floats above the card, so it takes the page's own surface to sit
+     apart from it rather than merging into the thing it opened from. */
+  background: var(--fw-surface);
+  /* A y=12 dropdown menu moves to `raised` in the sweep (`_tokens-mixins.scss`
+     — role decides, not the number it happened to carry). */
+  box-shadow: var(--fw-shadow-raised);
+}
+
+.buttons[hidden] {
+  display: none;
+}
+
+.separator {
+  height: 1px;
+  /* 4px, not 5: off the 4px scale, nearest is 4. */
+  margin: 4px;
+  background: var(--fw-border-subtle);
+}
+
+[role="menuitem"] {
+  /* 8px, not 7/9: both off the 4px scale, nearest is 8. */
+  padding: 8px;
+  border: 0;
+  border-radius: var(--fw-radius-sm);
+  background: transparent;
+  color: var(--fw-text-strong);
+  font: inherit;
+  font-size: 0.9em;
+  white-space: nowrap;
+  text-align: start;
+  cursor: pointer;
+}
+
+[role="menuitem"]:hover:not([aria-disabled="true"]) {
+  background: var(--fw-bg);
+}
+
+button:focus-visible {
+  @include focus.ring-inset(-1px);
+}
+
+/* Removing is the one that cannot be undone by pressing it again. Not hidden —
+   hiding a destructive action makes people hunt for it — but not dressed like
+   the others either. */
+[role="menuitem"][data-action="delete"] {
+  color: var(--fw-danger);
+}
+
+/* An action that is offered and refused has to look refused, or the first click
+   teaches what a glance should have. `aria-disabled` rather than `disabled`:
+   the refusal comes with a reason, and a disabled button cannot be focused, so
+   the reason would have been mouse-only. */
+button[aria-disabled="true"] {
+  color: var(--fw-text-disabled);
+  cursor: not-allowed;
+}
+
+button[aria-disabled="true"]:hover {
+  background: transparent;
+}
+
+/* The order control. A line of its own above the table, quiet: it is a view
+   preference, and it must not read as loudly as the actions that change what a
+   resident sees. */
+.order {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: var(--fw-text-secondary);
+  font-size: 0.9em;
+}
+
+/* The panel's field box and drawn chevron (Astra 29/9): padding and 16px
+   text give the fields' height; the arrow is a mask on the wrapper, filled
+   from a token — see `_select.scss`. */
+.order select {
+  padding: var(--fw-space-3);
+  border: 1px solid var(--fw-border-control);
+  border-radius: var(--fw-radius-sm);
+  background: var(--fw-surface);
+  color: var(--fw-text);
+  font: inherit;
+  font-size: var(--fw-font-size-xl);
+  font-weight: 400;
+  /* The list takes the host's font, and `normal` leading varies with it
+     (43px in a serif, 45 in the editor's sans); a set line keeps the field
+     at the fields' height whatever the host chose. */
+  line-height: var(--fw-line-tight);
+}
+
+/* After the field rule: the same specificity, and the arrow's right padding
+   has to win over the field's. */
+.order-select {
+  @include select.wrap;
+}
+
+.hint {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+tr[draggable="true"] {
+  cursor: cursors.$grab;
+}
+
+tr[draggable="true"]:focus-visible {
+  @include focus.ring-inset(-3px);
+}
+
+.empty {
+  padding: 12px;
+  margin: 0;
+  color: var(--fw-text-secondary);
+  border: 1px dashed var(--fw-border);
+  border-radius: var(--fw-radius-md);
+}
+
+/*
+ * Narrow: the context goes, one piece at a time, in the order it is least read.
+ *
+ * The control never leaves and the name says which row it is. Everything
+ * between them is context, and context is what a narrow screen can do without —
+ * the file's own name first, since the version's name is usually the same thing
+ * said better, then the date.
+ */
+@container (max-width: 40rem) {
+  /*
+   * And the reserved room goes with it.
+   *
+   * The reservation below keeps the column from changing width when a row
+   * gains a draft — worth it across a page-wide table. Measured in a 544 px
+   * side panel it took 256 px of 518 for a single 90 px button, and the
+   * version's name paid for all of it. A steady column is worth less than a
+   * name you can read.
+   */
+  .rowactions {
+    min-width: 0;
+  }
+}
+
+
+
+/*
+ * On a phone the row becomes a line and a control: the name and its badge, with
+ * the menu at the end. It stopped needing to become a card the day the six
+ * buttons became one — a card was the only way to fit them, and there is
+ * nothing left to fit.
+ *
+ * The column headings go with it — a heading for the one column left is noise.
+ */
+/*
+ * Narrow enough, and the row becomes a block: the name, then when it was
+ * saved, then what you can do with it.
+ *
+ * The date used to be dropped here instead, and that was right while the
+ * version's name *was* the date — a row called "5 aug 15:20" does not need a
+ * column saying so. It stopped being right the day hosts started naming
+ * versions themselves: in a 390 px history panel every row said what it was and
+ * none of them said when, which is the one thing a history is read for.
+ *
+ * The column headings go with the columns. A heading over a block is a label
+ * for something that is no longer beside it.
+ */
+@container (max-width: 26rem) {
+  thead {
+    display: none;
+  }
+
+  /*
+   * The whole table goes block, not only the rows.
+   *
+   * A `<table>` sizes itself to its contents, so stacking the rows alone let a
+   * long version name push the table wider than the panel holding it — the
+   * name stopped truncating and the history scrolled sideways instead.
+   *
+   * The cost is the table's semantics: a screen reader stops calling these
+   * cells and columns. It is paid in the same breakpoint that already hides the
+   * column headings, so there is no header left to be associated with anyway,
+   * and what a reader gets instead is one block per version — name, when, what
+   * you can do — which is how the rows read on screen at this width too.
+   */
+  table,
+  tbody {
+    display: block;
+    width: 100%;
+  }
+
+  /*
+   * **Luft mellan den gröna linjen och namnet** (Johans bild 20/9 i 390 px).
+   *
+   * Mätt före ändringen: namnet stod 8 px från radens vänsterkant här mot 10 i
+   * 900 — och linjen tar de två första av dem, så texten låg 2 px från den mot
+   * 8 i bredd. Linjen läste som en understrykning av namnet i stället för som
+   * en markering av raden.
+   *
+   * Radens egen vaddering bär skillnaden: 6 plus cellens 4 ger 10, exakt
+   * samma avstånd som i 900. **Alla** rader får den, inte bara den
+   * publicerade — ett indrag på just den hade varit samma besked en andra
+   * gång, i en svagare form, och listan hade hoppat i sidled där den står.
+   */
+  tbody tr {
+    display: block;
+    padding: 8px 6px;
+  }
+
+  tbody th,
+  tbody td,
+  /*
+   * The shrink-to-fit widths belong to columns, and there are no columns here.
+   * Left on, the actions cell was 1% of the row — a three pixel box with a
+   * button hanging out of it, and its own rule drawn as a stray dash under the
+   * date (seen at 390 px, 17/9).
+   */
+  td.when,
+  td.actions {
+    display: block;
+    width: auto;
+    padding: 2px 4px;
+    /* The line belongs to the version, not to each fact about it. */
+    border-bottom: 0;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--fw-border-subtle);
+  }
+
+  tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .name {
+    max-width: none;
+  }
+
+  /*
+   * Och linjen flyttar från namnets cell till **raden**.
+   *
+   * I bredd är raden en tabellrad och cellen bär kanten på sin sida av den; i
+   * smalt läge är raden ett block, och en linje på bara namnets cell slutar
+   * mitt i raden — ovanför datum och knappar, som hör till samma version.
+   * `display: block` på raden gör att `inset` kan rita hela höjden.
+   */
+  /*
+   * Och linjen flyttar från namnets cell till **raden**.
+   *
+   * I bredd är raden en tabellrad och cellen bär kanten på sin sida av den; i
+   * smalt läge är raden ett block, och en linje på bara namnets cell slutar
+   * mitt i raden — ovanför datum och knappar, som hör till samma version.
+   * `display: block` på raden gör att `inset` kan rita hela höjden.
+   */
+  tbody tr[data-current] th.name {
+    box-shadow: none;
+  }
+
+  tbody tr[data-current] {
+    box-shadow: inset 2px 0 0 var(--fw-success);
+  }
+
+  td.actions {
+    /* 8px, not 6: off the 4px scale, rounded up. */
+    margin-top: 8px;
+  }
+
+  .rowactions {
+    justify-content: flex-start;
+  }
+}
+
+/* Greppet för att arrangera raderna själv.
+   `touch-action: none` måste sitta här och inte på raden: annars tar
+   webbläsaren gesten som en skrollning, och sätter man det på hela raden går
+   listan inte att skrolla förbi med fingret. Några millimeter räcker. */
+.grip {
+  display: inline-block;
+  margin-inline-end: 8px;
+  color: var(--fw-text-muted);
+  cursor: cursors.$grab;
+  touch-action: none;
+  user-select: none;
+  /* Träffytan är större än tecknet — ett grepp som kräver precision är inget
+     grepp på en pekskärm. */
+  padding: 4px 2px;
+}
+
+.grip:active {
+  cursor: cursors.$grabbing;
+  color: var(--fw-text);
+}
+
+/* Raden man bär i handen.
+   Lyftet är hela poängen: utan det ser alla rader likadana ut medan listan
+   arrangerar om sig, och man ser inte vilken som följer med. */
+tbody tr[data-dragging] {
+  position: relative;
+  z-index: 1;
+  background: var(--fw-surface);
+  box-shadow: var(--fw-shadow-md);
+  cursor: cursors.$grabbing;
+}
+
+/* De andra glider undan. Transformen sätts av FLIP i koden; det här är bara
+   hur länge och med vilken kurva.
+
+   220 ms, inte 160: det första försöket var för snabbt för att läsas som en
+   rörelse — raden var framme innan ögat hann följa med, vilket ser ut som ett
+   hopp med extra steg.
+
+   Kurvan går förbi målet med några procent och kommer tillbaka. En ren
+   inbromsning läses som att raden *glider* dit; överslängen gör att den
+   *landar*, och det är skillnaden mellan att något flyttas och att något faller
+   på plats. Håll den liten — mer än så blir studs, och studs i en lista med
+   versioner är en leksak.
+
+   Den som valt att slippa rörelse får inget av det; koden hoppar över hela
+   steget. */
+tbody tr {
+  transition: transform 220ms cubic-bezier(0.34, 1.35, 0.64, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  tbody tr {
+    transition: none;
+  }
+}

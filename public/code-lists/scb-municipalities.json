@@ -1,0 +1,2048 @@
+{
+ "id": "scb-municipalities",
+ "standard": "custom",
+ "label": {
+  "sv": "Kommuner — SCB",
+  "en": "Municipalities — Statistics Sweden"
+ },
+ "version": "2026",
+ "published": "2026-01-01",
+ "source": "SCB, Län och kommuner i kodnummerordning; Wikidata, svenska Wikipedias titlar",
+ "sourceUrl": "https://www.scb.se/hitta-statistik/regional-statistik-och-kartor/regionala-indelningar/lan-och-kommuner/lan-och-kommuner-i-kodnummerordning/",
+ "labelSources": {
+  "sv": "Wikidata, svenska Wikipedias titlar",
+  "en": "Wikidata, svenska Wikipedias titlar (namnen är egennamn och översätts inte)"
+ },
+ "items": [
+  {
+   "value": "0114",
+   "label": {
+    "sv": "Upplands Väsby kommun",
+    "en": "Upplands Väsby kommun"
+   }
+  },
+  {
+   "value": "0115",
+   "label": {
+    "sv": "Vallentuna kommun",
+    "en": "Vallentuna kommun"
+   }
+  },
+  {
+   "value": "0117",
+   "label": {
+    "sv": "Österåkers kommun",
+    "en": "Österåkers kommun"
+   }
+  },
+  {
+   "value": "0120",
+   "label": {
+    "sv": "Värmdö kommun",
+    "en": "Värmdö kommun"
+   }
+  },
+  {
+   "value": "0123",
+   "label": {
+    "sv": "Järfälla kommun",
+    "en": "Järfälla kommun"
+   }
+  },
+  {
+   "value": "0125",
+   "label": {
+    "sv": "Ekerö kommun",
+    "en": "Ekerö kommun"
+   }
+  },
+  {
+   "value": "0126",
+   "label": {
+    "sv": "Huddinge kommun",
+    "en": "Huddinge kommun"
+   }
+  },
+  {
+   "value": "0127",
+   "label": {
+    "sv": "Botkyrka kommun",
+    "en": "Botkyrka kommun"
+   }
+  },
+  {
+   "value": "0128",
+   "label": {
+    "sv": "Salems kommun",
+    "en": "Salems kommun"
+   }
+  },
+  {
+   "value": "0136",
+   "label": {
+    "sv": "Haninge kommun",
+    "en": "Haninge kommun"
+   }
+  },
+  {
+   "value": "0138",
+   "label": {
+    "sv": "Tyresö kommun",
+    "en": "Tyresö kommun"
+   }
+  },
+  {
+   "value": "0139",
+   "label": {
+    "sv": "Upplands-Bro kommun",
+    "en": "Upplands-Bro kommun"
+   }
+  },
+  {
+   "value": "0140",
+   "label": {
+    "sv": "Nykvarns kommun",
+    "en": "Nykvarns kommun"
+   }
+  },
+  {
+   "value": "0160",
+   "label": {
+    "sv": "Täby kommun",
+    "en": "Täby kommun"
+   }
+  },
+  {
+   "value": "0162",
+   "label": {
+    "sv": "Danderyds kommun",
+    "en": "Danderyds kommun"
+   }
+  },
+  {
+   "value": "0163",
+   "label": {
+    "sv": "Sollentuna kommun",
+    "en": "Sollentuna kommun"
+   }
+  },
+  {
+   "value": "0180",
+   "label": {
+    "sv": "Stockholms kommun",
+    "en": "Stockholms kommun"
+   }
+  },
+  {
+   "value": "0181",
+   "label": {
+    "sv": "Södertälje kommun",
+    "en": "Södertälje kommun"
+   }
+  },
+  {
+   "value": "0182",
+   "label": {
+    "sv": "Nacka kommun",
+    "en": "Nacka kommun"
+   }
+  },
+  {
+   "value": "0183",
+   "label": {
+    "sv": "Sundbybergs kommun",
+    "en": "Sundbybergs kommun"
+   }
+  },
+  {
+   "value": "0184",
+   "label": {
+    "sv": "Solna kommun",
+    "en": "Solna kommun"
+   }
+  },
+  {
+   "value": "0186",
+   "label": {
+    "sv": "Lidingö kommun",
+    "en": "Lidingö kommun"
+   }
+  },
+  {
+   "value": "0187",
+   "label": {
+    "sv": "Vaxholms kommun",
+    "en": "Vaxholms kommun"
+   }
+  },
+  {
+   "value": "0188",
+   "label": {
+    "sv": "Norrtälje kommun",
+    "en": "Norrtälje kommun"
+   }
+  },
+  {
+   "value": "0191",
+   "label": {
+    "sv": "Sigtuna kommun",
+    "en": "Sigtuna kommun"
+   }
+  },
+  {
+   "value": "0192",
+   "label": {
+    "sv": "Nynäshamns kommun",
+    "en": "Nynäshamns kommun"
+   }
+  },
+  {
+   "value": "0305",
+   "label": {
+    "sv": "Håbo kommun",
+    "en": "Håbo kommun"
+   }
+  },
+  {
+   "value": "0319",
+   "label": {
+    "sv": "Älvkarleby kommun",
+    "en": "Älvkarleby kommun"
+   }
+  },
+  {
+   "value": "0330",
+   "label": {
+    "sv": "Knivsta kommun",
+    "en": "Knivsta kommun"
+   }
+  },
+  {
+   "value": "0331",
+   "label": {
+    "sv": "Heby kommun",
+    "en": "Heby kommun"
+   }
+  },
+  {
+   "value": "0360",
+   "label": {
+    "sv": "Tierps kommun",
+    "en": "Tierps kommun"
+   }
+  },
+  {
+   "value": "0380",
+   "label": {
+    "sv": "Uppsala kommun",
+    "en": "Uppsala kommun"
+   }
+  },
+  {
+   "value": "0381",
+   "label": {
+    "sv": "Enköpings kommun",
+    "en": "Enköpings kommun"
+   }
+  },
+  {
+   "value": "0382",
+   "label": {
+    "sv": "Östhammars kommun",
+    "en": "Östhammars kommun"
+   }
+  },
+  {
+   "value": "0428",
+   "label": {
+    "sv": "Vingåkers kommun",
+    "en": "Vingåkers kommun"
+   }
+  },
+  {
+   "value": "0461",
+   "label": {
+    "sv": "Gnesta kommun",
+    "en": "Gnesta kommun"
+   }
+  },
+  {
+   "value": "0480",
+   "label": {
+    "sv": "Nyköpings kommun",
+    "en": "Nyköpings kommun"
+   }
+  },
+  {
+   "value": "0481",
+   "label": {
+    "sv": "Oxelösunds kommun",
+    "en": "Oxelösunds kommun"
+   }
+  },
+  {
+   "value": "0482",
+   "label": {
+    "sv": "Flens kommun",
+    "en": "Flens kommun"
+   }
+  },
+  {
+   "value": "0483",
+   "label": {
+    "sv": "Katrineholms kommun",
+    "en": "Katrineholms kommun"
+   }
+  },
+  {
+   "value": "0484",
+   "label": {
+    "sv": "Eskilstuna kommun",
+    "en": "Eskilstuna kommun"
+   }
+  },
+  {
+   "value": "0486",
+   "label": {
+    "sv": "Strängnäs kommun",
+    "en": "Strängnäs kommun"
+   }
+  },
+  {
+   "value": "0488",
+   "label": {
+    "sv": "Trosa kommun",
+    "en": "Trosa kommun"
+   }
+  },
+  {
+   "value": "0509",
+   "label": {
+    "sv": "Ödeshögs kommun",
+    "en": "Ödeshögs kommun"
+   }
+  },
+  {
+   "value": "0512",
+   "label": {
+    "sv": "Ydre kommun",
+    "en": "Ydre kommun"
+   }
+  },
+  {
+   "value": "0513",
+   "label": {
+    "sv": "Kinda kommun",
+    "en": "Kinda kommun"
+   }
+  },
+  {
+   "value": "0560",
+   "label": {
+    "sv": "Boxholms kommun",
+    "en": "Boxholms kommun"
+   }
+  },
+  {
+   "value": "0561",
+   "label": {
+    "sv": "Åtvidabergs kommun",
+    "en": "Åtvidabergs kommun"
+   }
+  },
+  {
+   "value": "0562",
+   "label": {
+    "sv": "Finspångs kommun",
+    "en": "Finspångs kommun"
+   }
+  },
+  {
+   "value": "0563",
+   "label": {
+    "sv": "Valdemarsviks kommun",
+    "en": "Valdemarsviks kommun"
+   }
+  },
+  {
+   "value": "0580",
+   "label": {
+    "sv": "Linköpings kommun",
+    "en": "Linköpings kommun"
+   }
+  },
+  {
+   "value": "0581",
+   "label": {
+    "sv": "Norrköpings kommun",
+    "en": "Norrköpings kommun"
+   }
+  },
+  {
+   "value": "0582",
+   "label": {
+    "sv": "Söderköpings kommun",
+    "en": "Söderköpings kommun"
+   }
+  },
+  {
+   "value": "0583",
+   "label": {
+    "sv": "Motala kommun",
+    "en": "Motala kommun"
+   }
+  },
+  {
+   "value": "0584",
+   "label": {
+    "sv": "Vadstena kommun",
+    "en": "Vadstena kommun"
+   }
+  },
+  {
+   "value": "0586",
+   "label": {
+    "sv": "Mjölby kommun",
+    "en": "Mjölby kommun"
+   }
+  },
+  {
+   "value": "0604",
+   "label": {
+    "sv": "Aneby kommun",
+    "en": "Aneby kommun"
+   }
+  },
+  {
+   "value": "0617",
+   "label": {
+    "sv": "Gnosjö kommun",
+    "en": "Gnosjö kommun"
+   }
+  },
+  {
+   "value": "0642",
+   "label": {
+    "sv": "Mullsjö kommun",
+    "en": "Mullsjö kommun"
+   }
+  },
+  {
+   "value": "0643",
+   "label": {
+    "sv": "Habo kommun",
+    "en": "Habo kommun"
+   }
+  },
+  {
+   "value": "0662",
+   "label": {
+    "sv": "Gislaveds kommun",
+    "en": "Gislaveds kommun"
+   }
+  },
+  {
+   "value": "0665",
+   "label": {
+    "sv": "Vaggeryds kommun",
+    "en": "Vaggeryds kommun"
+   }
+  },
+  {
+   "value": "0680",
+   "label": {
+    "sv": "Jönköpings kommun",
+    "en": "Jönköpings kommun"
+   }
+  },
+  {
+   "value": "0682",
+   "label": {
+    "sv": "Nässjö kommun",
+    "en": "Nässjö kommun"
+   }
+  },
+  {
+   "value": "0683",
+   "label": {
+    "sv": "Värnamo kommun",
+    "en": "Värnamo kommun"
+   }
+  },
+  {
+   "value": "0684",
+   "label": {
+    "sv": "Sävsjö kommun",
+    "en": "Sävsjö kommun"
+   }
+  },
+  {
+   "value": "0685",
+   "label": {
+    "sv": "Vetlanda kommun",
+    "en": "Vetlanda kommun"
+   }
+  },
+  {
+   "value": "0686",
+   "label": {
+    "sv": "Eksjö kommun",
+    "en": "Eksjö kommun"
+   }
+  },
+  {
+   "value": "0687",
+   "label": {
+    "sv": "Tranås kommun",
+    "en": "Tranås kommun"
+   }
+  },
+  {
+   "value": "0760",
+   "label": {
+    "sv": "Uppvidinge kommun",
+    "en": "Uppvidinge kommun"
+   }
+  },
+  {
+   "value": "0761",
+   "label": {
+    "sv": "Lessebo kommun",
+    "en": "Lessebo kommun"
+   }
+  },
+  {
+   "value": "0763",
+   "label": {
+    "sv": "Tingsryds kommun",
+    "en": "Tingsryds kommun"
+   }
+  },
+  {
+   "value": "0764",
+   "label": {
+    "sv": "Alvesta kommun",
+    "en": "Alvesta kommun"
+   }
+  },
+  {
+   "value": "0765",
+   "label": {
+    "sv": "Älmhults kommun",
+    "en": "Älmhults kommun"
+   }
+  },
+  {
+   "value": "0767",
+   "label": {
+    "sv": "Markaryds kommun",
+    "en": "Markaryds kommun"
+   }
+  },
+  {
+   "value": "0780",
+   "label": {
+    "sv": "Växjö kommun",
+    "en": "Växjö kommun"
+   }
+  },
+  {
+   "value": "0781",
+   "label": {
+    "sv": "Ljungby kommun",
+    "en": "Ljungby kommun"
+   }
+  },
+  {
+   "value": "0821",
+   "label": {
+    "sv": "Högsby kommun",
+    "en": "Högsby kommun"
+   }
+  },
+  {
+   "value": "0834",
+   "label": {
+    "sv": "Torsås kommun",
+    "en": "Torsås kommun"
+   }
+  },
+  {
+   "value": "0840",
+   "label": {
+    "sv": "Mörbylånga kommun",
+    "en": "Mörbylånga kommun"
+   }
+  },
+  {
+   "value": "0860",
+   "label": {
+    "sv": "Hultsfreds kommun",
+    "en": "Hultsfreds kommun"
+   }
+  },
+  {
+   "value": "0861",
+   "label": {
+    "sv": "Mönsterås kommun",
+    "en": "Mönsterås kommun"
+   }
+  },
+  {
+   "value": "0862",
+   "label": {
+    "sv": "Emmaboda kommun",
+    "en": "Emmaboda kommun"
+   }
+  },
+  {
+   "value": "0880",
+   "label": {
+    "sv": "Kalmar kommun",
+    "en": "Kalmar kommun"
+   }
+  },
+  {
+   "value": "0881",
+   "label": {
+    "sv": "Nybro kommun",
+    "en": "Nybro kommun"
+   }
+  },
+  {
+   "value": "0882",
+   "label": {
+    "sv": "Oskarshamns kommun",
+    "en": "Oskarshamns kommun"
+   }
+  },
+  {
+   "value": "0883",
+   "label": {
+    "sv": "Västerviks kommun",
+    "en": "Västerviks kommun"
+   }
+  },
+  {
+   "value": "0884",
+   "label": {
+    "sv": "Vimmerby kommun",
+    "en": "Vimmerby kommun"
+   }
+  },
+  {
+   "value": "0885",
+   "label": {
+    "sv": "Borgholms kommun",
+    "en": "Borgholms kommun"
+   }
+  },
+  {
+   "value": "0980",
+   "label": {
+    "sv": "Gotlands kommun",
+    "en": "Gotlands kommun"
+   }
+  },
+  {
+   "value": "1060",
+   "label": {
+    "sv": "Olofströms kommun",
+    "en": "Olofströms kommun"
+   }
+  },
+  {
+   "value": "1080",
+   "label": {
+    "sv": "Karlskrona kommun",
+    "en": "Karlskrona kommun"
+   }
+  },
+  {
+   "value": "1081",
+   "label": {
+    "sv": "Ronneby kommun",
+    "en": "Ronneby kommun"
+   }
+  },
+  {
+   "value": "1082",
+   "label": {
+    "sv": "Karlshamns kommun",
+    "en": "Karlshamns kommun"
+   }
+  },
+  {
+   "value": "1083",
+   "label": {
+    "sv": "Sölvesborgs kommun",
+    "en": "Sölvesborgs kommun"
+   }
+  },
+  {
+   "value": "1214",
+   "label": {
+    "sv": "Svalövs kommun",
+    "en": "Svalövs kommun"
+   }
+  },
+  {
+   "value": "1230",
+   "label": {
+    "sv": "Staffanstorps kommun",
+    "en": "Staffanstorps kommun"
+   }
+  },
+  {
+   "value": "1231",
+   "label": {
+    "sv": "Burlövs kommun",
+    "en": "Burlövs kommun"
+   }
+  },
+  {
+   "value": "1233",
+   "label": {
+    "sv": "Vellinge kommun",
+    "en": "Vellinge kommun"
+   }
+  },
+  {
+   "value": "1256",
+   "label": {
+    "sv": "Östra Göinge kommun",
+    "en": "Östra Göinge kommun"
+   }
+  },
+  {
+   "value": "1257",
+   "label": {
+    "sv": "Örkelljunga kommun",
+    "en": "Örkelljunga kommun"
+   }
+  },
+  {
+   "value": "1260",
+   "label": {
+    "sv": "Bjuvs kommun",
+    "en": "Bjuvs kommun"
+   }
+  },
+  {
+   "value": "1261",
+   "label": {
+    "sv": "Kävlinge kommun",
+    "en": "Kävlinge kommun"
+   }
+  },
+  {
+   "value": "1262",
+   "label": {
+    "sv": "Lomma kommun",
+    "en": "Lomma kommun"
+   }
+  },
+  {
+   "value": "1263",
+   "label": {
+    "sv": "Svedala kommun",
+    "en": "Svedala kommun"
+   }
+  },
+  {
+   "value": "1264",
+   "label": {
+    "sv": "Skurups kommun",
+    "en": "Skurups kommun"
+   }
+  },
+  {
+   "value": "1265",
+   "label": {
+    "sv": "Sjöbo kommun",
+    "en": "Sjöbo kommun"
+   }
+  },
+  {
+   "value": "1266",
+   "label": {
+    "sv": "Hörby kommun",
+    "en": "Hörby kommun"
+   }
+  },
+  {
+   "value": "1267",
+   "label": {
+    "sv": "Höörs kommun",
+    "en": "Höörs kommun"
+   }
+  },
+  {
+   "value": "1270",
+   "label": {
+    "sv": "Tomelilla kommun",
+    "en": "Tomelilla kommun"
+   }
+  },
+  {
+   "value": "1272",
+   "label": {
+    "sv": "Bromölla kommun",
+    "en": "Bromölla kommun"
+   }
+  },
+  {
+   "value": "1273",
+   "label": {
+    "sv": "Osby kommun",
+    "en": "Osby kommun"
+   }
+  },
+  {
+   "value": "1275",
+   "label": {
+    "sv": "Perstorps kommun",
+    "en": "Perstorps kommun"
+   }
+  },
+  {
+   "value": "1276",
+   "label": {
+    "sv": "Klippans kommun",
+    "en": "Klippans kommun"
+   }
+  },
+  {
+   "value": "1277",
+   "label": {
+    "sv": "Åstorps kommun",
+    "en": "Åstorps kommun"
+   }
+  },
+  {
+   "value": "1278",
+   "label": {
+    "sv": "Båstads kommun",
+    "en": "Båstads kommun"
+   }
+  },
+  {
+   "value": "1280",
+   "label": {
+    "sv": "Malmö kommun",
+    "en": "Malmö kommun"
+   }
+  },
+  {
+   "value": "1281",
+   "label": {
+    "sv": "Lunds kommun",
+    "en": "Lunds kommun"
+   }
+  },
+  {
+   "value": "1282",
+   "label": {
+    "sv": "Landskrona kommun",
+    "en": "Landskrona kommun"
+   }
+  },
+  {
+   "value": "1283",
+   "label": {
+    "sv": "Helsingborgs kommun",
+    "en": "Helsingborgs kommun"
+   }
+  },
+  {
+   "value": "1284",
+   "label": {
+    "sv": "Höganäs kommun",
+    "en": "Höganäs kommun"
+   }
+  },
+  {
+   "value": "1285",
+   "label": {
+    "sv": "Eslövs kommun",
+    "en": "Eslövs kommun"
+   }
+  },
+  {
+   "value": "1286",
+   "label": {
+    "sv": "Ystads kommun",
+    "en": "Ystads kommun"
+   }
+  },
+  {
+   "value": "1287",
+   "label": {
+    "sv": "Trelleborgs kommun",
+    "en": "Trelleborgs kommun"
+   }
+  },
+  {
+   "value": "1290",
+   "label": {
+    "sv": "Kristianstads kommun",
+    "en": "Kristianstads kommun"
+   }
+  },
+  {
+   "value": "1291",
+   "label": {
+    "sv": "Simrishamns kommun",
+    "en": "Simrishamns kommun"
+   }
+  },
+  {
+   "value": "1292",
+   "label": {
+    "sv": "Ängelholms kommun",
+    "en": "Ängelholms kommun"
+   }
+  },
+  {
+   "value": "1293",
+   "label": {
+    "sv": "Hässleholms kommun",
+    "en": "Hässleholms kommun"
+   }
+  },
+  {
+   "value": "1315",
+   "label": {
+    "sv": "Hylte kommun",
+    "en": "Hylte kommun"
+   }
+  },
+  {
+   "value": "1380",
+   "label": {
+    "sv": "Halmstads kommun",
+    "en": "Halmstads kommun"
+   }
+  },
+  {
+   "value": "1381",
+   "label": {
+    "sv": "Laholms kommun",
+    "en": "Laholms kommun"
+   }
+  },
+  {
+   "value": "1382",
+   "label": {
+    "sv": "Falkenbergs kommun",
+    "en": "Falkenbergs kommun"
+   }
+  },
+  {
+   "value": "1383",
+   "label": {
+    "sv": "Varbergs kommun",
+    "en": "Varbergs kommun"
+   }
+  },
+  {
+   "value": "1384",
+   "label": {
+    "sv": "Kungsbacka kommun",
+    "en": "Kungsbacka kommun"
+   }
+  },
+  {
+   "value": "1401",
+   "label": {
+    "sv": "Härryda kommun",
+    "en": "Härryda kommun"
+   }
+  },
+  {
+   "value": "1402",
+   "label": {
+    "sv": "Partille kommun",
+    "en": "Partille kommun"
+   }
+  },
+  {
+   "value": "1407",
+   "label": {
+    "sv": "Öckerö kommun",
+    "en": "Öckerö kommun"
+   }
+  },
+  {
+   "value": "1415",
+   "label": {
+    "sv": "Stenungsunds kommun",
+    "en": "Stenungsunds kommun"
+   }
+  },
+  {
+   "value": "1419",
+   "label": {
+    "sv": "Tjörns kommun",
+    "en": "Tjörns kommun"
+   }
+  },
+  {
+   "value": "1421",
+   "label": {
+    "sv": "Orusts kommun",
+    "en": "Orusts kommun"
+   }
+  },
+  {
+   "value": "1427",
+   "label": {
+    "sv": "Sotenäs kommun",
+    "en": "Sotenäs kommun"
+   }
+  },
+  {
+   "value": "1430",
+   "label": {
+    "sv": "Munkedals kommun",
+    "en": "Munkedals kommun"
+   }
+  },
+  {
+   "value": "1435",
+   "label": {
+    "sv": "Tanums kommun",
+    "en": "Tanums kommun"
+   }
+  },
+  {
+   "value": "1438",
+   "label": {
+    "sv": "Dals-Eds kommun",
+    "en": "Dals-Eds kommun"
+   }
+  },
+  {
+   "value": "1439",
+   "label": {
+    "sv": "Färgelanda kommun",
+    "en": "Färgelanda kommun"
+   }
+  },
+  {
+   "value": "1440",
+   "label": {
+    "sv": "Ale kommun",
+    "en": "Ale kommun"
+   }
+  },
+  {
+   "value": "1441",
+   "label": {
+    "sv": "Lerums kommun",
+    "en": "Lerums kommun"
+   }
+  },
+  {
+   "value": "1442",
+   "label": {
+    "sv": "Vårgårda kommun",
+    "en": "Vårgårda kommun"
+   }
+  },
+  {
+   "value": "1443",
+   "label": {
+    "sv": "Bollebygds kommun",
+    "en": "Bollebygds kommun"
+   }
+  },
+  {
+   "value": "1444",
+   "label": {
+    "sv": "Grästorps kommun",
+    "en": "Grästorps kommun"
+   }
+  },
+  {
+   "value": "1445",
+   "label": {
+    "sv": "Essunga kommun",
+    "en": "Essunga kommun"
+   }
+  },
+  {
+   "value": "1446",
+   "label": {
+    "sv": "Karlsborgs kommun",
+    "en": "Karlsborgs kommun"
+   }
+  },
+  {
+   "value": "1447",
+   "label": {
+    "sv": "Gullspångs kommun",
+    "en": "Gullspångs kommun"
+   }
+  },
+  {
+   "value": "1452",
+   "label": {
+    "sv": "Tranemo kommun",
+    "en": "Tranemo kommun"
+   }
+  },
+  {
+   "value": "1460",
+   "label": {
+    "sv": "Bengtsfors kommun",
+    "en": "Bengtsfors kommun"
+   }
+  },
+  {
+   "value": "1461",
+   "label": {
+    "sv": "Melleruds kommun",
+    "en": "Melleruds kommun"
+   }
+  },
+  {
+   "value": "1462",
+   "label": {
+    "sv": "Lilla Edets kommun",
+    "en": "Lilla Edets kommun"
+   }
+  },
+  {
+   "value": "1463",
+   "label": {
+    "sv": "Marks kommun",
+    "en": "Marks kommun"
+   }
+  },
+  {
+   "value": "1465",
+   "label": {
+    "sv": "Svenljunga kommun",
+    "en": "Svenljunga kommun"
+   }
+  },
+  {
+   "value": "1466",
+   "label": {
+    "sv": "Herrljunga kommun",
+    "en": "Herrljunga kommun"
+   }
+  },
+  {
+   "value": "1470",
+   "label": {
+    "sv": "Vara kommun",
+    "en": "Vara kommun"
+   }
+  },
+  {
+   "value": "1471",
+   "label": {
+    "sv": "Götene kommun",
+    "en": "Götene kommun"
+   }
+  },
+  {
+   "value": "1472",
+   "label": {
+    "sv": "Tibro kommun",
+    "en": "Tibro kommun"
+   }
+  },
+  {
+   "value": "1473",
+   "label": {
+    "sv": "Töreboda kommun",
+    "en": "Töreboda kommun"
+   }
+  },
+  {
+   "value": "1480",
+   "label": {
+    "sv": "Göteborgs kommun",
+    "en": "Göteborgs kommun"
+   }
+  },
+  {
+   "value": "1481",
+   "label": {
+    "sv": "Mölndals kommun",
+    "en": "Mölndals kommun"
+   }
+  },
+  {
+   "value": "1482",
+   "label": {
+    "sv": "Kungälvs kommun",
+    "en": "Kungälvs kommun"
+   }
+  },
+  {
+   "value": "1484",
+   "label": {
+    "sv": "Lysekils kommun",
+    "en": "Lysekils kommun"
+   }
+  },
+  {
+   "value": "1485",
+   "label": {
+    "sv": "Uddevalla kommun",
+    "en": "Uddevalla kommun"
+   }
+  },
+  {
+   "value": "1486",
+   "label": {
+    "sv": "Strömstads kommun",
+    "en": "Strömstads kommun"
+   }
+  },
+  {
+   "value": "1487",
+   "label": {
+    "sv": "Vänersborgs kommun",
+    "en": "Vänersborgs kommun"
+   }
+  },
+  {
+   "value": "1488",
+   "label": {
+    "sv": "Trollhättans kommun",
+    "en": "Trollhättans kommun"
+   }
+  },
+  {
+   "value": "1489",
+   "label": {
+    "sv": "Alingsås kommun",
+    "en": "Alingsås kommun"
+   }
+  },
+  {
+   "value": "1490",
+   "label": {
+    "sv": "Borås kommun",
+    "en": "Borås kommun"
+   }
+  },
+  {
+   "value": "1491",
+   "label": {
+    "sv": "Ulricehamns kommun",
+    "en": "Ulricehamns kommun"
+   }
+  },
+  {
+   "value": "1492",
+   "label": {
+    "sv": "Åmåls kommun",
+    "en": "Åmåls kommun"
+   }
+  },
+  {
+   "value": "1493",
+   "label": {
+    "sv": "Mariestads kommun",
+    "en": "Mariestads kommun"
+   }
+  },
+  {
+   "value": "1494",
+   "label": {
+    "sv": "Lidköpings kommun",
+    "en": "Lidköpings kommun"
+   }
+  },
+  {
+   "value": "1495",
+   "label": {
+    "sv": "Skara kommun",
+    "en": "Skara kommun"
+   }
+  },
+  {
+   "value": "1496",
+   "label": {
+    "sv": "Skövde kommun",
+    "en": "Skövde kommun"
+   }
+  },
+  {
+   "value": "1497",
+   "label": {
+    "sv": "Hjo kommun",
+    "en": "Hjo kommun"
+   }
+  },
+  {
+   "value": "1498",
+   "label": {
+    "sv": "Tidaholms kommun",
+    "en": "Tidaholms kommun"
+   }
+  },
+  {
+   "value": "1499",
+   "label": {
+    "sv": "Falköpings kommun",
+    "en": "Falköpings kommun"
+   }
+  },
+  {
+   "value": "1715",
+   "label": {
+    "sv": "Kils kommun",
+    "en": "Kils kommun"
+   }
+  },
+  {
+   "value": "1730",
+   "label": {
+    "sv": "Eda kommun",
+    "en": "Eda kommun"
+   }
+  },
+  {
+   "value": "1737",
+   "label": {
+    "sv": "Torsby kommun",
+    "en": "Torsby kommun"
+   }
+  },
+  {
+   "value": "1760",
+   "label": {
+    "sv": "Storfors kommun",
+    "en": "Storfors kommun"
+   }
+  },
+  {
+   "value": "1761",
+   "label": {
+    "sv": "Hammarö kommun",
+    "en": "Hammarö kommun"
+   }
+  },
+  {
+   "value": "1762",
+   "label": {
+    "sv": "Munkfors kommun",
+    "en": "Munkfors kommun"
+   }
+  },
+  {
+   "value": "1763",
+   "label": {
+    "sv": "Forshaga kommun",
+    "en": "Forshaga kommun"
+   }
+  },
+  {
+   "value": "1764",
+   "label": {
+    "sv": "Grums kommun",
+    "en": "Grums kommun"
+   }
+  },
+  {
+   "value": "1765",
+   "label": {
+    "sv": "Årjängs kommun",
+    "en": "Årjängs kommun"
+   }
+  },
+  {
+   "value": "1766",
+   "label": {
+    "sv": "Sunne kommun",
+    "en": "Sunne kommun"
+   }
+  },
+  {
+   "value": "1780",
+   "label": {
+    "sv": "Karlstads kommun",
+    "en": "Karlstads kommun"
+   }
+  },
+  {
+   "value": "1781",
+   "label": {
+    "sv": "Kristinehamns kommun",
+    "en": "Kristinehamns kommun"
+   }
+  },
+  {
+   "value": "1782",
+   "label": {
+    "sv": "Filipstads kommun",
+    "en": "Filipstads kommun"
+   }
+  },
+  {
+   "value": "1783",
+   "label": {
+    "sv": "Hagfors kommun",
+    "en": "Hagfors kommun"
+   }
+  },
+  {
+   "value": "1784",
+   "label": {
+    "sv": "Arvika kommun",
+    "en": "Arvika kommun"
+   }
+  },
+  {
+   "value": "1785",
+   "label": {
+    "sv": "Säffle kommun",
+    "en": "Säffle kommun"
+   }
+  },
+  {
+   "value": "1814",
+   "label": {
+    "sv": "Lekebergs kommun",
+    "en": "Lekebergs kommun"
+   }
+  },
+  {
+   "value": "1860",
+   "label": {
+    "sv": "Laxå kommun",
+    "en": "Laxå kommun"
+   }
+  },
+  {
+   "value": "1861",
+   "label": {
+    "sv": "Hallsbergs kommun",
+    "en": "Hallsbergs kommun"
+   }
+  },
+  {
+   "value": "1862",
+   "label": {
+    "sv": "Degerfors kommun",
+    "en": "Degerfors kommun"
+   }
+  },
+  {
+   "value": "1863",
+   "label": {
+    "sv": "Hällefors kommun",
+    "en": "Hällefors kommun"
+   }
+  },
+  {
+   "value": "1864",
+   "label": {
+    "sv": "Ljusnarsbergs kommun",
+    "en": "Ljusnarsbergs kommun"
+   }
+  },
+  {
+   "value": "1880",
+   "label": {
+    "sv": "Örebro kommun",
+    "en": "Örebro kommun"
+   }
+  },
+  {
+   "value": "1881",
+   "label": {
+    "sv": "Kumla kommun",
+    "en": "Kumla kommun"
+   }
+  },
+  {
+   "value": "1882",
+   "label": {
+    "sv": "Askersunds kommun",
+    "en": "Askersunds kommun"
+   }
+  },
+  {
+   "value": "1883",
+   "label": {
+    "sv": "Karlskoga kommun",
+    "en": "Karlskoga kommun"
+   }
+  },
+  {
+   "value": "1884",
+   "label": {
+    "sv": "Nora kommun",
+    "en": "Nora kommun"
+   }
+  },
+  {
+   "value": "1885",
+   "label": {
+    "sv": "Lindesbergs kommun",
+    "en": "Lindesbergs kommun"
+   }
+  },
+  {
+   "value": "1904",
+   "label": {
+    "sv": "Skinnskattebergs kommun",
+    "en": "Skinnskattebergs kommun"
+   }
+  },
+  {
+   "value": "1907",
+   "label": {
+    "sv": "Surahammars kommun",
+    "en": "Surahammars kommun"
+   }
+  },
+  {
+   "value": "1960",
+   "label": {
+    "sv": "Kungsörs kommun",
+    "en": "Kungsörs kommun"
+   }
+  },
+  {
+   "value": "1961",
+   "label": {
+    "sv": "Hallstahammars kommun",
+    "en": "Hallstahammars kommun"
+   }
+  },
+  {
+   "value": "1962",
+   "label": {
+    "sv": "Norbergs kommun",
+    "en": "Norbergs kommun"
+   }
+  },
+  {
+   "value": "1980",
+   "label": {
+    "sv": "Västerås kommun",
+    "en": "Västerås kommun"
+   }
+  },
+  {
+   "value": "1981",
+   "label": {
+    "sv": "Sala kommun",
+    "en": "Sala kommun"
+   }
+  },
+  {
+   "value": "1982",
+   "label": {
+    "sv": "Fagersta kommun",
+    "en": "Fagersta kommun"
+   }
+  },
+  {
+   "value": "1983",
+   "label": {
+    "sv": "Köpings kommun",
+    "en": "Köpings kommun"
+   }
+  },
+  {
+   "value": "1984",
+   "label": {
+    "sv": "Arboga kommun",
+    "en": "Arboga kommun"
+   }
+  },
+  {
+   "value": "2021",
+   "label": {
+    "sv": "Vansbro kommun",
+    "en": "Vansbro kommun"
+   }
+  },
+  {
+   "value": "2023",
+   "label": {
+    "sv": "Malung-Sälens kommun",
+    "en": "Malung-Sälens kommun"
+   }
+  },
+  {
+   "value": "2026",
+   "label": {
+    "sv": "Gagnefs kommun",
+    "en": "Gagnefs kommun"
+   }
+  },
+  {
+   "value": "2029",
+   "label": {
+    "sv": "Leksands kommun",
+    "en": "Leksands kommun"
+   }
+  },
+  {
+   "value": "2031",
+   "label": {
+    "sv": "Rättviks kommun",
+    "en": "Rättviks kommun"
+   }
+  },
+  {
+   "value": "2034",
+   "label": {
+    "sv": "Orsa kommun",
+    "en": "Orsa kommun"
+   }
+  },
+  {
+   "value": "2039",
+   "label": {
+    "sv": "Älvdalens kommun",
+    "en": "Älvdalens kommun"
+   }
+  },
+  {
+   "value": "2061",
+   "label": {
+    "sv": "Smedjebackens kommun",
+    "en": "Smedjebackens kommun"
+   }
+  },
+  {
+   "value": "2062",
+   "label": {
+    "sv": "Mora kommun",
+    "en": "Mora kommun"
+   }
+  },
+  {
+   "value": "2080",
+   "label": {
+    "sv": "Falu kommun",
+    "en": "Falu kommun"
+   }
+  },
+  {
+   "value": "2081",
+   "label": {
+    "sv": "Borlänge kommun",
+    "en": "Borlänge kommun"
+   }
+  },
+  {
+   "value": "2082",
+   "label": {
+    "sv": "Säters kommun",
+    "en": "Säters kommun"
+   }
+  },
+  {
+   "value": "2083",
+   "label": {
+    "sv": "Hedemora kommun",
+    "en": "Hedemora kommun"
+   }
+  },
+  {
+   "value": "2084",
+   "label": {
+    "sv": "Avesta kommun",
+    "en": "Avesta kommun"
+   }
+  },
+  {
+   "value": "2085",
+   "label": {
+    "sv": "Ludvika kommun",
+    "en": "Ludvika kommun"
+   }
+  },
+  {
+   "value": "2101",
+   "label": {
+    "sv": "Ockelbo kommun",
+    "en": "Ockelbo kommun"
+   }
+  },
+  {
+   "value": "2104",
+   "label": {
+    "sv": "Hofors kommun",
+    "en": "Hofors kommun"
+   }
+  },
+  {
+   "value": "2121",
+   "label": {
+    "sv": "Ovanåkers kommun",
+    "en": "Ovanåkers kommun"
+   }
+  },
+  {
+   "value": "2132",
+   "label": {
+    "sv": "Nordanstigs kommun",
+    "en": "Nordanstigs kommun"
+   }
+  },
+  {
+   "value": "2161",
+   "label": {
+    "sv": "Ljusdals kommun",
+    "en": "Ljusdals kommun"
+   }
+  },
+  {
+   "value": "2180",
+   "label": {
+    "sv": "Gävle kommun",
+    "en": "Gävle kommun"
+   }
+  },
+  {
+   "value": "2181",
+   "label": {
+    "sv": "Sandvikens kommun",
+    "en": "Sandvikens kommun"
+   }
+  },
+  {
+   "value": "2182",
+   "label": {
+    "sv": "Söderhamns kommun",
+    "en": "Söderhamns kommun"
+   }
+  },
+  {
+   "value": "2183",
+   "label": {
+    "sv": "Bollnäs kommun",
+    "en": "Bollnäs kommun"
+   }
+  },
+  {
+   "value": "2184",
+   "label": {
+    "sv": "Hudiksvalls kommun",
+    "en": "Hudiksvalls kommun"
+   }
+  },
+  {
+   "value": "2260",
+   "label": {
+    "sv": "Ånge kommun",
+    "en": "Ånge kommun"
+   }
+  },
+  {
+   "value": "2262",
+   "label": {
+    "sv": "Timrå kommun",
+    "en": "Timrå kommun"
+   }
+  },
+  {
+   "value": "2280",
+   "label": {
+    "sv": "Härnösands kommun",
+    "en": "Härnösands kommun"
+   }
+  },
+  {
+   "value": "2281",
+   "label": {
+    "sv": "Sundsvalls kommun",
+    "en": "Sundsvalls kommun"
+   }
+  },
+  {
+   "value": "2282",
+   "label": {
+    "sv": "Kramfors kommun",
+    "en": "Kramfors kommun"
+   }
+  },
+  {
+   "value": "2283",
+   "label": {
+    "sv": "Sollefteå kommun",
+    "en": "Sollefteå kommun"
+   }
+  },
+  {
+   "value": "2284",
+   "label": {
+    "sv": "Örnsköldsviks kommun",
+    "en": "Örnsköldsviks kommun"
+   }
+  },
+  {
+   "value": "2303",
+   "label": {
+    "sv": "Ragunda kommun",
+    "en": "Ragunda kommun"
+   }
+  },
+  {
+   "value": "2305",
+   "label": {
+    "sv": "Bräcke kommun",
+    "en": "Bräcke kommun"
+   }
+  },
+  {
+   "value": "2309",
+   "label": {
+    "sv": "Krokoms kommun",
+    "en": "Krokoms kommun"
+   }
+  },
+  {
+   "value": "2313",
+   "label": {
+    "sv": "Strömsunds kommun",
+    "en": "Strömsunds kommun"
+   }
+  },
+  {
+   "value": "2321",
+   "label": {
+    "sv": "Åre kommun",
+    "en": "Åre kommun"
+   }
+  },
+  {
+   "value": "2326",
+   "label": {
+    "sv": "Bergs kommun",
+    "en": "Bergs kommun"
+   }
+  },
+  {
+   "value": "2361",
+   "label": {
+    "sv": "Härjedalens kommun",
+    "en": "Härjedalens kommun"
+   }
+  },
+  {
+   "value": "2380",
+   "label": {
+    "sv": "Östersunds kommun",
+    "en": "Östersunds kommun"
+   }
+  },
+  {
+   "value": "2401",
+   "label": {
+    "sv": "Nordmalings kommun",
+    "en": "Nordmalings kommun"
+   }
+  },
+  {
+   "value": "2403",
+   "label": {
+    "sv": "Bjurholms kommun",
+    "en": "Bjurholms kommun"
+   }
+  },
+  {
+   "value": "2404",
+   "label": {
+    "sv": "Vindelns kommun",
+    "en": "Vindelns kommun"
+   }
+  },
+  {
+   "value": "2409",
+   "label": {
+    "sv": "Robertsfors kommun",
+    "en": "Robertsfors kommun"
+   }
+  },
+  {
+   "value": "2417",
+   "label": {
+    "sv": "Norsjö kommun",
+    "en": "Norsjö kommun"
+   }
+  },
+  {
+   "value": "2418",
+   "label": {
+    "sv": "Malå kommun",
+    "en": "Malå kommun"
+   }
+  },
+  {
+   "value": "2421",
+   "label": {
+    "sv": "Storumans kommun",
+    "en": "Storumans kommun"
+   }
+  },
+  {
+   "value": "2422",
+   "label": {
+    "sv": "Sorsele kommun",
+    "en": "Sorsele kommun"
+   }
+  },
+  {
+   "value": "2425",
+   "label": {
+    "sv": "Dorotea kommun",
+    "en": "Dorotea kommun"
+   }
+  },
+  {
+   "value": "2460",
+   "label": {
+    "sv": "Vännäs kommun",
+    "en": "Vännäs kommun"
+   }
+  },
+  {
+   "value": "2462",
+   "label": {
+    "sv": "Vilhelmina kommun",
+    "en": "Vilhelmina kommun"
+   }
+  },
+  {
+   "value": "2463",
+   "label": {
+    "sv": "Åsele kommun",
+    "en": "Åsele kommun"
+   }
+  },
+  {
+   "value": "2480",
+   "label": {
+    "sv": "Umeå kommun",
+    "en": "Umeå kommun"
+   }
+  },
+  {
+   "value": "2481",
+   "label": {
+    "sv": "Lycksele kommun",
+    "en": "Lycksele kommun"
+   }
+  },
+  {
+   "value": "2482",
+   "label": {
+    "sv": "Skellefteå kommun",
+    "en": "Skellefteå kommun"
+   }
+  },
+  {
+   "value": "2505",
+   "label": {
+    "sv": "Arvidsjaurs kommun",
+    "en": "Arvidsjaurs kommun"
+   }
+  },
+  {
+   "value": "2506",
+   "label": {
+    "sv": "Arjeplogs kommun",
+    "en": "Arjeplogs kommun"
+   }
+  },
+  {
+   "value": "2510",
+   "label": {
+    "sv": "Jokkmokks kommun",
+    "en": "Jokkmokks kommun"
+   }
+  },
+  {
+   "value": "2513",
+   "label": {
+    "sv": "Överkalix kommun",
+    "en": "Överkalix kommun"
+   }
+  },
+  {
+   "value": "2514",
+   "label": {
+    "sv": "Kalix kommun",
+    "en": "Kalix kommun"
+   }
+  },
+  {
+   "value": "2518",
+   "label": {
+    "sv": "Övertorneå kommun",
+    "en": "Övertorneå kommun"
+   }
+  },
+  {
+   "value": "2521",
+   "label": {
+    "sv": "Pajala kommun",
+    "en": "Pajala kommun"
+   }
+  },
+  {
+   "value": "2523",
+   "label": {
+    "sv": "Gällivare kommun",
+    "en": "Gällivare kommun"
+   }
+  },
+  {
+   "value": "2560",
+   "label": {
+    "sv": "Älvsbyns kommun",
+    "en": "Älvsbyns kommun"
+   }
+  },
+  {
+   "value": "2580",
+   "label": {
+    "sv": "Luleå kommun",
+    "en": "Luleå kommun"
+   }
+  },
+  {
+   "value": "2581",
+   "label": {
+    "sv": "Piteå kommun",
+    "en": "Piteå kommun"
+   }
+  },
+  {
+   "value": "2582",
+   "label": {
+    "sv": "Bodens kommun",
+    "en": "Bodens kommun"
+   }
+  },
+  {
+   "value": "2583",
+   "label": {
+    "sv": "Haparanda kommun",
+    "en": "Haparanda kommun"
+   }
+  },
+  {
+   "value": "2584",
+   "label": {
+    "sv": "Kiruna kommun",
+    "en": "Kiruna kommun"
+   }
+  }
+ ]
+}

@@ -1,0 +1,95 @@
+@use "../../styles/dialog-shell";
+@use "../../../viewer/styles/focus" as focus;
+
+.prompt-dialog__actions {
+  @extend .dialog__actions;
+}
+
+/* The affirmative here is the ordinary one: naming a thing is not a hazard, so
+   it is dressed as the expected act rather than as a warning. */
+.prompt-dialog__confirm {
+  border-color: var(--fw-primary-strong);
+  background: var(--fw-primary-strong);
+  color: var(--fw-surface);
+}
+
+label {
+  display: grid;
+  gap: var(--fw-space-2);
+  margin-top: var(--fw-space-4);
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-lg);
+}
+
+/*
+ * `display` i en regel vinner över `hidden` (PRAXIS 36, sjätte fallet).
+ *
+ * `choose()` sätter `field.hidden = true` på just det här elementet, och utan
+ * den här raden stod fältet kvar: 392x44 tom ruta över valen, med 64 px mellan
+ * rubriken och första knappen i stället för radavståndet. Mätt i
+ * `prompt-dialog.browser.test.ts`, som räknar rutan och inte flaggan — ett
+ * påstående om attributet hade varit grönt hela tiden felet fanns.
+ *
+ * Första gången av de sex där regeln står på en **typselektor** och inte på en
+ * klass. De andra fem hittades av att någon läste en klassregel och kom ihåg
+ * det här; ett ensamt `label` i en liten stilmall ser inte ut som något att
+ * komma ihåg något om.
+ */
+label[hidden] {
+  display: none;
+}
+
+input {
+  padding: var(--fw-space-2) var(--fw-space-3);
+  border: 1px solid var(--fw-border-control);
+  border-radius: var(--fw-radius-field);
+  background: var(--fw-surface);
+  color: var(--fw-text);
+  font: inherit;
+}
+
+input:focus-visible {
+  @include focus.ring(1px);
+}
+
+/* Vallägets knappar: en rad var, hela bredden — Tab vandrar uppifrån och ner
+   i samma ordning som ögat läser. */
+.prompt-dialog__choices {
+  display: grid;
+  gap: var(--fw-space-2);
+  margin-top: var(--fw-space-1);
+
+  button {
+    padding: var(--fw-space-3);
+    border: 1px solid var(--fw-border-control);
+    border-radius: var(--fw-radius-button);
+    background: var(--fw-surface);
+    color: var(--fw-text);
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+  }
+
+  button:hover {
+    border-color: var(--fw-primary);
+    background: var(--fw-surface-subtle);
+  }
+
+  button:focus-visible {
+    @include focus.ring;
+  }
+}
+
+/*
+ * Och samma sak åt andra hållet, i samma stilmall.
+ *
+ * `restoreAskMode()` gömmer valen när nästa fråga har ett fält, och `display:
+ * grid` ovan vinner över `hidden` precis som på etiketten. Mätt: 392x0 i
+ * fältläget — noll högt bara därför att `replaceChildren()` råkar ha tömt
+ * behållaren, plus fyra pixlars marginal av ingenting. Det är samma fel som
+ * det över, i det läge där det ännu inte kostat något, och det var så det här
+ * började på etiketten också.
+ */
+.prompt-dialog__choices[hidden] {
+  display: none;
+}

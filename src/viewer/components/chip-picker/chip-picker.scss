@@ -1,0 +1,192 @@
+@use "../../styles/chips";
+@use "../../styles/picker";
+
+:host {
+  display: block;
+  min-width: 0;
+
+  /*
+   * Ärvda textegenskaper nollställs.
+   *
+   * Ärvbara egenskaper går in i en skuggrot, och i editorn sitter kontrollen i
+   * en `<label>` vars rubriker är versaler och spärrade. Etiketten visade
+   * "STATSLÖS" och räknaren skrek i versaler. Kontrollen ska se likadan ut var
+   * den än monteras — det är hela poängen med att den är en.
+   */
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+  font-style: normal;
+  text-align: start;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/*
+ * Rutan: det valda, och det man söker med.
+ *
+ * Rutan säger *det här är ditt svar*; det som står under den är något att
+ * lägga till. Ett hus i stället för en färgskillnad, eftersom färg ensam inte
+ * är skillnad nog (1.4.1) — och alternativen är kantiga medan etiketterna är
+ * rundade, så formen bär skillnaden också för den som inte skiljer färgerna.
+ */
+/*
+ * Formen kommer utifrån: etiketterna ur `_chips.scss`, och rutan, listan och
+ * raden ur `_picker.scss` — samma ytor som uppslagsfältet använder. Det som
+ * bor här är bara det som är den här kontrollens eget.
+ */
+@include chips.fw-chips("chip-picker__chip");
+@include picker.fw-picker("chip-picker");
+
+:host([compact]) {
+  /*
+   * Bara träffytan. Krysset ritas litet och träffas stort, så bilden är
+   * densamma medan måttet skiljer sig — 44px där fingrar möter den, 24 vid
+   * ett tangentbord (WCAG 2.2 AA:s golv, 2.5.8).
+   */
+  @include chips.fw-chips("chip-picker__chip", $target: 24px);
+}
+
+/* Ankaret för listan, som ligger ovanpå det som står under. */
+.chip-picker__anchor {
+  position: relative;
+}
+
+/*
+ * I flödet i stället för ovanpå — för värdar som säger till (`docked-list`).
+ * Canvaskortet är bara så högt som sitt innehåll; en overlay där lägger sig
+ * över kortets knappar och klipps av kanten (uppmätt 2/9). Skuggan följer
+ * med bort: den bär "ligger ovanpå", och det gör listan inte längre här.
+ */
+:host([docked-list]) .chip-picker__list {
+  position: static;
+  box-shadow: none;
+}
+
+.chip-picker__empty {
+  padding: var(--fw-space-1) 2px;
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-md);
+}
+
+.chip-picker__search {
+  flex: 1 1 10ch;
+  min-width: 0;
+  padding: var(--fw-space-1);
+
+  border: 0;
+  background: transparent;
+  color: var(--fw-text-strong);
+  font: inherit;
+  /*
+   * 16px, också i editorn. Allt mindre får iOS att zooma in sidan när fältet
+   * får fokus, och sedan står editorn kvar inzoomad — och guider byggs på en
+   * iPad, så panelen möts av samma webbläsare som visaren.
+   */
+  font-size: var(--fw-font-size-xl);
+
+  /* Rutan ritar ringen — annars blir det två. */
+  &:focus,
+  &:focus-visible {
+    outline: none;
+  }
+}
+
+/*
+ * Upplysningen som skiljer två träffar med samma namn.
+ *
+ * Två "Örebro" i en lista är två kommuner man inte kan välja mellan; länet
+ * är det som skiljer dem. Den ritas svagare för att den inte är namnet —
+ * läses den som en del av etiketten har den bytt jobb.
+ */
+.chip-picker__option-hint {
+  margin-inline-start: 8px;
+  color: var(--fw-text-muted);
+  font-size: var(--fw-font-size-base);
+}
+
+/*
+ * — eller — mellan de vanliga alternativen och dem som står ensamma.
+ *
+ * Ordet är riktig text och inte en ritad linje: den som inte ser listan ska
+ * höra att det är antingen-eller, och en `border` läses inte upp. Linjerna på
+ * sidorna är dekor och ritas därför med pseudoelement, som ingen skärmläsare
+ * går in i.
+ *
+ * Raden får inte se ut som något att trycka på — därför inget hus, ingen
+ * hovring, och den fulla höjden bara den behöver.
+ */
+.chip-picker__separator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: var(--fw-space-2) var(--fw-space-3);
+
+  color: var(--fw-text-muted);
+  font-size: var(--fw-font-size-base);
+  cursor: default;
+
+  &::before,
+  &::after {
+    flex: 1;
+    height: 1px;
+    background: var(--fw-border);
+    content: "";
+  }
+}
+
+.chip-picker__count,
+.chip-picker__status {
+  margin: 4px 0 0;
+  color: var(--fw-text-secondary);
+  font-size: var(--fw-font-size-md);
+}
+
+:host([compact]) .chip-picker__count,
+:host([compact]) .chip-picker__status {
+  font-size: var(--fw-font-size-sm);
+}
+
+/* Only read (punkt 14): the confirmation is in the row, out of sight, and a
+   row holding nothing else takes no room under the box. */
+.chip-picker__status[data-quiet] {
+  margin: 0;
+}
+
+/* The count line the same way when it says nothing (no search, a single
+   choice made): its 4 px stood under the box on its own, so the next field
+   on a page began 20 px below the search box where it begins 16 below a
+   text field (Fia 1/10, B4 review, skadeanmälans första sida). */
+.chip-picker__count:empty {
+  margin: 0;
+}
+
+/*
+ * Läses upp men syns inte. `display: none` hade tystat den — skärmläsare
+ * hoppar över bortgömt innehåll.
+ */
+.chip-picker__hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/*
+ * The search box in error: the same red edge every other field takes
+ * (GRAFISK-PROFIL, Fältgrupp: *kontrollens kant `--fw-danger`*). The host
+ * sets `data-invalid` — the picker cannot know the guide refused its answer.
+ * Before this the box kept its grey edge while the message under it said
+ * *Välj ett av förslagen i listan* (genomgången 30/9, V4; Astra 1/10,
+ * bilaga 10 punkt 6: *"Sökfältet får samma felmarkering som andra fält"*).
+ */
+:host([data-invalid]) .chip-picker__box {
+  border-color: var(--fw-danger);
+}

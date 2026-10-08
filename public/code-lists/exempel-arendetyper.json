@@ -1,0 +1,19 @@
+{
+ "id": "exempel-arendetyper",
+ "standard": "custom",
+ "label": { "sv": "Ärendetyper — exempel", "en": "Case types — example" },
+ "version": "1",
+ "published": "2026-08-15",
+ "source": "Exempel i FlowWeaver, inte en riktig myndighetslista",
+ "items": [
+  { "value": "BYGG", "label": { "sv": "Bygglov", "en": "Building permit" },
+    "synonyms": [{ "sv": "tillbyggnad" }, { "sv": "nybyggnad" }] },
+  { "value": "RIV", "label": { "sv": "Rivningslov", "en": "Demolition permit" },
+    "synonyms": [{ "sv": "riva" }] },
+  { "value": "MARK", "label": { "sv": "Marklov", "en": "Ground permit" } },
+  { "value": "STRAND", "label": { "sv": "Strandskyddsdispens", "en": "Shoreline exemption" },
+    "synonyms": [{ "sv": "strandskydd" }] },
+  { "value": "ANMAL", "label": { "sv": "Anmälan utan lov", "en": "Notification without permit" },
+    "synonyms": [{ "sv": "attefall" }] }
+ ]
+}
