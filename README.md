@@ -1,28 +1,29 @@
 # FlowWeaver
 
-Bygg beslutsguider utan att skriva kod — och visa dem på vilken sida som helst.
+**English** · [Svenska](README.sv.md)
 
-*Build decision guides without code, and show them on any web page. The
-editor and the viewer are web components; the guide is a JSON file. The
-documentation is in Swedish.*
+Build decision guides without writing code — and show them on any web page.
 
-FlowWeaver är två web components. **Editorn** (`<guide-editor>`) låter en
-redaktör rita en guide som ett flöde av frågor, regler och svar. **Visaren**
-(`<guide-preview>`) kör guiden för besökaren. Guiden däremellan är en fil i
-ett öppet format ([`docs/JSON-KONTRAKT.md`](docs/JSON-KONTRAKT.md)), och den
-är er.
+FlowWeaver is two web components. The **editor** (`<guide-editor>`) lets an
+editor draw a guide as a flow of questions, rules and answers. The **viewer**
+(`<guide-preview>`) runs the guide for the visitor. Between them the guide is
+a file in an open format ([`docs/JSON-KONTRAKT.md`](docs/JSON-KONTRAKT.md)),
+and it is yours.
 
-**FlowWeaver har ingen backend — med flit.** Ni äger lagring, inloggning och
-register i er egen miljö. Sömmen är skrivna kontrakt som vem som helst kan
-bygga mot ([`docs/VARDSYSTEM-KONTRAKT.md`](docs/VARDSYSTEM-KONTRAKT.md) är
-kartan). FlowWeaver finns för att ni ska slippa bygga frontend.
+**FlowWeaver has no backend — on purpose.** You keep storage, sign-in and
+registers in your own environment. The seams are written contracts anyone can
+build against ([`docs/VARDSYSTEM-KONTRAKT.md`](docs/VARDSYSTEM-KONTRAKT.md) is
+the map). FlowWeaver exists so that you do not have to build a frontend.
 
-## Prova
+The interface speaks Swedish and English. The documentation in `docs/` is in
+Swedish; the code and its comments are in English.
 
-**[flowweaver.se](https://flowweaver.se/)** — guider att svara på och samma
-guider öppna i editorn.
+## Try it
 
-Lokalt, med demon i `demo/`:
+**[flowweaver.se](https://flowweaver.se/en/)** — guides to answer, and the
+same guides open in the editor.
+
+Locally, with the demo in `demo/`:
 
 ```bash
 npm ci
@@ -30,16 +31,17 @@ npm run build:lib
 npm run serve:demo        # http://localhost:4190/demo/
 ```
 
-Demon är skriven som en värd skriver sin sida: vanlig html som laddar de
-byggda bundlarna med en script-tagg och sparar guiden i webbläsaren. *Mina
-guider* (`demo/guides.html`) är samma sak mot en riktig lagringsvärd — starta
-referensvärden med `npm run receiver` och lägg till
-`?api=http://localhost:4320` i adressen.
+The demo is written the way a host writes its page: plain HTML that loads the
+built bundles with a script tag and keeps the guide in the browser. *My
+guides* (`demo/guides.html`) is the same against a real storage host — start
+the reference host with `npm run receiver` and add
+`?api=http://localhost:4320` to the address.
 
-## Bädda in
+## Embed it
 
-Redaktören exporterar guiden ur editorn som en fil, ni lägger filen bredvid
-sidan, och sidan hämtar den:
+The editor exports the guide as a file, you put the file next to your page,
+and the page fetches it — or your own system hands the guide to the viewer as
+an object:
 
 ```html
 <link rel="stylesheet" href="https://flowweaver.se/lib/tokens.css">
@@ -49,42 +51,42 @@ sidan, och sidan hämtar den:
 <script src="https://flowweaver.se/lib/0.11/flowweaver-viewer.global.js"></script>
 
 <script>
-  fetch("min-guide.json")
-    .then((svar) => svar.json())
+  fetch("my-guide.json")
+    .then((response) => response.json())
     .then((guide) => { document.querySelector("guide-preview").graph = guide; });
 </script>
 ```
 
-Hela vägen, med versionslåsta adresser och editorn:
-[flowweaver.se/install.html](https://flowweaver.se/install.html).
-Paketen publiceras inte på npm ännu.
+The whole way, with version-pinned addresses and the editor:
+[flowweaver.se/en/install.html](https://flowweaver.se/en/install.html).
+The packages are not on npm yet.
 
-## Det här finns i repot
+## What is in the repo
 
 | | |
 | --- | --- |
-| `src/viewer/` | Visaren och det gemensamma — det en besökares sida laddar |
-| `src/editor/` | Editorn |
-| `src/host/` | *Mina guider*: en referensvärd över lagringskontraktet |
-| `integrations/reference-receiver/` | Referensvärden för lagring och inloggning |
-| `docs/` | Kontrakten, kraven och arkitekturen |
-| `demo/` | Demon ovan |
+| `src/viewer/` | The viewer and what is shared — what a visitor's page loads |
+| `src/editor/` | The editor |
+| `src/host/` | *My guides*: a reference host over the storage contract |
+| `integrations/reference-receiver/` | The reference host for storage and sign-in |
+| `docs/` | The contracts, the requirements and the architecture |
+| `demo/` | The demo above |
 
-Proven körs med `npm run test:run` (enhet) och `npx vitest run --project
-browser` (i Chromium), och bundlarna med `npm run smoke:lib`.
+The tests run with `npm run test:run` (unit) and `npx vitest run --project
+browser` (in Chromium), and the bundles with `npm run smoke:lib`.
 
-## Licens
+## Licence
 
-Visaren och allt utom editorn är **MIT**. Editorn är **Mozilla Public License
-2.0**: fri att använda och bygga produkter på, också i drift; ändrar ni i
-editorns egna filer och sprider dem delar ni de filerna under samma licens.
-Se [`LICENSE`](LICENSE).
+The viewer and everything but the editor are **MIT**. The editor is **Mozilla
+Public License 2.0**: free to use and to build products on, in production
+too; if you change the editor's own files and distribute them, you share
+those files under the same licence. See [`LICENSE`](LICENSE).
 
-**FlowWeaver PRO** lägger till det som låter besökaren *skicka in* —
-inlämning, e-postresultat, mottagare — och licensieras separat:
-[flowweaver.se/pro](https://flowweaver.se/pro/).
+**FlowWeaver PRO** adds what lets the visitor *send in* — submission, email
+results, recipients — and is licensed separately:
+[flowweaver.se/en/pro](https://flowweaver.se/en/pro/).
 
-## Bidra
+## Contributing
 
-Se [`CONTRIBUTING.md`](CONTRIBUTING.md). Varje commit signeras enligt
+See [`CONTRIBUTING.md`](CONTRIBUTING.md). Every commit is signed off under the
 Developer Certificate of Origin (`git commit -s`).
