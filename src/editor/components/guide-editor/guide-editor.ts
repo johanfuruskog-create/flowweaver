@@ -1173,8 +1173,9 @@ export class GuideEditor extends HTMLElement {
    *
    * Set on the **element**, not on the document: an editor embedded in a host's
    * own page must not recolour the page around it. The library does not store
-   * the choice — it applies and announces with `theme-change`, and the host
-   * decides whether it remembers (K6d).
+   * the choice and announces nothing: whoever offers the toggle announces it
+   * with `theme-change` (the example site's `<theme-toggle>` does), and the
+   * host decides whether it remembers (K6d).
    */
   set theme(value: ThemeChoice | null) {
     // `data-fw-theme`, not `data-theme`: the latter is a convention the host may

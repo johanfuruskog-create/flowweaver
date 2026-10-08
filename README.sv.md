@@ -55,6 +55,8 @@ sidan, och sidan hämtar den:
 
 Hela vägen, med versionslåsta adresser och editorn:
 [flowweaver.se/install.html](https://flowweaver.se/install.html).
+Varje attribut, egenskap, metod och händelse:
+[API-referensen](https://flowweaver.se/api.html).
 Paketen publiceras inte på npm ännu.
 
 ## Det här finns i repot

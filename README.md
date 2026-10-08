@@ -59,6 +59,8 @@ an object:
 
 The whole way, with version-pinned addresses and the editor:
 [flowweaver.se/en/install.html](https://flowweaver.se/en/install.html).
+Every attribute, property, method and event:
+[the API reference](https://flowweaver.se/en/api.html).
 The packages are not on npm yet.
 
 ## What is in the repo

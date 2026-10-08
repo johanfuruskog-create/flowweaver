@@ -79,11 +79,12 @@ export type { GuideVersion };
  * answer a frightening question, and one without needs a better warning than a
  * list could write.
  *
- * ## Not exported yet
+ * ## Exported
  *
- * It is in the codebase, in the tool's language, under test — and deliberately
- * not on a public entry. Public surface binds us the moment it exists, and this
- * shape changed three times in one evening. See `docs/EFTER-LANSERING.md`.
+ * It is on the editor's public entry (`src/entries/editor.ts`) and in the
+ * frozen surface; what each name does is in the API reference (/api.html).
+ * Its `actions` type, `VersionAction`, is not exported yet — a host writing
+ * TypeScript spells the strings out.
  */
 
 export type VersionOrder = "saved" | "label" | "custom";
