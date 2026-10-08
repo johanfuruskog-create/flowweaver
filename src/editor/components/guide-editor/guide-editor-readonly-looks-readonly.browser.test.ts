@@ -3,7 +3,13 @@ import { afterEach, describe, expect, test } from "vitest";
 import "../../../viewer/node-types/default-node-types";
 import "./guide-editor";
 
-import { everyFieldExampleGraph } from "../../../data/every-field-example-graph";
+import { proModule } from "../../../testing/optional-pro";
+import type { GraphData } from "../../../viewer/types/graph";
+
+// Felanmälan is PRO's since 8/10 (free text, consent, attach file); the open
+// repo has no guide with every field, so these stand down there.
+const { everyFieldExampleGraph } = ((await proModule("data/every-field-example-graph.ts")) ?? {}) as { everyFieldExampleGraph?: GraphData };
+const PRO = Boolean(everyFieldExampleGraph);
 
 import type { FlowNode } from "../flow-node/flow-node";
 import type { GuideEditor } from "./guide-editor";
@@ -58,7 +64,7 @@ function mount(mode?: string, width = 1200): GuideEditor {
   editor.style.cssText = `display: block; width: ${width}px; height: 800px;`;
   if (mode) editor.setAttribute("mode", mode);
   document.body.append(editor);
-  editor.graph = everyFieldExampleGraph;
+  editor.graph = everyFieldExampleGraph!;
   return editor;
 }
 
@@ -124,7 +130,7 @@ function canvasShare(editor: GuideEditor): number {
   return whole === 0 ? 0 : drawn / whole;
 }
 
-describe("the workspace", () => {
+describe.runIf(PRO)("the workspace", () => {
   // The palette is a grid item, and hiding it for real took it out of the grid
   // — so the canvas slid into the palette's `auto` column and collapsed to a
   // couple of pixels while the `1fr` column stood empty. Nobody saw it while
@@ -142,7 +148,7 @@ describe("the workspace", () => {
   );
 });
 
-describe("the read-only canvas", () => {
+describe.runIf(PRO)("the read-only canvas", () => {
   test("draws no grip, no drop hint and no palette — and keeps the ports inert", async () => {
     const editor = mount();
     await settle();
@@ -211,7 +217,7 @@ describe("the read-only canvas", () => {
  * something you may not touch is the same lie as a grip here — which is why the
  * case lives in this file and not beside the menu that lights the eyes.
  */
-describe("what a read-only canvas draws of the two views", () => {
+describe.runIf(PRO)("what a read-only canvas draws of the two views", () => {
   test.each([
     ["läsläge", undefined],
     ["översättningsläge", "translator"],

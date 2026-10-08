@@ -6,13 +6,11 @@ import "../viewer/components/guide-preview/guide-preview";
 
 import { exampleGraph } from "./example-graph";
 import { businessFormExampleGraph } from "./business-form-example-graph";
-import { housingAllowanceExampleGraph } from "./housing-allowance-example-graph";
 import { housingAllowanceCalcExampleGraph } from "./housing-allowance-calc-example-graph";
 import { loanCalculatorExampleGraph } from "./loan-calculator-example-graph";
 import { housingScreeningExampleGraph } from "./housing-screening-example-graph";
-import { basicExampleGraph, serviceExampleGraph } from "./profile-example-graphs";
+import { basicExampleGraph } from "./profile-example-graphs";
 import { troubleshootingExampleGraph } from "./troubleshooting-example-graph";
-import { everyFieldExampleGraph } from "./every-field-example-graph";
 import { pageBuilderExampleGraph } from "./page-builder-example-graph";
 import { citizenshipExampleGraph } from "./citizenship-example-graph";
 import { municipalityExampleGraph } from "./municipality-example-graph";
@@ -34,6 +32,9 @@ const { borrowExampleGraph } = ((await proModule("data/borrow-example-graph.ts")
 const { formOrderExampleGraph } = ((await proModule("data/form-order-example-graph.ts")) ?? {}) as { formOrderExampleGraph: GraphData };
 const { surveyExampleGraph } = ((await proModule("data/survey-example-graph.ts")) ?? {}) as { surveyExampleGraph: GraphData };
 const { conferenceExampleGraph } = ((await proModule("data/conference-example-graph.ts")) ?? {}) as { conferenceExampleGraph: GraphData };
+const { everyFieldExampleGraph } = ((await proModule("data/every-field-example-graph.ts")) ?? {}) as { everyFieldExampleGraph: GraphData };
+const { housingAllowanceExampleGraph } = ((await proModule("data/housing-allowance-example-graph.ts")) ?? {}) as { housingAllowanceExampleGraph: GraphData };
+const { serviceExampleGraph } = ((await proModule("data/service-example-graph.ts")) ?? {}) as { serviceExampleGraph: GraphData };
 
 /**
  * No two nodes in a bundled example may sit on top of each other.

@@ -86,6 +86,13 @@ those files under the same licence. See [`LICENSE`](LICENSE).
 results, recipients — and is licensed separately:
 [flowweaver.se/en/pro](https://flowweaver.se/en/pro/).
 
+## How it is built
+
+FlowWeaver is built by Johan Furuskog with an AI assistant, Claude, writing
+much of the code alongside him — which is why Claude appears among the
+contributors. Every change is reviewed, tested and signed off by Johan, who
+answers for it.
+
 ## Contributing
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md). Every commit is signed off under the

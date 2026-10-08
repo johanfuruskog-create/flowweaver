@@ -1,6 +1,11 @@
 import { describe, expect, test } from "vitest";
 import "../../viewer/node-types/default-node-types";
-import { BUNDLED_GRAPHS } from "../../data/bundled-graphs";
+import { BUNDLED_GRAPHS as OPEN_GRAPHS } from "../../data/bundled-graphs";
+import { proModule } from "../../testing/optional-pro";
+
+// Every guide here, PRO's included where PRO is (see rich-text-model.test.ts).
+const BUNDLED_GRAPHS: Array<[string, GraphData]> =
+  ((await proModule("data/bundled-graphs.ts"))?.ALL_BUNDLED_GRAPHS as Array<[string, GraphData]> | undefined) ?? OPEN_GRAPHS;
 import { CalculationService } from "../../viewer/services/calculation-service";
 import type { GraphData } from "../../viewer/types/graph";
 import { caret, insertText, isFaithful, parseRichText, writeRichText, type ParseOptions, type RichText } from "./rich-text-model";

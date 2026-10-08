@@ -82,6 +82,12 @@ Se [`LICENSE`](LICENSE).
 inlämning, e-postresultat, mottagare — och licensieras separat:
 [flowweaver.se/pro](https://flowweaver.se/pro/).
 
+## Hur det byggs
+
+FlowWeaver byggs av Johan Furuskog tillsammans med en AI-assistent, Claude,
+som skriver mycket av koden — därför står Claude bland bidragsgivarna. Varje
+ändring granskas, testas och signeras av Johan, som står för den.
+
 ## Bidra
 
 Se [`CONTRIBUTING.md`](CONTRIBUTING.md). Varje commit signeras enligt

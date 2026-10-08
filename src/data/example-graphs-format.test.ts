@@ -2,7 +2,15 @@ import { describe, expect, test } from "vitest";
 
 import "../viewer/node-types/default-node-types";
 
-import { BUNDLED_GRAPHS } from "./bundled-graphs";
+import { BUNDLED_GRAPHS as OPEN_GRAPHS } from "./bundled-graphs";
+import { proModule, withPro } from "../testing/optional-pro";
+
+// Every guide here: PRO's list (open and PRO) where it is, the open list where
+// not — Felanmälan and the housing-allowance details moved to PRO 8/10 and
+// would otherwise have left this check.
+await withPro("viewer/node-types/submission-node-types.ts");
+const BUNDLED_GRAPHS: Array<[string, GraphData]> =
+  ((await proModule("data/bundled-graphs.ts"))?.ALL_BUNDLED_GRAPHS as Array<[string, GraphData]> | undefined) ?? OPEN_GRAPHS;
 
 import {
   CURRENT_GRAPH_VERSION,

@@ -4,7 +4,13 @@ import { afterEach, describe, expect, test } from "vitest";
 import "../../../viewer/node-types/default-node-types";
 import "./guide-editor";
 
-import { BUNDLED_GRAPHS } from "../../../data/bundled-graphs";
+import { BUNDLED_GRAPHS as OPEN_GRAPHS } from "../../../data/bundled-graphs";
+import { proModule, withPro } from "../../../testing/optional-pro";
+
+// Every guide here, PRO's included where PRO is (see rich-text-model.test.ts).
+await withPro("viewer/node-types/submission-node-types.ts", "editor/node-types/submission-node-properties.ts");
+const BUNDLED_GRAPHS: Array<[string, GraphData]> =
+  ((await proModule("data/bundled-graphs.ts"))?.ALL_BUNDLED_GRAPHS as Array<[string, GraphData]> | undefined) ?? OPEN_GRAPHS;
 import { getNodeType } from "../../../viewer/node-types/node-type-registry";
 
 import type { GuideEditor } from "./guide-editor";

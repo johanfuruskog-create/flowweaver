@@ -5,16 +5,12 @@ import { GuideTraversalEngine } from "../viewer/core/guide-traversal-engine";
 import { validateGraph } from "../editor/core/graph-validator";
 import { exampleGraph } from "./example-graph";
 import { pageBuilderExampleGraph } from "./page-builder-example-graph";
-import {
-  basicExampleGraph,
-  serviceExampleGraph,
-} from "./profile-example-graphs";
+import { basicExampleGraph } from "./profile-example-graphs";
 
 describe("exampleGraph", () => {
   test("has valid examples for every feature level", () => {
     expect(validateGraph(basicExampleGraph)).toEqual([]);
     expect(validateGraph(exampleGraph)).toEqual([]);
-    expect(validateGraph(serviceExampleGraph)).toEqual([]);
   });
 
   test("keeps Basic to choice questions and results", () => {
@@ -37,37 +33,6 @@ describe("exampleGraph", () => {
     expect(basicGuide.answer("basic-permit-yes")).toMatchObject({
       success: true,
       node: { id: "basic-ready" },
-    });
-  });
-
-  test("computes the mortgage and branches on the computed margin", () => {
-    const guide = new GuideTraversalEngine(serviceExampleGraph);
-    guide.answerPage({ applicantName: "Kim Andersson", municipality: "Örebro" });
-    guide.answerValue("3000000"); // pris
-
-    // The income answer passes automatically through the calculation and the rule to the result.
-    const result = guide.answerValue("600000"); // inkomst
-    expect(result).toMatchObject({
-      success: true,
-      node: { id: "service-result-ok" },
-    });
-    expect(guide.getAnswers()).toMatchObject({
-      pris: "3000000",
-      kontantinsats: "450000",
-      handpenning: "300000",
-      "maxLån": "2550000",
-    });
-  });
-
-  test("sends an over-priced home down the path needing a larger deposit", () => {
-    const guide = new GuideTraversalEngine(serviceExampleGraph);
-    guide.answerPage({ applicantName: "Kim Andersson", municipality: "Örebro" });
-    guide.answerValue("3000000"); // pris
-
-    // Low income → maxLån is capped by income → the margin turns negative.
-    expect(guide.answerValue("300000")).toMatchObject({
-      success: true,
-      node: { id: "service-result-more" },
     });
   });
 

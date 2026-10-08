@@ -4,7 +4,11 @@ import "../../node-types/default-node-types";
 import "./guide-preview";
 
 import { effektivBakgrund, kontrast, tillRgba } from "../../../testing/contrast";
-import { housingAllowanceExampleGraph } from "../../../data/housing-allowance-example-graph";
+import { proModule } from "../../../testing/optional-pro";
+
+// The housing-allowance details guide is PRO's since 8/10 (its first step is a
+// free-text identity number), so this stands down in the open repo.
+const { housingAllowanceExampleGraph } = ((await proModule("data/housing-allowance-example-graph.ts")) ?? {}) as { housingAllowanceExampleGraph?: unknown };
 
 import type { GuidePreview } from "./guide-preview";
 
@@ -72,7 +76,7 @@ async function trailAfterTwoSteps(theme: "light" | "dark"): Promise<HTMLElement[
   return [trail, ...Array.from(trail.querySelectorAll<HTMLElement>("span"))];
 }
 
-describe.each(["light", "dark"] as const)("vägen hit i %s läge", (theme) => {
+describe.runIf(Boolean(housingAllowanceExampleGraph)).each(["light", "dark"] as const)("vägen hit i %s läge", (theme) => {
   test("står på en yta vi själva målat", async () => {
     const [trail] = await trailAfterTwoSteps(theme);
 

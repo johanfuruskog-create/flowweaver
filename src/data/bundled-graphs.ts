@@ -1,8 +1,6 @@
 import * as businessForm from "./business-form-example-graph";
 import * as citizenship from "./citizenship-example-graph";
-import * as everyField from "./every-field-example-graph";
 import * as example from "./example-graph";
-import * as housingAllowance from "./housing-allowance-example-graph";
 import * as housingAllowanceCalc from "./housing-allowance-calc-example-graph";
 import * as housingScreening from "./housing-screening-example-graph";
 import * as loan from "./loan-example-graph";
@@ -42,9 +40,7 @@ import type { GraphData } from "../viewer/types/graph";
 const MODULES: Record<string, Record<string, unknown>> = {
   "business-form": businessForm,
   citizenship,
-  "every-field": everyField,
   example,
-  "housing-allowance": housingAllowance,
   "housing-allowance-calc": housingAllowanceCalc,
   "housing-screening": housingScreening,
   loan,
