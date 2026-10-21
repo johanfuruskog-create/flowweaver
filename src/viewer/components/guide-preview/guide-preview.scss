@@ -3238,7 +3238,8 @@ $waiting-pulse-peak: var(--fw-text-strong);
    sida. Samma regel som resten. Talet sänkt 10rem → 9rem samma dag (se
    `.guide-preview__navigation button` ovan) — "Lägg till"s egen ordbredd
    (155 px) ligger redan över 9rem (144 px), så ordet bär golvet här precis
-   som för Försök igen; "Ta bort" är kortare och får sin bredd av 9rem. */
+   som för Försök igen. "Ta bort" har inget golv sedan B3 (30/9) — se
+   `min-width: 0` nedan. */
 .guide-preview__repeat-remove,
 .guide-preview__repeat-add {
   min-height: 44px;

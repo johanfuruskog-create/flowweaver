@@ -1,3 +1,4 @@
+import { DOC_END, LINE_START } from "../../../testing/caret-keys";
 import { userEvent } from "@vitest/browser/context";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -36,7 +37,7 @@ function text(field: RichTextField): HTMLElement {
 /** Caret at the end of the text: focus, then Ctrl+End — the keyboard's own way. */
 async function focusEnd(field: RichTextField): Promise<void> {
   text(field).focus();
-  await userEvent.keyboard("{Control>}{End}{/Control}");
+  await userEvent.keyboard(DOC_END);
 }
 
 /*
@@ -499,7 +500,7 @@ describe("<rich-text-field> — brickor och Infoga svar (Del C)", () => {
     const field = mount("ab{{fornamn}}cd");
 
     await focusEnd(field);
-    await userEvent.keyboard("{Home}{ArrowRight}{ArrowRight}{Delete}");
+    await userEvent.keyboard(`${LINE_START}{ArrowRight}{ArrowRight}{Delete}`);
 
     expect(field.value).toBe("abcd");
   });
@@ -1229,7 +1230,7 @@ describe("<rich-text-field> — brickor och Infoga svar (Del C)", () => {
 
     expect(chip.getBoundingClientRect().top, "brickan har brutits till nästa rad").toBeGreaterThan(words.getClientRects()[0]!.bottom);
 
-    await userEvent.keyboard("{Home}X");
+    await userEvent.keyboard(`${LINE_START}X`);
     expect(field.value).toBe("Välkommen till oss! X{{fornamn}}");
   });
 
@@ -1430,6 +1431,22 @@ describe("<rich-text-field> — brickor och Infoga svar (Del C)", () => {
     expectOnlyModelDom(field);
   });
 
+  /*
+   * Firefox's Cmd/Ctrl+A in the field selects the editable's children:
+   * (text, 0) to (text, number of blocks) — measured 10/10, where Chromium and
+   * WebKit give text nodes. The end point after the last block read as the
+   * start of the last block, so a letter typed over everything was put first
+   * and Delete took one character.
+   */
+  it("en punkt efter sista stycket är slutet av texten, inte början av sista stycket", () => {
+    const root = document.createElement("div");
+
+    root.innerHTML = "<p>Hej</p><p>på dig</p>";
+    const reading = readDom(root, [{ node: root, offset: 0 }, { node: root, offset: 2 }]);
+
+    expect(reading.positions).toEqual([{ block: 0, offset: 0 }, { block: 1, offset: 6 }]);
+  });
+
   it("läsningen tar bort ordfogaren i brickans omslag, aldrig en någon annanstans", () => {
     const p = document.createElement("p");
 
@@ -1443,7 +1460,7 @@ describe("<rich-text-field> — brickor och Infoga svar (Del C)", () => {
 
   it.each([
     ["vänsterpil", "{ArrowLeft}{ArrowLeft}{ArrowLeft}X", "HejX {{fornamn}}!"],
-    ["högerpil", "{Home}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}X", "Hej {{fornamn}}X!"],
+    ["högerpil", `${LINE_START}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}X`, "Hej {{fornamn}}X!"],
   ])("%s går förbi brickan ett steg per tryck, ingen hållplats emellan", async (_name, keys, expected) => {
     const field = mount("Hej {{fornamn}}!", { features: ["variable"] });
 

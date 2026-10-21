@@ -1196,6 +1196,11 @@ export const EDITOR_STRINGS: Record<string, LocalizedTextMap> = {
     sv: "Texten innehåller något som inte kan visas formaterat, så den visas som den är lagrad.",
     en: "The text holds something that cannot be shown formatted, so it is shown as it is stored.",
   },
+  // Johans beslut 9/10 (A): Apples Skrivverktyg får inte ta en bricka eller en länk — rich-text-field.ts.
+  "editor.properties.writing-tools-refused": {
+    sv: "Skrivverktyg kan inte användas på text med svar eller länkar — markera bara texten runt dem.",
+    en: "Writing Tools can't be used on text with answers or links — select only the text around them.",
+  },
   "editor.properties.answer-chip": { sv: "{label}, svar", en: "{label}, answer" },
   // Story 139: the formula's chip is a variable.
   "editor.properties.variable-chip": { sv: "{label}, variabel", en: "{label}, variable" },

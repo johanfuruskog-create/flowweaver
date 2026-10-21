@@ -44,19 +44,43 @@ function escapeHtml(value: string): string {
  * schemes.
  */
 function safeLink(value: string): string | null {
-  const trimmed = value.trim();
+  /*
+   * Read the address the way the browser will (8/10, the security analysis).
+   * The URL parser drops every tab and newline inside an address and the C0
+   * controls and spaces at its ends before it looks for a scheme, so
+   * `java<TAB>script:` passed the scheme test below as "no scheme" and became
+   * `javascript:` in the attribute — measured in Chromium: it ran on a click.
+   * The cleaned string is what is judged AND what is written, so the two
+   * cannot differ.
+   */
+  // eslint-disable-next-line no-control-regex
+  const cleaned = value.replace(/[\t\n\r]/g, "").replace(/^[\u0000-\u0020]+|[\u0000-\u0020]+$/g, "");
 
-  if (!trimmed || trimmed.startsWith("//")) {
+  if (!cleaned) {
     return null;
   }
 
-  const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(trimmed);
+  const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(cleaned);
 
-  if (scheme && !/^(https?|mailto)$/i.test(scheme[1] ?? "")) {
+  if (scheme) {
+    return /^(https?|mailto)$/i.test(scheme[1] ?? "") ? escapeHtml(cleaned) : null;
+  }
+
+  /*
+   * No scheme: a path on this site — which the browser decides, not a prefix
+   * test. `//host`, `/\host` and `\\host` all leave the site (a backslash is
+   * a slash to the parser), so the address is resolved against a stand-in
+   * origin and must stay on it.
+   */
+  const base = "https://same-site.invalid/page/";
+  let resolved: URL;
+  try {
+    resolved = new URL(cleaned, base);
+  } catch {
     return null;
   }
 
-  return escapeHtml(trimmed);
+  return resolved.origin === new URL(base).origin ? escapeHtml(cleaned) : null;
 }
 
 function renderInline(value: string, features: Set<FormattingFeature>): string {

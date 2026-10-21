@@ -33,9 +33,45 @@ Accept: application/json
 | `limit` | Högsta antal förslag som visas. I dag alltid `8`. |
 | `locale` | Guidens visningsspråk, t.ex. `sv`. Utelämnas om guiden är enspråkig. |
 
-`endpoint` får vara relativ (`/api/kommuner`) eller absolut. Anropet görs med
-`fetch` utan credentials — sitter tjänsten bakom inloggning är det BFF:en som
-löser det, inte fältet.
+`endpoint` får vara relativ (`/api/kommuner`) eller absolut, men en absolut
+adress på ett annat ursprung än sidans anropas bara om **värden** har tillåtit
+det — se nästa avsnitt.
+
+Anropet görs med `fetch` och `credentials: "omit"`: **inga cookies följer med,
+inte heller till sidans eget ursprung**. Sitter tjänsten bakom inloggning är det
+BFF:en som löser det, inte fältet. Före 9/10 2026 stod det här också, men
+anropet använde `fetch`s standardläge, och mätt i Chromium nådde en cookie som
+sidan satt fram till en relativ endpoint. Nu säger koden och kontraktet samma sak.
+
+## Vilka adresser ett uppslag får nå
+
+Det besökaren skriver skickas till fältets `endpoint`, och `endpoint` står i
+guiden. En guide kan importeras, delas och redigeras av andra än den som driver
+sidan — därför är det **värden**, inte guiden, som avgör vart besökarens text
+får gå.
+
+```js
+import { registerLookupOrigins } from "@johanfuruskog-create/flowweaver-viewer"; // eller -editor
+
+registerLookupOrigins(["https://api.kommunen.se"]);
+```
+
+- **Sidans eget ursprung är alltid tillåtet.** En relativ endpoint
+  (`/api/kommuner`) behöver ingen lista; det är den form vi rekommenderar.
+- **Andra ursprung bara om de står i listan.** Varje post är ett rent ursprung —
+  schema, värd och eventuell port, inget efter. En post med sökväg eller utan
+  schema avvisas med ett fel som namnger den, så att listan aldrig tyst tillåter
+  något annat än det som skrevs.
+- **Utan lista** går uppslag bara till sidans eget ursprung.
+- En adress utanför listan **anropas aldrig**. Fältet säger då samma sak som när
+  uppslaget inte kunde nås — *"Uppslaget kunde inte nås"* — och listan förblir
+  stängd. Redaktören som provar guiden ser alltså felet innan en besökare gör det.
+- Ett nytt anrop ersätter listan; `unregisterLookupOrigins()` tar bort den.
+  Listan gäller både visaren och editorns förhandsvisning.
+
+Bedömningen görs på adressen så som webbläsaren läser den, så `//annan.se/…`,
+`data:` och liknande vägras av samma regel. Listan ersätter inte sidans egen
+`connect-src` i CSP:n — båda gäller, och den strängaste vinner.
 
 Fältet väntar **200 ms efter sista tangenttrycket** innan det söker, och ett
 äldre svar som kommer efter ett nyare kastas. Räkna alltså med färre anrop än
@@ -56,7 +92,8 @@ något att jämföra mot i stället för en tabell att tolka.
 
 Under `/broken/*` svarar den fel med flit, en väg per avvisningsregel längre ned.
 `npm run smoke:lookup` kör ett riktigt fält mot alla vägarna och kontrollerar att
-det avvisar de trasiga — 9 kontroller, den enda plats där `source: "service"` går
+det avvisar de trasiga — och att en adress utanför värdens lista inte anropas
+förrän den registrerats — 10 kontroller, den enda plats där `source: "service"` går
 en hel väg över HTTP.
 
 ## Svar

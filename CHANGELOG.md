@@ -5,31 +5,271 @@ när något bryter — **vad en värd måste göra**.
 
 Versionerna följer semver med 0.x-regeln: en brytande ändring höjer minor.
 
-## Osläppt — fälten för inlämning flyttar till PRO
+## 0.12.0 — öppen kärna och FlowWeaver PRO, och granskningens säkerhetsrättelser
 
-**Vad en värd måste göra:** ingenting för guider som redan finns — de ritas
-och redigeras som förut. Det öppna `flowweaver-editor` erbjuder inte längre
-fritext, betyg, samtycke, bifoga fil och granska för nya noder, och inte
-mallarna e-post, telefon och personnummer; `flowweaver-pro-editor` gör det.
-Knappen *Nytt formulär* i verktygsfältet finns bara i PRO.
+**Vad en värd måste göra.** Det här släppet bryter på flera ställen. Gå
+igenom listan; varje punkt har sitt avsnitt nedan.
 
-## Osläppt — editorn blir öppen källkod: MPL-2.0
+1. **Skickar era guider in något** — noderna *Inlämning* eller
+   *E-postresultat*, eller `registerSubmissionReceiver` — laddar ni
+   PRO-bundlarna, `flowweaver-pro-viewer` och `flowweaver-pro-editor`. De
+   öppna bundlarna under `flowweaver.se/lib/` har inte längre
+   inlämningsnamnen; PRO-bundlarna ligger inte där utan följer med licensen.
+2. **Uppgradera visaren samtidigt som editorn, eller före.** Grafformatet
+   har gått från v7 till **v10**. En guide sparad med 0.12-editorn öppnas
+   inte av en 0.11-visare (*"Guiden skapades i en nyare version (10) än vad
+   som stöds (7)"*). Äldre guider lyfts automatiskt som förut.
+3. **Läser er mottagare svaren:** ett svar är inte längre alltid en sträng,
+   och svarets del heter `value`, inte `code` — se *Svaren har former*.
+4. **Går ett uppslagsfält till ett annat ursprung än sidans:** anropa
+   `registerLookupOrigins(["https://…"])` innan besökaren slår upp, annars
+   nås det inte. Uppslaget skickar inga cookies längre.
+5. **Installerar ni paketfilen** (`npm install https://flowweaver.se/lib/…-latest.tgz`):
+   visaren och editorn är två filer, och paketen i dem heter
+   `@johanfuruskog-create/flowweaver-viewer` och
+   `@johanfuruskog-create/flowweaver-editor`. Inget av dem finns i
+   npm-registret; det är filerna på flowweaver.se som installeras.
+   `@johanfuruskog-create/flowweaver` får inga fler versioner.
+6. **Kör ni referensmottagaren** (`integrations/reference-receiver`): en
+   `LOGINS`-rad i `.env` för alla som ska logga in utan roll,
+   `FLOWWEAVER_ORIGIN`/`ALLOWED_ORIGINS` för varje sida som skriver, och en
+   gallring en gång — se *Referensmottagaren*. Vad värden läser ur `.env`
+   står i `.env.example` i repots rot.
+7. **Ser annorlunda ut:** sidopanelen och nodpaletten börjar infällda. Vill
+   ni ha dem öppna skriver ni `panel-open` / `palette-open`.
+8. **Sätter ni guiden som objekt** (`element.graph = …`): den prövas nu som en
+   importerad fil — `nodes` och `connections` som listor, id:n av säkra tecken,
+   varje nod med position. En guide som inte håller får ett avslag med en
+   mening i stället för att ritas; förut ritades den, eller kastade ett
+   undantag längre in. Spara om guiden i editorn om den avvisas.
 
-**Vad en värd måste göra:** ingenting. Editorn (`src/editor/`,
-`flowweaver-editor`) går från Business Source License 1.1 till **Mozilla
-Public License 2.0** från nästa version. Du får använda den i drift utan att
-fråga; ändrar du i editorns egna filer och sprider dem delar du de filerna
-under MPL. Versioner publicerade före bytet behåller BSL 1.1. Visaren är MIT
-som förut. Det som säljs är FlowWeaver PRO, med en egen licens.
+En adress på en linje eller en exakt version (`lib/0.11/`, `lib/0.11.0/`)
+står still tills ni byter siffran — se *Låsta versioner är låsta*.
 
-## Osläppt — nodpaletten blir en kategorilist med sökning
+### Nytt sedan 0.11.0
 
-**Vad en värd måste göra:** ingenting för att editorn ska fungera. Nodpaletten
-är nu en 57 px spalt med en knapp per kategori; en kategori med flera noder
-öppnar dem bredvid spalten, en med en enda lägger till den direkt. » öppnar
-hela paletten över flödet, med sökfältet *Sök nod* överst (berättelse 146).
-Den börjar infälld i alla bredder — den fälls inte längre ihop av sig själv
-under 1200 px.
+Tillägg — inget här kräver något av en värd. Varje namn finns i
+API-referensen (`/api.html`).
+
+- **I editorn för redaktören:** en zoomrad och en minikarta med
+  kopplingslinjerna; textfält med variabelbrickor, fetstil och länkar;
+  uträkningar där formeln skrivs med brickor; en sökbar fältväljare i
+  regler och villkor; *Prova guiden* — provkörning steg för steg på
+  arbetsytan; sidopanelens bredd dras av redaktören.
+- **`guide-progress`** på `<guide-preview>`: besökarens väg (start, nästa,
+  bakåt, resultat, börja om, stoppad av validering, inskickad i PRO) för
+  statistik. Bär aldrig svar.
+- **Svar värden redan vet:** `given` (`{ answers, nodeId? }`) fyller fälten
+  och kan öppna guiden på ett steg; `unmatchedGiven()` säger vilka namn
+  ingen nod tar emot.
+- **Svaren:** `answerText`, `answerList`, `answerField`, `isAnswerEmpty`
+  och typerna `AnswerValue`, `Answers`, `AnswerFields`.
+- **Färgskalor:** `palettes` (hav, skog, skiffer, tegel) och
+  `applyPalette(palette | null)`, ur båda paketen.
+- **Editorn mot värden:** `save-request` (Ctrl+S — `preventDefault()` om ni
+  sparar), `registerLinkPicker` / `unregisterLinkPicker` (er egen
+  länkdialog), `revealNode(nodeId, fieldId?)`, `refreshGraph(graph)` (ny
+  version utan att vyn flyttar), `panel-width` / `panel-width-changed`,
+  `mode-notice="off"`, `get-started-href`, och `buildId` för felsökning.
+- **Versionslistan:** `actions` på `<guide-versions>` säger vilka knappar
+  er lagring svarar på; `version-restore-intent` när redaktören vill
+  fortsätta från en äldre version (bara med `"restore"` i `actions`).
+- **Visaren i övrigt:** `example-files` (en knapp som bifogar guidens
+  exempelfoto, för demosidor) och `reviewDeclarationEnabled` (granskningens
+  redovisning av vad beskedet byggde på; `false` där inget beslut finns).
+
+### Öppen kärna: FlowWeaver PRO är egna bundlar
+
+Registrerar du en mottagare, eller använder noderna *Inlämning* och
+*E-postresultat*, laddar du PRO-bundlarna i stället för de öppna:
+`flowweaver-pro-viewer` och `flowweaver-pro-editor` (samma globala API plus
+`registerSubmissionReceiver`, `listSubmissionRecipients`,
+`VISITOR_RECIPIENT_ID`, `submissionSchema` och inlämningstyperna). De öppna
+bundlarna exporterar inte längre inlämningsnamnen, och en öppen visare som
+möter en guide med en inlämning ritar steget som ett vanligt resultat —
+rubrik och text, inget skickas, inget referensnummer hittas på — och varnar
+i konsolen. Sparade guider är oförändrade: typen `SubmissionSchema` är kvar
+som öppet kontrakt (`meta.submissionSchema`), bara koden som räknar fram
+schemat är PRO:s.
+
+**Fälten för inlämning är PRO.** Det öppna `flowweaver-editor` erbjuder inte
+längre fritext, betyg, samtycke, bifoga fil och granska för nya noder, och
+inte mallarna e-post, telefon och personnummer; `flowweaver-pro-editor` gör
+det. Knappen *Nytt formulär* i verktygsfältet finns bara i PRO. Guider som
+redan har fälten ritas och redigeras som förut.
+
+**Inlämningen är en egen modul.** `modules="service"` (eller `tjanst`)
+betyder nu två moduler, `pages` och `submission`, och ger exakt det det gav.
+**Ett undantag:** en editor i `feature-level="basic"` erbjuder inte längre
+noden *Inlämning* i paletten; den kräver kapaciteten `submission`. Guider som
+redan har noden bevaras vid öppning och export. Vill du ha den i en enkel
+editor: lägg till `submission` i `modules`. `EditorCapabilities` har ett
+sextonde namn, `submission`.
+
+**Varför.** Det öppna FlowWeaver hjälper besökaren fram till ett svar;
+FlowWeaver PRO låter besökaren skicka in det. Koden som skickar bor i
+`src/pro/` och ingen öppen fil importerar den (grinden `open-core.test.ts`).
+
+### Editorn är öppen källkod: MPL-2.0
+
+Editorn (`src/editor/`, `flowweaver-editor`) går från Business Source
+License 1.1 till **Mozilla Public License 2.0** från och med den här
+versionen. Du får använda den i drift utan att fråga; ändrar du i editorns
+egna filer och sprider dem delar du de filerna under MPL. Versioner
+publicerade före bytet behåller BSL 1.1. Visaren är MIT som förut. Det som
+säljs är FlowWeaver PRO, med en egen licens. Varje bundel bär sin licens på
+första raden.
+
+### Två paketfiler
+
+`flowweaver-viewer-latest.tgz` och `flowweaver-editor-latest.tgz` under
+`flowweaver.se/lib/`. Paketen i dem heter
+`@johanfuruskog-create/flowweaver-viewer` (MIT, med `tokens.css` och
+visarens typer) och `@johanfuruskog-create/flowweaver-editor` (MPL-2.0, med
+visarpaketet som beroende — installera båda filerna i samma `npm install`).
+De publiceras inte i npm-registret. `import "…/flowweaver/viewer"` blir
+`"@johanfuruskog-create/flowweaver-viewer"`, editorn likaså, och
+`tokens.css` hämtas ur visarpaketet. Bundlarna på flowweaver.se och i
+releasen (`flowweaver-viewer.js`, `flowweaver-editor.js` och deras
+`.global.js`) heter som förut. Det som är nytt gäller bara paketfilerna ovan.
+
+### Grafformatet v10, och svaren har former
+
+Guider lyfts automatiskt från v7 till v10 när de läses in:
+
+- **v8** — e-postresultatets och inlämningens mottagare blir listor:
+  `recipientIds` och `copyRecipientIds`. `recipientId` står kvar i
+  inlämningen och bär den första.
+- **v9** — en del av ett svar slutar vara en egen variabel: villkor och
+  mallar skriver `land.code`, och `codeVariableName` försvinner.
+- **v10** — delen heter `value`: `land.code` blir `land.value`.
+
+Migreringen skriver om villkor och mallar i guiderna. **En mottagare som
+läser `code` ur en inlämning måste ni ändra själva** — nyckeln finns inte
+längre, och den ligger inte kvar som alias.
+
+**Svaren har former.** Ett svar är `string`, `string[]` eller
+`Record<string, string>[]` — en sak, flera, eller flera med delar. En sida
+som upprepas lämnar den sista formen också, en post per ifyllning. Före
+2026-08-30 kom flera värden som en sträng med radbrytningar; läsarna förstår
+den formen än, men guiden skickar den aldrig mer. **Skriv aldrig ut ett svar
+med `String(svaret)`** — det ger `[object Object]`. Visaren exporterar
+läsarna `answerText`, `answerList` och `answerField`; exemplen står i
+`docs/INLAMNING-KONTRAKT.md`.
+
+### Säkerhet: det granskningen 8/10 hittade
+
+- **Länkar i guidens text bedöms som webbläsaren läser dem.** En tabb inne i
+  schemat eller ett styrtecken före det gömde `javascript:` för filtret, och
+  webbläsaren tog bort tecknen igen. Adressen rensas nu som URL-tolken rensar
+  den. En länk utan schema måste stanna på sidans eget ursprung, så också
+  `/\värd` och `\\värd` vägras, som `//värd` redan gjorde.
+- **Uppslag går bara dit värden sagt.** `registerLookupOrigins(origins)` och
+  `unregisterLookupOrigins()`, ur både visaren och editorn. Sidans eget
+  ursprung är alltid tillåtet, andra bara om de står i listan; utan lista
+  bara sidans eget. En vägrad adress anropas aldrig och fältet säger
+  *"Uppslaget kunde inte nås"*. Anropet görs med `credentials: "omit"` — en
+  uppslagstjänst som läste sidans cookie måste autentisera på annat sätt.
+  Kontraktet: `docs/UPPSLAG-KONTRAKT.md`, *Vilka adresser ett uppslag får nå*.
+- **Mönster som kan låsa webbläsaren körs inte.** Ett fälts eget mönster
+  (`format: "regex"`) med en upprepad grupp vars insida kan matcha på flera
+  sätt, eller med en bakåtreferens, prövas inte — svaret släpps igenom, som
+  för ett mönster som inte går att kompilera. Ett vanligt namnmönster tog
+  4,5 sekunder på ett namn med ett tecken för mycket. Ny hälsokod
+  **`pattern-not-run`** säger det i editorn, så kör hälsokontrollen på era
+  guider. PRO-schemat exporterar inte längre ett mönster visaren inte kör.
+- **En inlämning bär filens namn, inte filen.** Ett filfälts svar i
+  inlämningen är filnamnet (eller `{label, markings}`), aldrig bytes. Vill er
+  mottagare ha filen läser ni `getFiles()` på er `<guide-preview>` i er
+  `submit` — se `docs/FIL-KONTRAKT.md`, *Inlämningsnoden bär inte filen*.
+  Ny hälsoregel i PRO, **`file-not-submitted`**, varnar på filfält i en
+  guide som skickas in.
+- **`?api=` i referensappen** (*Mina guider*, `src/host/`) gäller bara när
+  den pekar på den här datorn (`localhost`, `127.0.0.1`, `[::1]`). Annars
+  används sidans egen värd. Förut kunde en länk peka sidan och dess
+  inloggning mot en främmande server.
+
+### Låsta versioner är låsta
+
+Fram till 9/10 lade varje utrullning dagens bygge från main i den senaste
+versionens mappar, så `lib/0.11/` och `lib/0.11.0/` bar main i stället för
+släppet 27/8. De är återställda byte för byte till släppet. Nu gäller:
+
+- `lib/<x.y.z>/` är släppet, och det ändras aldrig.
+- `lib/<x.y>/` följer bara sina släppta patchar — aldrig main.
+- `lib/` utan version är den rullande kanalen: main, för demosidor, aldrig
+  för drift.
+
+### Safari, och fälten i editorn
+
+- **Skrivverktyg får inte ta en bricka eller en länk.** Apples Skrivverktyg,
+  i Safari och i Chrome, gjorde en variabelbricka till vanlig
+  text och tog bort länkar. En sådan omskrivning avvisas nu, och fältet
+  säger varför under sig. Vanlig skrivning, inklistring med Cmd/Ctrl+V och
+  radering påverkas inte.
+- **Rättat i Safari:** ett klick på etiketten *Svar eller värde* fokuserar
+  fältväljaren; språknamn skrivs med liten bokstav i löptext (*Källan på
+  engelska*, också besökarens rad *inte översatt till …*); zoom och
+  helskärm flyttar inte längre vyn några pixlar åt gången; en stor guide
+  ritas i editorn på en sjättedel av tiden (250 noder 3,9 s → 0,6 s).
+- **44 px:** editorns rullgardinsfält och nodmallsdialogens fält har samma
+  golv som textfälten, `var(--fw-control-height)`. Med ett smalt typsnitt
+  i `--fw-font` var de 42–43 px.
+
+### Referensmottagaren och Sitevision-modulen
+
+Gäller den som kör `integrations/reference-receiver` eller
+Sitevision-modulen. Biblioteket påverkas inte.
+
+- **Kvittensen till besökaren är fast text plus referensnummer** — inget ur
+  inlämningen. Förut kunde vem som helst låta mottagaren mejla valfri text
+  till valfri adress. Samma rättelse i Sitevision-modulen.
+- **En gräns per besökaradress:** 20 inlämningar i timmen
+  (`SUBMIT_LIMIT_PER_HOUR`), sedan `429 rate-limited` med `Retry-After`.
+  Ett återförsök med samma `submissionId` räknas inte.
+- **Referensnumren krockar aldrig;** vid krock dras ett nytt, och numret
+  blir längre hellre än att dela ut ett upptaget.
+- **Ett riktigt återförsök får inte längre `409`.** Den tid besökaren tagit
+  ingår inte längre i jämförelsen.
+- **Återförsöksraderna bär en hash, inte inlämningen**, och `prune` tar dem.
+  Rader från före uppgraderingen har hela texten — gallra dem en gång:
+  `node cases.mjs prune --older-than 1 --kind submission`.
+- **Inloggningen är en strikt lista.** Bara den som står i `ROLES`,
+  `ROLE_*` eller den nya `LOGINS` kommer in. `LOGINS` tar adresser eller
+  subjekt, kommaseparerade; en adress räknas bara när leverantören verifierat
+  den. **Utan `LOGINS`-rad kommer bara de med roll in.**
+- **Skrivningar från okända ursprung avvisas** med `403 origin`: en `POST`,
+  `PUT` eller `DELETE` vars `Origin` varken står i `FLOWWEAVER_ORIGIN` /
+  `ALLOWED_ORIGINS` eller är mottagarens egen. Utan `Origin` (er server,
+  curl) släpps den som förut. Förut kunde en sida på en syskondomän skapa
+  och publicera guider i en inloggad redaktörs namn.
+
+### Sidopanelen fälls in och lägger sig över flödet
+
+Sidopanelen (Egenskaper, Förhandsgranskning) börjar nu **infälld** till en
+57 px spalt vid arbetsytans kant och lägger sig **över** flödet när den
+öppnas, i stället för att stå bredvid det (berättelse 145). Vill du att den
+börjar öppen skriver du `panel-open` på `<guide-editor>` (eller
+`editor.panelOpen = true`) innan editorn ritas. Vill du minnas läget lyssnar
+du på `panel-open-changed` med `{ open }`, som kommer när redaktören öppnar
+eller fäller in den — aldrig när du själv sätter läget. Biblioteket sparar
+ingenting (K6e), precis som för `panel-width`.
+
+`panel-width` och `panel-width-changed` är oförändrade, men taket är nytt:
+bredden hålls mellan 380 px och ytan panelen ligger över, minus 200 px åt
+arbetsytans egna kontroller — inte längre editorns bredd minus 620, som
+var regeln medan panelen stod bredvid.
+
+Inget i guidens format ändras: panelens läge är en vy och hör aldrig till
+grafen.
+
+### Nodpaletten blir en kategorilist med sökning
+
+Nodpaletten är nu en 57 px spalt med en knapp per kategori; en kategori med
+flera noder öppnar dem bredvid spalten, en med en enda lägger till den
+direkt. » öppnar hela paletten över flödet, med sökfältet *Sök nod* överst
+(berättelse 146). Den börjar infälld i alla bredder — den fälls inte längre
+ihop av sig själv under 1200 px.
 
 - `palette-open` / `paletteOpen` öppnar hela paletten innan editorn ritas,
   och `palette-open-changed` med `{ open }` kommer när redaktören ändrar —
@@ -41,62 +281,6 @@ under 1200 px.
 
 Är den fulla paletten och sidopanelen öppna samtidigt i en editor där de
 inte ryms, fälls den som öppnades först in.
-
-## Osläppt — sidopanelen fälls in och lägger sig över flödet
-
-**Vad en värd måste göra:** ingenting för att editorn ska fungera — men den
-ser annorlunda ut. Sidopanelen (Egenskaper, Förhandsgranskning) börjar nu
-**infälld** till en 57 px spalt vid arbetsytans kant och lägger sig **över**
-flödet när den öppnas, i stället för att stå bredvid det (berättelse 145).
-Vill du att den börjar öppen skriver du `panel-open` på `<guide-editor>`
-(eller `editor.panelOpen = true`) innan editorn ritas. Vill du minnas läget
-lyssnar du på `panel-open-changed` med `{ open }`, som kommer när
-redaktören öppnar eller fäller in den — aldrig när du själv sätter läget.
-Biblioteket sparar ingenting (K6e), precis som för `panel-width`.
-
-`panel-width` och `panel-width-changed` är oförändrade, men taket är nytt:
-bredden hålls mellan 380 px och ytan panelen ligger över, minus 200 px åt
-arbetsytans egna kontroller — inte längre editorns bredd minus 620, som
-var regeln medan panelen stod bredvid.
-
-Inget i guidens format ändras: panelens läge är en vy och hör aldrig till
-grafen.
-
-## Osläppt — FlowWeaver PRO: inlämningen är egna bundlar
-
-**Vad en värd måste göra:** registrerar du en mottagare, eller använder
-noderna *Inlämning* och *E-postresultat*, laddar du PRO-bundlarna i stället
-för de öppna: `flowweaver-pro-viewer` och `flowweaver-pro-editor` (samma
-globala API plus `registerSubmissionReceiver`, `listSubmissionRecipients`,
-`VISITOR_RECIPIENT_ID`, `submissionSchema` och inlämningstyperna). De öppna
-bundlarna exporterar inte längre inlämningsnamnen, och en öppen visare som
-möter en guide med en inlämning ritar steget som ett vanligt resultat —
-rubrik och text, inget skickas, inget referensnummer hittas på — och varnar
-i konsolen. Sparade guider är oförändrade: typen `SubmissionSchema` är kvar
-som öppet kontrakt (`meta.submissionSchema`), bara koden som räknar fram
-schemat är PRO:s.
-
-**Varför.** Det öppna FlowWeaver hjälper besökaren fram till ett svar;
-FlowWeaver PRO låter besökaren skicka in det. Koden som skickar bor nu i
-`src/pro/` och ingen öppen fil importerar den (grinden `open-core.test.ts`).
-
-## Osläppt — inlämningen blir en egen modul
-
-**Vad en värd måste göra:** ingenting om du skrev `modules="service"` (eller
-`tjanst`) — det betyder nu två moduler, `pages` och `submission`, och ger
-exakt det det gav. Ingenting för sparade guider: grafformatet är oförändrat.
-**Ett undantag:** en editor i `feature-level="basic"` erbjuder inte längre
-noden *Inlämning* i paletten. Den hade ingen spärr förut; nu kräver den
-kapaciteten `submission`. Guider som redan har noden bevaras oförändrade vid
-öppning och export (noden står kvar, den kan bara inte läggas till). Vill du
-ha den i en enkel editor: lägg till `submission` i `modules`.
-
-**Varför.** Gränsen mellan det öppna FlowWeaver och fullversionen går vid att
-*skicka in*: det öppna hjälper besökaren fram till ett svar, fullversionen
-låter besökaren lämna det. Modulen `service` blandade båda sidorna — sidor,
-ruttanalys och tjänsteanrop med inlämning och e-postresultat — så den delas:
-`pages` (sidor, ruttanalys, tjänsteanrop) och `submission` (inlämning,
-e-postresultat). `EditorCapabilities` har ett sextonde namn, `submission`.
 
 ## 0.11.0 — formulärsatsningen: granska, lämna in, få kvitto
 

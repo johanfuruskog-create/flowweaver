@@ -7,7 +7,7 @@ import { guideWords } from "./guides-words";
 import { hostLogin, roleAllows } from "./host-login";
 import { LOCK_ICON } from "./lock-icon";
 import { initTheme } from "./theme-persistence";
-import { hostConfig } from "./host-config";
+import { hostApi, hostConfig } from "./host-config";
 
 import type { HostGuide, HostRole } from "./host-login";
 
@@ -79,7 +79,7 @@ const say = guideWords(locale);
  * permission, because two would one day be a page allowed to call somewhere it
  * cannot reach, or able to reach somewhere it is not allowed to call.
  */
-const API = (new URLSearchParams(location.search).get("api") ?? hostConfig.api ?? "").trim();
+const { api: API, given: GIVEN_API } = hostApi(location.search);
 
 /** Where the editor lives, from wherever this page is — the page says (host-config.ts). */
 const EDITOR = hostConfig.editorHref;
@@ -90,16 +90,12 @@ const EDITOR = hostConfig.editorHref;
  *
  * `?api=` travels on to the editor when it was given, because otherwise opening
  * a guide from a page pointed at a local receiver would land in the editor
- * pointed at the built-in address. Harmless in a build — the page's
- * `connect-src` allows exactly one origin whatever an address says — and the
- * difference between being able to try this against your own receiver and not
- * (`smoke:login` is that run).
+ * pointed at the built-in address. Only an address `hostApi` accepted — one
+ * on this machine — travels; it is the difference between being able to try
+ * this against your own receiver and not (`smoke:login` is that run).
  */
-const openAddress = (id: string): string => {
-  const given = new URLSearchParams(location.search).get("api");
-
-  return `${EDITOR}?guide=${encodeURIComponent(id)}${given ? `&api=${encodeURIComponent(given)}` : ""}`;
-};
+const openAddress = (id: string): string =>
+  `${EDITOR}?guide=${encodeURIComponent(id)}${GIVEN_API ? `&api=${encodeURIComponent(GIVEN_API)}` : ""}`;
 
 const notice = document.getElementById("notice") as HTMLElement;
 const signedOut = document.getElementById("signed-out") as HTMLElement;

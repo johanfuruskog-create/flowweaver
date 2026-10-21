@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   ROLE_LADDER,
   allows,
+  mayLogIn,
   neededRole,
   readRoleConfig,
   roleOf,
@@ -190,5 +191,47 @@ describe("vilken rung en väg kräver", () => {
    */
   it("en okänd skrivande väg är åtminstone redaktörens", () => {
     expect(allows("reader", neededRole("PATCH", "nagot-nytt"))).toBe(false);
+  });
+});
+
+/*
+ * Vem som får logga in alls (Johan 8/10: "gör en strikt lista").
+ *
+ * Ett konto som inloggningsleverantören godtar är inte därmed ett konto
+ * värden känner. Utan listan hade vem som helst med ett konto där blivit
+ * läsare och fått läsa värdens guider. Bara den släpps in som
+ * står någonstans: i en roll, i en grupp med en roll, eller i `LOGINS`. En
+ * e-postadress räknas bara när leverantören intygat att den är verifierad —
+ * annars kunde vem som helst registrera adressen hos en leverantör som inte
+ * kontrollerar den.
+ */
+describe("vem som får logga in", () => {
+  it("utan någon rad släpps ingen in", () => {
+    const config = readRoleConfig({});
+
+    expect(mayLogIn({ subject: "vem-som-helst", email: "x@example.se", emailVerified: true }, config)).toBe(false);
+  });
+
+  it("den som har en roll eller en grupp med en roll släpps in", () => {
+    const config = readRoleConfig({ ROLES: "sub-johan:admin", ROLE_EDITOR: "grupp-redaktorer" });
+
+    expect(mayLogIn({ subject: "sub-johan" }, config)).toBe(true);
+    expect(mayLogIn({ subject: "annan", groups: ["grupp-redaktorer"] }, config)).toBe(true);
+    expect(mayLogIn({ subject: "annan", groups: ["grupp-okand"] }, config)).toBe(false);
+  });
+
+  it("LOGINS släpper in läsare per verifierad adress eller per subjekt", () => {
+    const config = readRoleConfig({ LOGINS: "Anna@Example.se, sub-testare" });
+
+    expect(mayLogIn({ subject: "s1", email: "anna@example.se", emailVerified: true }, config), "adressen, oavsett skiftläge").toBe(true);
+    expect(mayLogIn({ subject: "sub-testare" }, config), "ett subjekt").toBe(true);
+    expect(roleOf({ subject: "sub-testare" }, config), "och den blir läsare, inget mer").toBe("reader");
+  });
+
+  it("en overifierad adress räknas inte", () => {
+    const config = readRoleConfig({ LOGINS: "anna@example.se" });
+
+    expect(mayLogIn({ subject: "s1", email: "anna@example.se", emailVerified: false }, config)).toBe(false);
+    expect(mayLogIn({ subject: "s1", email: "anna@example.se" }, config)).toBe(false);
   });
 });

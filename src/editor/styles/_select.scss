@@ -60,6 +60,14 @@ $shape: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBo
 }
 
 @mixin field {
+  /*
+   * The fields' floor (Johan 9/10 2026). A select's height is its line box
+   * plus padding, and the line box is the typeface's: 45 px in DejaVu Sans,
+   * 44 in SF, but 43 in Liberation Sans (Arial's metrics) and 42 in FreeSerif
+   * — beside text fields that stay at 44 on their own floor. Seen in the font
+   * matrix (`npm run fonts:matrix`), never on a machine running `system-ui`.
+   */
+  min-height: var(--fw-control-height);
   padding-right: calc(var(--fw-space-3) * 2 + 18px);
   -webkit-appearance: none;
   appearance: none;

@@ -58,11 +58,32 @@ export function localeLabel(
 ): string {
   try {
     const namn = new Intl.DisplayNames([uiLocale], { type: "language" }).of(code);
-    return namn && namn !== code ? namn : code;
+
+    if (!namn || namn === code) return code;
+    if (!LOWER_IN_RUNNING_TEXT.has(new Intl.Locale(uiLocale).language)) return namn;
+    return namn.charAt(0).toLocaleLowerCase(uiLocale) + namn.slice(1);
   } catch {
     return code;
   }
 }
+
+/*
+ * UI languages that write a language's name in lower case in running text,
+ * and whose names WebKit hands back raised anyway.
+ *
+ * Chromium and Firefox give CLDR's own form, *engelska*. WebKit (Safari, and
+ * every browser on an iPad) gives the stand-alone form, *Engelska* — CLDR
+ * marks these languages to be raised when a name stands alone, and WebKit
+ * applies that everywhere. Mid-sentence it read *Källan på Engelska*.
+ *
+ * Measured 9/10 by comparing every locale both engines know, `of("en")`,
+ * `of("fr")`, `of("de")`, `of("sv")`: these ten were lower case in Chromium
+ * and raised in WebKit, all four names each; no locale went the other way.
+ * Lowering the first letter is a no-op where the engine already gives the
+ * running-text form, so the list only has to be complete for WebKit. A locale
+ * Chromium's data lacks could not be compared and is not here.
+ */
+const LOWER_IN_RUNNING_TEXT = new Set(["cs", "es", "hr", "hu", "it", "pt", "ru", "sk", "sv", "uk"]);
 
 /**
  * The same name, for a place where it stands on its own.
@@ -103,13 +124,35 @@ export function localeTitle(
 }
 
 /**
+ * The ISO 15924 codes of the scripts Unicode writes right to left (their
+ * letters are `Bidi_Class` R or AL). Only consulted where the browser has no
+ * `getTextInfo` — see `textDirection`.
+ */
+const RTL_SCRIPTS: ReadonlySet<string> = new Set([
+  "Adlm", "Arab", "Aran", "Armi", "Avst", "Chrs", "Cprt", "Elym", "Hatr",
+  "Hebr", "Hung", "Khar", "Lydi", "Mand", "Mani", "Mend", "Merc", "Mero",
+  "Narb", "Nbat", "Nkoo", "Orkh", "Ougr", "Palm", "Phli", "Phlp", "Phnx",
+  "Prti", "Rohg", "Samr", "Sarb", "Sogd", "Sogo", "Syrc", "Thaa", "Yezi",
+]);
+
+/**
  * Which way a language reads.
  *
  * The browser knows: `Intl.Locale("ar").getTextInfo().direction` → `rtl`. A list
- * of our own would have been built on our assumptions rather than on facts —
- * **Tigrinya is ltr** though one easily assumes otherwise, and so is Somali.
+ * of languages of our own would have been built on our assumptions rather than
+ * on facts — **Tigrinya is ltr** though one easily assumes otherwise, and so is
+ * Somali.
  *
- * `ltr` when the API is missing or the code is unknown: it is the more common
+ * **Firefox has neither `getTextInfo` nor `textInfo`** (measured 10/10, Firefox
+ * 151). Until then an Arabic, Persian, Hebrew or Urdu guide read left to right
+ * for every Firefox visitor. Where the API is missing, the direction is read
+ * from the language's likely script instead — `maximize().script`, which
+ * Firefox has (`ar` → `Arab`, `ti` → `Ethi`, `ar-Latn` → `Latn`) — against the
+ * scripts Unicode writes right to left. That is still the browser's data about
+ * the language; the only list is Unicode's list of scripts. Where `getTextInfo`
+ * exists it alone decides, so Chromium and Safari answer exactly as before.
+ *
+ * `ltr` when neither answers or the code is unknown: it is the more common
  * direction, and a text that happens to read the wrong way is better than an
  * error that stops the rendering.
  */
@@ -120,8 +163,8 @@ export function textDirection(locale: LocaleCode): "ltr" | "rtl" {
    * declared here instead of casting to `any` — that way what we expect is
    * visible.
    *
-   * Only `getTextInfo()` is proven (Chromium); `textInfo` is included because it
-   * costs nothing and rescues an older browser.
+   * `getTextInfo()` is proven in Chromium and Safari; `textInfo` is included
+   * because it costs nothing and rescues an older browser.
    */
   type MedTextInfo = Intl.Locale & {
     getTextInfo?: () => { direction?: string };
@@ -131,11 +174,14 @@ export function textDirection(locale: LocaleCode): "ltr" | "rtl" {
   try {
     const locale47 = new Intl.Locale(locale) as MedTextInfo;
     const info = locale47.getTextInfo?.() ?? locale47.textInfo;
-    return info?.direction === "rtl" ? "rtl" : "ltr";
+    if (info) return info.direction === "rtl" ? "rtl" : "ltr";
+    const script = locale47.maximize().script;
+    return script !== undefined && RTL_SCRIPTS.has(script) ? "rtl" : "ltr";
   } catch {
     return "ltr";
   }
 }
+
 
 /**
  * The languages a guide is offered in, the source first.

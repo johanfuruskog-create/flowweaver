@@ -53,7 +53,12 @@ describe("ett fältfel flyttar inte grannen på raden", () => {
     const root = preview.shadowRoot!;
 
     const before = topOf(root, "fran");
-    expect(before).toBe(topOf(root, "till"));
+    // Within half a pixel, not equal: WebKit lays the two out a fraction apart
+    // and the fraction varies between runs — 0.000005 px in a deploy dry run
+    // 10/10, 0.07 px in the deploy after it, both under load. Half a pixel is
+    // below what can be seen; a field error that moved the neighbour is whole
+    // pixels.
+    expect(Math.abs(before - topOf(root, "till"))).toBeLessThan(0.5);
 
     input(root, "fran").value = "2026-03-10";
     input(root, "till").value = "2026-03-01";
@@ -63,7 +68,7 @@ describe("ett fältfel flyttar inte grannen på raden", () => {
     expect(root.querySelector('[data-page-field-id="till"] .guide-preview__field-error')).toBeTruthy();
     // Samma rad — sida vid sida, inte staplade.
     expect(input(root, "fran").getBoundingClientRect().left).toBeLessThan(input(root, "till").getBoundingClientRect().left);
-    expect(topOf(root, "fran")).toBe(topOf(root, "till"));
+    expect(Math.abs(topOf(root, "fran") - topOf(root, "till"))).toBeLessThan(0.5);
     expect(topOf(root, "fran")).toBeCloseTo(before, 1);
   });
 });

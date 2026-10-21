@@ -148,7 +148,7 @@ håll:
 | Inlämning och kvittens | `registerSubmissionReceiver` — mottagarkatalog som `{id, label}` (adresser stannar hos värden), en standardrad, robotskyddsdomen, referensnumret | [`INLAMNING-KONTRAKT.md`](INLAMNING-KONTRAKT.md) |
 | Uppslagsfält | **Ingenting** — en BFF som svarar på uppslagsfrågor, se nedan | [`UPPSLAG-KONTRAKT.md`](UPPSLAG-KONTRAKT.md) |
 | Kartfrågor | `registerMapProvider` — FlowWeaver ritar ingen karta | [`KART-KONTRAKT.md`](KART-KONTRAKT.md) |
-| Bifogade filer | Mottagandet och gallringen — filen lämnar aldrig webbläsaren förrän värden tar den | [`FIL-KONTRAKT.md`](FIL-KONTRAKT.md) |
+| Bifogade filer | Mottagandet och gallringen — filen lämnar aldrig webbläsaren förrän värden själv hämtar den med `getFiles()`; en inlämning bär bara filens namn | [`FIL-KONTRAKT.md`](FIL-KONTRAKT.md) |
 | Kodlistor | `registerCodeList` — listorna skeppas som JSON bredvid bundlarna, inget bundlas in | — |
 | Fler språk | `registerLocale`/`declareLocales` — visarens ~95 texter per språk; verktygets språk, innehållets språk och utbudet är tre oberoende axlar | — |
 | Värdens utseende | Tokens — namnen är kontraktet, värdena är värdens | [`DESIGNSYSTEM-ADAPTER.md`](DESIGNSYSTEM-ADAPTER.md) |
@@ -186,11 +186,11 @@ mäts av ett prov; *delvis* = fungerar men något är oskrivet eller omätt;
 | Ansvar | Vad värden bygger | Kontrakt | Klientens yta | Referensvägen | Status |
 | --- | --- | --- | --- | --- | --- |
 | **Lagring** | Arbetskopia, frysta versioner, pekaren på den publicerade, lås | [`LAGRING-KONTRAKT.md`](LAGRING-KONTRAKT.md) | `GraphStore`-adapter, `init({ versions, onSave })`, `<guide-versions>` | `GET/POST /guides`, `GET /guides/:id`, `PUT/DELETE …/draft`, `POST …/versions`, `…/snapshots`, `…/current`, `…/lock`, `…/note` | **färdig** — `smoke:storage` kör hela vägen |
-| **Inlämning** | En `POST /submit` som tar emot svaren och svarar med ett referensnummer, plus mottagarkatalogen | [`INLAMNING-KONTRAKT.md`](INLAMNING-KONTRAKT.md) | `registerSubmissionReceiver`, `getFiles()` | `POST /submit`, `GET /recipients`, registret i `cases.mjs` | **färdig** — avvisningsreglerna mäts av `smoke:receiver` |
+| **Inlämning** | En `POST /submit` som tar emot svaren och svarar med ett referensnummer, plus mottagarkatalogen | [`INLAMNING-KONTRAKT.md`](INLAMNING-KONTRAKT.md) | `registerSubmissionReceiver` — nyttolasten bär ett filfälts **namn**, inte filen | `POST /submit`, `GET /recipients`, registret i `cases.mjs` | **färdig** — avvisningsreglerna mäts av `smoke:receiver` |
 | **E-post** | Utskicket. Nyckeln bor i värdens `.env`, aldrig i klienten | [`INLAMNING-KONTRAKT.md` › *E-posten är värdens*](INLAMNING-KONTRAKT.md) | e-postresultatet öppnar besökarens eget program, utan server | `receiver.mjs` skickar med Resend; `reply_to` är besökaren | **delvis** — utskicket finns och körs, men bilagor går inte via `mailto` |
 | **Identitet** | Inloggningen, vad `Authorization` bär, och vilken roll en person har | [`LAGRING-KONTRAKT.md` › *Identitet — er sak*](LAGRING-KONTRAKT.md#identitet--er-sak-och-kontraktet-låser-inte-fast-någon) | `Authorization` är värdens; session mot `GET/POST /guides`; *Logga in igen* vid 401, *du får inte* vid 403 | `auth.mjs` (OIDC med PKCE), `roles.mjs`; hemlighet per guide som minsta alternativ | **delvis** — [`IDENTITET-KONTRAKT.md`](IDENTITET-KONTRAKT.md) är en skiss om **besökarens** identitet, inte om den här raden; byte av hemlighet återstår |
 | **Uppslag** | En BFF som svarar på uppslag, kartfrågor och kodlistor | [`UPPSLAG-KONTRAKT.md`](UPPSLAG-KONTRAKT.md), [`KART-KONTRAKT.md`](KART-KONTRAKT.md) | Uppslaget: **fältets `endpoint`**, ingen registrering. Karta och kodlistor: `registerMapProvider`, `registerCodeList` | `tools/mock-bff.mjs`, live på `api.flowweaver.se/lookup/*` och `/broken/*` | **färdig** — `smoke:lookup` kör kontraktet, även avvisningarna |
-| **Filer** | Mottagandet och gallringen av bilagor | [`FIL-KONTRAKT.md`](FIL-KONTRAKT.md) | `getFiles()` — filen lämnar aldrig webbläsaren förrän värden tar den | bilagor i `POST /submit`, `outbox/` | **delvis** — gallringen är värdens och mäts inte av oss |
+| **Filer** | Mottagandet och gallringen av bilagor | [`FIL-KONTRAKT.md`](FIL-KONTRAKT.md) | `getFiles()`, `getFormData()` — filen lämnar aldrig webbläsaren förrän värden hämtar den | **ingen** — `POST /submit` tar JSON och får filens namn, inte filen (mätt 9/10) | **delvis** — klientens yta finns och prövas; referensvärden tar inte emot filer, och gallringen är värdens |
 
 Två ansvar står utanför tabellen därför att de inte är något värden
 *bygger*: **händelserna** ([`HANDELSER-KONTRAKT.md`](HANDELSER-KONTRAKT.md))
@@ -208,9 +208,10 @@ vad referensvärden gör i dag. Mätt 22/9, ur Astras granskning.
 | --- | --- | --- |
 | **Behörighet per guide och operation** | Prövas **på servern**, per begäran — aldrig av gränssnittet. Läsläge i editorn är ingen spärr; servern nekar. | `allows(roleOf(session), neededRole(method, section))`, prövad före uppslaget så svaret inte beror på vad som finns. Rollstegen `reader < editor < publisher < admin`. |
 | **Samtidiga ändringar** | Villkorad skrivning med en **stämpel**: klienten skickar tillbaka den stämpel den läste, och en skrivning mot en nyare kopia avvisas i stället för att skriva över. Därtill lås, och ett sätt att slå ihop. | `draftSavedAt` → `409 conflict` (127), lås med fönster (129), sammanslagning (131). Ingen `ETag`/`If-Match` — stämpeln är vår, och den bär vem som skrev. |
-| **Upprepade anrop** | Ett återförsök efter ett förlorat svar får inte bli ett andra ärende. Inlämningen bär ett `submissionId` per **logisk** inlämning, och värden deklarerar hur länge den minns det. | `retryWindowHours: 24` i `GET /recipients`. Samma id och samma innehåll → `200 { reference, repeated: true }`, samma referens och inget andra utskick; **`repeated` är hur klienten ser att det var ett återförsök**, och saknas vid det första svaret. Samma id men annat innehåll → `409 submission-conflict` med den första referensen, för det är en andra inlämning som lånat ett id. Jämförelsen går på hela nyttolasten utom id:t, med nycklarna sorterade rekursivt — omordnade nycklar är samma inlämning, ett ändrat svar är det inte. **Skyddet finns bara med ett register**: utan `FLOWWEAVER_DB` har mottagaren ingenting att minnas id:t i, och samma id ger då två referenser och två ärenden — medan `GET /recipients` ändå deklarerar `retryWindowHours: 24`. Mätt 22/9. En värd som lovar fönstret måste alltså ha ett lager bakom löftet; att bara svara på frågan räcker inte. Publicering är säker redan genom stämpeln. |
+| **Upprepade anrop** | Ett återförsök efter ett förlorat svar får inte bli ett andra ärende. Inlämningen bär ett `submissionId` per **logisk** inlämning, och värden deklarerar hur länge den minns det. | `retryWindowHours: 24` i `GET /recipients`. Samma id och samma innehåll → `200 { reference, repeated: true }`, samma referens och inget andra utskick; **`repeated` är hur klienten ser att det var ett återförsök**, och saknas vid det första svaret. Samma id men annat innehåll → `409 submission-conflict` med den första referensen, för det är en andra inlämning som lånat ett id. Jämförelsen går på hela nyttolasten utom id:t och `protection`, med nycklarna sorterade rekursivt — omordnade nycklar är samma inlämning, ett ändrat svar är det inte. `protection` står utanför för att `elapsedMs` växer mellan försöken: med den inräknad fick varje riktigt återförsök `409` (fynd 4, 9/10). Mottagaren minns jämförelsen som en **hash**, aldrig som inlämningen själv — raden ska inte bära svar och adress (fynd 3). **Skyddet finns bara med ett register**: utan `FLOWWEAVER_DB` har mottagaren ingenting att minnas id:t i, och samma id ger då två referenser och två ärenden — medan `GET /recipients` ändå deklarerar `retryWindowHours: 24`. Mätt 22/9. En värd som lovar fönstret måste alltså ha ett lager bakom löftet; att bara svara på frågan räcker inte. Publicering är säker redan genom stämpeln. |
 | **Kvittots betydelse** | *Mottaget* är inte *skickat*. Kvittot säger att ärendet är registrerat; om utskicket lyckades står i registret. | Referensen myntas, ärendet skrivs till utkorgen **och** levereras i `deliver()`; `delivery` i filen säger vad som hände. Svaret `{ reference }` kommer efter leveransförsöken — men lovar dem inte. |
 | **Drift och data** | Backup, återställning och gallring är värdens, och de ska vara skrivna. | `docs/DRIFT.md`: backup och återställning av registret; guider gallras efter 90 dagar; bilagornas gallring står i [`FIL-KONTRAKT.md`](FIL-KONTRAKT.md) och är värdens. |
+| **Skrivningar från andra sidor (CSRF)** | En skrivning som kommer från en sida värden inte namnger ska avvisas, även när webbläsaren skickar med inloggningens cookie. CORS räcker inte: det avgör bara om sidan får **läsa** svaret, och ett formulär eller en `text/plain`-begäran skickas utan förhandsförfrågan — skrivningen sker ändå. `SameSite=Lax` håller cookien borta från en annan *sajt*, men en sajt är hela domänen: varje `*.kommun.se` är samma sajt som `api.kommun.se`. | Varje `POST`, `PUT` och `DELETE` vars `Origin` finns och varken står i `FLOWWEAVER_ORIGIN`/`ALLOWED_ORIGINS` eller är värdens egen avvisas med `403 origin`, före cookien läses. En begäran utan `Origin` — en värds server, `guides.mjs`, curl — släpps, för den bär ingen annans cookie. Mätt 9/10: före kontrollen skapade ett formulär på en annan port (samma sajt) en guide i den inloggades namn i Chromium, Firefox och WebKit; från en annan sajt stoppade `SameSite=Lax` det redan. |
 | **Två åtkomstlägen** | Se nedan. | |
 
 ### Identiteten: två lägen, och bara ett i taget
@@ -257,6 +258,7 @@ Värden som bygger sex sömmar ska inte behöva lära sig sex felformer.
 | --- | --- | --- | --- |
 | `unauthorized` | 401 | Ingen eller **ogiltig** autentisering | lagring, identitet |
 | `forbidden` | 403 | Identiteten är giltig, **rollen** räcker inte | lagring, identitet |
+| `origin` | 403 | Skrivningen kom från en sida värden inte namnger (CSRF). En ny inloggning hjälper inte; adressen ska in i `ALLOWED_ORIGINS` om sidan är värdens | alla skrivningar |
 | `locked` | 409 | Någon annan håller låset; `lock` säger vem | lagring |
 | `conflict` | 409 | Arbetskopian ändrades under tiden | lagring |
 | `no-guide` | 404 | Guiden finns inte | lagring |
@@ -269,6 +271,7 @@ Värden som bygger sex sömmar ska inte behöva lära sig sex felformer.
 | `rejected` | 400 | Inlämningen avvisades av en regel | inlämning |
 | `submission-conflict` | 409 | Samma `submissionId`, annat innehåll | inlämning |
 | `no-recipient` | 503 | Ingen mottagare är inkopplad | inlämning |
+| `rate-limited` | 429 | För många inlämningar från samma adress inom en timme; `Retry-After` säger hur länge | inlämning |
 | `mail` | 502 | Utskicket misslyckades hos värden | e-post |
 | `provider` | 502 | Identitetsleverantören svarade inte | identitet |
 | `no-route` | 404 | Vägen finns inte | alla |
@@ -332,7 +335,7 @@ blir en återvändsgränd.
 | `no-guide`, `no-version`, `no-lock`, `no-note` | `host.missing` | Visa vad och var |
 | `rejected` | `host.rejected` | Visa vad och var — det går att rätta |
 | `no-storage`, `no-login`, `no-recipient`, `no-route`, `no-method` | `host.notConnected` | Reservbesked, bevara inmatningen |
-| *okänd kod* | `host.general` | Reservbesked, bevara inmatningen |
+| *okänd kod*, däribland `origin` | `host.general` | Reservbesked, bevara inmatningen — en sida värden namnger får aldrig `origin` |
 
 **`message` visas aldrig rakt av** och styr aldrig beteende. Den är värdens
 loggrad, på engelska, och en yta som återger den lär besökaren att läsa
@@ -400,8 +403,12 @@ här omgången.
 - **E-post.** Utskicket finns i referensvärden och körs varje dag, men
   `mailto`-vägen bifogar inga filer — en begränsning i webbläsaren, inte i
   kontraktet. Skrivet i [`INLAMNING-KONTRAKT.md`](INLAMNING-KONTRAKT.md).
-- **Filer.** Mottagandet är mätt; **gallringen är värdens** och kan inte
-  mätas av oss. [`FIL-KONTRAKT.md`](FIL-KONTRAKT.md) säger vad som gäller.
+- **Filer.** **En inlämning bär filens namn, inte filen** (mätt 9/10), och
+  referensvärden tar inte emot filer. Filen ligger kvar i visaren, och att
+  hämta den med `getFiles()` är värdens; att inlämningen själv bär den är en
+  egen, ogjord uppgift. **Gallringen är värdens** och kan inte mätas av oss.
+  [`FIL-KONTRAKT.md` › *Inlämningsnoden bär inte filen*](FIL-KONTRAKT.md#inlämningsnoden-bär-inte-filen)
+  säger vad som gäller.
 - **Sitevision-modulen** (`integrations/sitevision-webapp/`). Mätt 22/9:
   konfigurationen talar `/guides` och `/versions/:id/...` — **versions­schemat
   från före berättelse 124–131**, inte dagens `/guides/:id/draft|versions|

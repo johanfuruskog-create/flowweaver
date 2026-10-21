@@ -44,16 +44,22 @@ describe("guide-editor: security", () => {
     // Opt in: the default is readonly, and this test builds.
     editor.setAttribute("mode", "administrator");
     document.body.append(editor);
-    // Set directly (bypassing import validation) to test the sink itself.
-    editor.graph = {
-      startNodeId: payloadId,
-      nodes: [
-        { id: payloadId, type: "text-question", position: { x: 0, y: 0 }, data: { title: "Nod", variableName: "x" } },
-      ],
-      connections: [],
-    };
-
+    /*
+     * Set on the canvas itself, past both doors, to test the sink. Since 10/10
+     * the editor's own `graph` setter refuses this id the way a file is
+     * refused (`graph-shape.ts`, the test below) — so going through it no
+     * longer reaches the menu at all.
+     */
     const nodeEditor = editor.shadowRoot?.querySelector<NodeEditor>("node-editor");
+    if (nodeEditor) {
+      nodeEditor.graph = {
+        startNodeId: payloadId,
+        nodes: [
+          { id: payloadId, type: "text-question", position: { x: 0, y: 0 }, data: { title: "Nod", variableName: "x" } },
+        ],
+        connections: [],
+      };
+    }
     const target = Array.from(
       nodeEditor?.shadowRoot?.querySelectorAll<FlowNode>("flow-node") ?? []
     ).find((node) => node.nodeData?.id === payloadId);
@@ -78,5 +84,24 @@ describe("guide-editor: security", () => {
     // But the menu works: the button exists and points at the right (decoded) id.
     expect(removeButton).not.toBeNull();
     expect(removeButton?.dataset.targetId).toBe(payloadId);
+  });
+
+  test("the editor's graph setter refuses a rigged node id, as the file door does", () => {
+    const payloadId = 'x"><img src=x onerror="window.__xss=1">';
+    const editor = document.createElement("guide-editor") as GuideEditor;
+    editor.setAttribute("mode", "administrator");
+    document.body.append(editor);
+    editor.graph = {
+      startNodeId: payloadId,
+      nodes: [
+        { id: payloadId, type: "text-question", position: { x: 0, y: 0 }, data: { title: "Nod", variableName: "x" } },
+      ],
+      connections: [],
+    };
+
+    const nodeEditor = editor.shadowRoot?.querySelector<NodeEditor>("node-editor");
+    const drawn = Array.from(nodeEditor?.shadowRoot?.querySelectorAll<FlowNode>("flow-node") ?? []);
+
+    expect(drawn.some((node) => node.nodeData?.id === payloadId)).toBe(false);
   });
 });

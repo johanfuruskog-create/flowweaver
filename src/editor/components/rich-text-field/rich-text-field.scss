@@ -322,7 +322,10 @@
  */
 .chip {
   display: inline-flex;
-  align-items: center;
+  /* The baseline, not the centre: the chevron stands on the label's
+     x-height (`chevron.drawn-on-baseline`). The label is the only text and
+     the chip has no height of its own, so it sits where it did. */
+  align-items: baseline;
   gap: var(--fw-space-1);
   margin: 0 1px;
   padding: 0 var(--fw-space-2);
@@ -355,7 +358,7 @@
  * same as bold/italic/link/list, no chevron and no wrapping span.
  */
 .chevron {
-  @include chevron.drawn;
+  @include chevron.drawn-on-baseline;
 }
 
 /*
@@ -568,6 +571,21 @@
   margin: var(--fw-space-1) 0 0;
   color: var(--fw-text-muted);
   font-size: var(--fw-font-size-sm);
+}
+
+/*
+ * Why the field refused a rewrite (Johan 9/10, A). Always in the tree, so a
+ * screen reader hears the words arrive; empty, it takes no room. Text colour,
+ * not muted: it is the reason nothing happened, not a hint.
+ */
+.notice {
+  margin: var(--fw-space-1) 0 0;
+  color: var(--fw-text);
+  font-size: var(--fw-font-size-sm);
+}
+
+.notice:empty {
+  margin: 0;
 }
 
 /*

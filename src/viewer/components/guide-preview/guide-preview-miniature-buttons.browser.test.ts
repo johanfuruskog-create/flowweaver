@@ -158,6 +158,8 @@ describe("knappen i nodkortets miniatyr", () => {
 
 describe("knappen på besökarens sida", () => {
   test("är kvar på 44 px (K6)", async () => {
-    expect(measure(await mount("visare")).height).toBeGreaterThanOrEqual(44);
+    // The same thousandth as the canvas test above: a full run on the Mac
+    // read 43.99998 (9/10) — float noise in the box, not a shorter button.
+    expect(measure(await mount("visare")).height).toBeGreaterThanOrEqual(44 - 0.001);
   });
 });

@@ -1,3 +1,4 @@
+import { DOC_END } from "../../../testing/caret-keys";
 import { userEvent } from "@vitest/browser/context";
 import { afterEach, describe, expect, it } from "vitest";
 import "./rich-text-field";
@@ -37,7 +38,7 @@ const menu = (field: RichTextField): HTMLElement => field.shadowRoot!.querySelec
 
 async function focusEnd(field: RichTextField): Promise<void> {
   text(field).focus();
-  await userEvent.keyboard("{Control>}{End}{/Control}");
+  await userEvent.keyboard(DOC_END);
 }
 
 function transfer(plain: string): DataTransfer {
@@ -191,17 +192,18 @@ describe("formelfältet (139)", () => {
     expect(chips(field)).toEqual(["grund"]);
   });
 
-  it("kopiera ger formeltexten med namnen; inklistrad formeltext läses som formel", () => {
+  it("kopiera ger formeltexten med namnen; inklistrad formeltext läses som formel", async () => {
     const field = mount("round(min(grund + barntillagg; 9000))");
-    const range = document.createRange();
 
-    range.selectNodeContents(text(field));
-    const selection = document.getSelection()!;
-
-    selection.removeAllRanges();
-    selection.addRange(range);
-    text(field).dispatchEvent(new Event("selectionchange"));
-    document.dispatchEvent(new Event("selectionchange"));
+    /*
+     * Selected the way a person does it: in the field, then select all. A
+     * range added to the document's selection from outside does not focus
+     * the field in WebKit (measured 9/10: no focus, and the first addRange
+     * into the shadow tree left rangeCount 0) — only Chromium moved focus
+     * along with it, which is what this test used to lean on.
+     */
+    text(field).focus();
+    await userEvent.keyboard("{ControlOrMeta>}a{/ControlOrMeta}");
     const copied = new DataTransfer();
 
     text(field).dispatchEvent(clipboardEvent("copy", copied));
@@ -237,10 +239,24 @@ describe("formelfältet (139)", () => {
     await new Promise((resolve) => requestAnimationFrame(resolve));
     const box = text(field).getBoundingClientRect();
     const padding = parseFloat(getComputedStyle(text(field)).paddingRight);
-    const chip = text(field).querySelector<HTMLElement>("[data-chip]")!.getBoundingClientRect();
+    const chipElement = text(field).querySelector<HTMLElement>("[data-chip]")!;
+    const chip = chipElement.getBoundingClientRect();
+    /*
+     * What stands before the chip on its line. The field puts a word joiner
+     * between a chip and the character before it (fynd f); Firefox honours it
+     * and carries the "(" down with the chip, one character (9.6 px) before it
+     * on the line, while Chromium and WebKit break between them and the chip
+     * starts the line (measured 10/10). The chip is capped at the line's
+     * width, so in Firefox it ends that "(" into the text's padding — still
+     * left of the plus and inside the frame. Zero in Chromium and WebKit, so
+     * there the bound is the one this test always had.
+     */
+    const lineStart = text(field).querySelector("p")!.getBoundingClientRect().left;
+    const glued = chip.left - parseFloat(getComputedStyle(chipElement).marginLeft) - lineStart;
 
     // Measured 29/9 in a 305 px field: the chip stood 459 px wide.
-    expect(chip.right).toBeLessThanOrEqual(box.right - padding + 1);
+    expect(chip.right).toBeLessThanOrEqual(box.right - padding + 1 + glued);
+    expect(chip.right, "aldrig ut i plussets spalt").toBeLessThanOrEqual(box.right);
     expect(getComputedStyle(text(field).querySelector(".chip__label")!).textOverflow).toBe("ellipsis");
     expect(field.value).toBe("round(min(barntillagg; 9000))");
   });

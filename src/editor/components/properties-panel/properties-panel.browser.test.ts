@@ -1,3 +1,4 @@
+import { LINE_END, SELECT_TO_LINE_START } from "../../../testing/caret-keys";
 // The sending steps are FlowWeaver PRO's; this test uses them (open-core step 4).
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { userEvent } from "vitest/browser";
@@ -150,7 +151,7 @@ describe("properties-panel email templates", () => {
 
     body.value = "Viktigt";
     body.shadowRoot!.querySelector<HTMLElement>("[data-text]")!.focus();
-    await userEvent.keyboard("{End}{Shift>}{Home}{/Shift}");
+    await userEvent.keyboard(LINE_END + SELECT_TO_LINE_START);
     await userEvent.click(bold);
 
     expect(body.value).toBe("**Viktigt**");
@@ -207,14 +208,27 @@ describe("properties-panel – annoterad bild (kommentar-kontroll)", () => {
     expect(panel.shadowRoot?.querySelectorAll("[data-annotation-pin]")).toHaveLength(1);
   });
 
-  test("drag av en pin dispatchar en positionsuppdatering", () => {
+  test("drag av en pin dispatchar en positionsuppdatering", async () => {
     const { panel, changed } = mountAnnotated();
     const pin = panel.shadowRoot?.querySelector<HTMLButtonElement>(
       "[data-annotation-pin]"
     );
-    pin!.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 1, clientX: 10, clientY: 10 }));
-    pin!.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, pointerId: 1, clientX: 40, clientY: 40 }));
-    pin!.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId: 1 }));
+    /*
+     * The mouse's own pointer id, read off a real hover on an element of its
+     * own: `setPointerCapture` takes only an active pointer's id, and the
+     * mouse is 1 in Chromium and WebKit but 0 in Firefox (measured 10/10 — a
+     * constructed event with id 1 threw `NotFoundError` there).
+     */
+    const target = document.body.appendChild(document.createElement("div"));
+    let pointerId = 1;
+
+    target.style.cssText = "width: 40px; height: 40px;";
+    target.addEventListener("pointerover", (event) => (pointerId = event.pointerId), { once: true });
+    await userEvent.hover(target);
+    target.remove();
+    pin!.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId, clientX: 10, clientY: 10 }));
+    pin!.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, pointerId, clientX: 40, clientY: 40 }));
+    pin!.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId }));
     const detail = changed.mock.calls.at(-1)?.[0].detail;
     expect(detail.property).toBe("comments");
     expect(Array.isArray(detail.value)).toBe(true);

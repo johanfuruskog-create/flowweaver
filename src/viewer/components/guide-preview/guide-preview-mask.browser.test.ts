@@ -162,7 +162,7 @@ describe("ångra", () => {
     expect(input.value, "formen kom aldrig").toBe("19800223-7538");
 
     for (let press = 0; press < 6 && input.value !== ""; press += 1) {
-      await userEvent.keyboard("{Control>}z{/Control}");
+      await userEvent.keyboard("{ControlOrMeta>}z{/ControlOrMeta}");
       await settle(30);
     }
 

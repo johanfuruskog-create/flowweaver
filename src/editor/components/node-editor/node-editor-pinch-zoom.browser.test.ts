@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "vitest";
+import { SCROLL_SNAP } from "../../../testing/scroll-snap";
 
 import "../../../viewer/node-types/default-node-types";
 import "../guide-editor/guide-editor";
@@ -275,14 +276,14 @@ describe("panning with one finger", () => {
     finger(viewport, "pointermove", 1, 588);
     await settle(16);
 
-    expect(viewport.scrollLeft - 900, "fingret gick 12 px, tröskeln är 8").toBe(4);
+    expect(Math.abs(viewport.scrollLeft - 900 - 4), "fingret gick 12 px, tröskeln är 8").toBeLessThanOrEqual(SCROLL_SNAP);
 
     const afterCrossing = viewport.scrollLeft;
 
     finger(viewport, "pointermove", 1, 568);
     await settle(16);
 
-    expect(viewport.scrollLeft - afterCrossing, "efter tröskeln följer den fingret").toBe(20);
+    expect(Math.abs(viewport.scrollLeft - afterCrossing - 20), "efter tröskeln följer den fingret").toBeLessThanOrEqual(2 * SCROLL_SNAP);
   });
 
   test("and the glide ends rather than seeping away", async () => {
@@ -292,9 +293,17 @@ describe("panning with one finger", () => {
      * whose stopping threshold was 0.05 px/ms — 0.8px a frame — so the canvas
      * crept for about a second after every pan and would not sit still.
      *
-     * Counted as frames that moved, not as a duration: a slow machine makes a
-     * timing assertion flaky, while the number of frames is the thing being
-     * complained about.
+     * Counted as the glide counts its own time, not as frames and not as wall
+     * time. Frames were the measure until 9/10: on the Mac the headless
+     * browser draws a frame every ~12 ms, not every 16.7 (measured: median
+     * 12.2, 7–27), so the same 630 ms glide was 49–58 frames there against
+     * the 45 that held at 60 Hz — the frame rate was being measured, not the
+     * glide. Wall time would be flaky the other way: the glide caps each
+     * step at 32 ms, so on a slow machine it lasts longer than it glides.
+     * Summing `min(32, dt)` over the frames that moved is the glide's own
+     * clock on any machine. The ceiling is the old one, 45 frames at 60 Hz
+     * (750 ms): a glide from the launch ceiling (3 px/ms) lasts ~630 ms to
+     * today's stop at 0.13 px/ms, and ~820 ms to the old 0.05.
      */
     const { viewport } = await canvas();
 
@@ -309,18 +318,27 @@ describe("panning with one finger", () => {
     finger(viewport, "pointerup", 1, 420);
 
     let frames = 0;
+    let gliding = 0;
     let previous = viewport.scrollLeft;
+    let lastTime = performance.now();
 
-    for (let frame = 0; frame < 120; frame += 1) {
-      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    for (let frame = 0; frame < 240; frame += 1) {
+      const now = await new Promise<number>((resolve) => requestAnimationFrame(resolve));
+      const dt = Math.max(0, Math.min(32, now - lastTime));
 
+      lastTime = now;
       if (viewport.scrollLeft !== previous) {
         frames += 1;
+        gliding += dt;
         previous = viewport.scrollLeft;
       }
     }
 
-    expect(frames, `${frames} bildrutor rörelse efter släpp`).toBeLessThan(45);
+    expect(frames, "glidningen startade inte — då mäter provet ingenting").toBeGreaterThan(0);
+    expect(
+      gliding,
+      `${Math.round(gliding)} ms glidning efter släpp (${frames} bildrutor)`,
+    ).toBeLessThan(750);
   });
 
   test("and a slow drag does not glide at all", async () => {

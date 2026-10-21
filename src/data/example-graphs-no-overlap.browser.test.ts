@@ -110,10 +110,43 @@ const examples: Array<[string, GraphData]> = ([
  * hand-placed will drift the same way; that is the tool to reach for.
  */
 
-const settle = () =>
-  new Promise<void>((resolve) => {
-    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-  });
+const frame = () =>
+  new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+/*
+ * Waits until every card has stopped moving — not two frames.
+ *
+ * A page node is drawn first at its fallback height and then glides to the
+ * measured one (`min-height 160ms` in flow-node.scss). Measured 9/10 on the
+ * Mac, claim's policy page: 636 px at the first frame, 605 at 6 ms, 576 at
+ * 97 ms and still there after. Two frames read the glide — the air under it
+ * came out 13–36 px in full runs, under the 40 px floor, while the guide at
+ * rest has 64. The fault was the reading's timing, not the placement; the
+ * same numbers under a forced Arial showed that the typeface plays no part.
+ *
+ * At rest means: no card's box changed for three frames in a row. The cap
+ * keeps a box that never stops from hanging the test — it is then measured as
+ * it stands, and a card still moving after 2 s is worth a red row anyway.
+ */
+async function settle(editor: NodeEditor): Promise<void> {
+  const boxes = () =>
+    [...(editor.shadowRoot?.querySelectorAll<HTMLElement>("flow-node") ?? [])]
+      .map((element) => {
+        const box = element.getBoundingClientRect();
+        return `${box.left},${box.top},${box.width},${box.height}`;
+      })
+      .join(";");
+  const started = performance.now();
+  let last = boxes();
+  let still = 0;
+
+  while (still < 3 && performance.now() - started < 2000) {
+    await frame();
+    const now = boxes();
+    still = now === last ? still + 1 : 0;
+    last = now;
+  }
+}
 
 function mount(graph: GraphData): NodeEditor {
   const editor = document.createElement("node-editor") as NodeEditor;
@@ -192,7 +225,7 @@ function overlaps(editor: NodeEditor, graph: GraphData): string[] {
 describe("the bundled example guides", () => {
   test.each(examples)("%s draws no node on top of another", async (_name, graph) => {
     const editor = mount(graph);
-    await settle();
+    await settle(editor);
 
     expect(overlaps(editor, graph)).toEqual([]);
   });
@@ -291,7 +324,7 @@ function overlapsInEitherView(editor: NodeEditor, graph: GraphData): string[] {
 describe("the bundled example guides, with every node as tall as its visitor view", () => {
   test.each(examples)("%s leaves room for the visitor view", async (_name, graph) => {
     const editor = mount(graph);
-    await settle();
+    await settle(editor);
 
     expect(overlapsInEitherView(editor, graph)).toEqual([]);
   });

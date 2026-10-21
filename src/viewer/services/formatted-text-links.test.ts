@@ -53,6 +53,20 @@ describe("addresses that stay as text", () => {
     ["data:text/html,<script>x</script>", "a document smuggled into an address"],
     ["vbscript:msgbox", "the other one"],
     ["//evil.example/x", "looks relative, is not — the browser reads it as another host"],
+    /*
+     * What the browser strips before it reads a scheme (8/10, the security
+     * analysis). The URL parser removes every tab and newline inside an
+     * address and the control characters at its ends, so a scheme the filter
+     * could not see became `javascript:` in the attribute — measured in
+     * Chromium: the link ran its script on a click. And it reads a backslash
+     * as a slash, so `/\\host` is the `//host` case in other clothes.
+     */
+    ["java\tscript:alert(1)", "a tab inside the scheme"],
+    ["java\nscript:alert(1)", "a newline inside it"],
+    ["\u0001javascript:alert(1)", "a control character before it"],
+    ["  \u0000javascript:alert(1)", "spaces and a null before it"],
+    ["/\\evil.example/x", "a backslash for the second slash"],
+    ["\\\\evil.example/x", "two backslashes"],
   ])("%s — %s", (url) => {
     expect(linked(url)).toBe(false);
   });

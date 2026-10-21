@@ -1,3 +1,4 @@
+import { TAB } from "../../../testing/tab-keys";
 import { afterEach, describe, expect, test } from "vitest";
 import { userEvent } from "@vitest/browser/context";
 
@@ -82,7 +83,7 @@ async function focusedButton(): Promise<CSSStyleDeclaration> {
 
   expect(button, "sidan ritar en Nästa-knapp att fokusera").not.toBeNull();
 
-  await userEvent.keyboard("{Tab}");
+  await userEvent.keyboard(TAB);
   button!.focus();
   await settle();
 

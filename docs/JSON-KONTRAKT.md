@@ -11,7 +11,7 @@ fristående visaren och e-tjänsterna. Det här dokumentet beskriver formatet.
 
 ```jsonc
 {
-  "version": 3,                 // innehållsversion (se Versionering)
+  "version": 10,                // innehållsversion (se Versionering)
   "startNodeId": "fraga-1",     // nodens id som guiden börjar i, eller null
   "nodes": [ /* FlowNodeData */ ],
   "connections": [ /* Connection */ ],
@@ -121,7 +121,7 @@ Additivt och valfritt — äldre grafer utan `settings` fungerar oförändrat.
 
 ```jsonc
 {
-  "type": "mall-1a2b",        // används som node.type
+  "type": "mall-1a2b",        // mallens nyckel; en nod ur mallen bär den i `template`
   "label": "Ja/Nej-fråga",
   "icon": "☑",                // valfri; utelämnad ärvs grundtypens
   "base": "question",         // en nodtyp ur tabellen nedan
@@ -236,7 +236,13 @@ nolla: formelspråket saknar villkor, så nollan hade räknats. Ett tomt svar
 
 ### Sidor
 
-**`page`** — sida med upp till två fält. Utgång: `continue`.
+**`page`** — sida med fält. Utgång: `continue`.
+
+Fälten är **egna noder** med `parentPageId` satt till sidans id, ordnade med
+`order` och placerade med `layout` (se Nod ovan). Till och med version 3 bar
+sidan två inbyggda fält i sin egen `data` (`firstLabel`, `secondVariableName`
+…); migreringen v3→v4 gör om dem till riktiga fältnoder med samma
+variabelnamn.
 
 | Fält | Betydelse |
 | --- | --- |
@@ -247,8 +253,6 @@ nolla: formelspråket saknar villkor, så nollan hade räknats. Ett tomt svar
 | `repeatVariable` | Listans variabelnamn. Svaren blir en lista av poster under det namnet; antalet läses som `namn.count` i regler och texter, och summan av ett talfält på sidan som `namn.fält.sum` (story 091). |
 | `repeatMin`, `repeatMax` | Minsta och största antal poster. Saknas = 1 respektive ingen gräns. |
 | `addLabel` *(övers.)* | Lägg till-knappens text (tomt = *Lägg till* följt av ordet). |
-| `firstLabel` *(övers.)*, `firstVariableName`, `firstPlaceholder` *(övers.)*, `firstRequired` | Fält 1. |
-| `secondLabel` *(övers.)*, `secondVariableName`, `secondPlaceholder` *(övers.)*, `secondRequired` | Fält 2. |
 
 **`page-heading`** — `title` *(övers.)*, `description` *(övers.)*. Ligger inuti en sida.
 
@@ -291,7 +295,8 @@ nolla: formelspråket saknar villkor, så nollan hade räknats. Ett tomt svar
 | Fält | Betydelse |
 | --- | --- |
 | `title` *(övers.)*, `description` *(övers.)* | Rubrik och text. |
-| `to` | Mottagare — adress eller variabel, t.ex. `{{email}}`. |
+| `recipientId` | Mottagaren som ett **id** ur värdens mottagarregister — adressen finns aldrig i guiden, värden slår upp den. `"@visitor"` betyder besökarens egen adress. |
+| `visitorVariable` | Med `"@visitor"`: variabeln som bär besökarens adress, t.ex. `email`. |
 | `subject` *(övers.)* | Ämne. Variabler skrivs `{{variableName}}`. |
 | `body` *(övers.)* | Brödtext med samma variabelsyntax. |
 
@@ -303,6 +308,10 @@ nolla: formelspråket saknar villkor, så nollan hade räknats. Ett tomt svar
 
 // RuleCondition — ett villkor
 { "id": "co-1", "variableName": "age", "operator": "greater-than-or-equal", "value": "18" }
+// variableName kan också namnge en DEL av ett svar: `land.value` (uppslagets kod),
+//   `plats.geo` (kartans geometri), `foto.markings` (bildens markeringar). Samma
+//   form i `{{…}}`. Till och med version 8 var delarna egna variabler (`landskod`,
+//   `codeVariableName`); v9 gjorde dem till delar och v10 döpte `.code` till `.value`.
 // operator: equals | not-equals | greater-than | greater-than-or-equal | less-than | less-than-or-equal
 //           | one-of | not-one-of | all-of | not-all-of
 // Listoperatorerna läser `value` som en kommalista och svaret som en lista:
@@ -325,7 +334,10 @@ nolla: formelspråket saknar villkor, så nollan hade räknats. Ett tomt svar
 
 ## Versionering
 
-Serialiserade grafer stämplas med en `version` (nuvarande: **3**).
+Serialiserade grafer stämplas med en `version` (nuvarande: **10**). Talet här
+och i exemplet överst prövas mot `CURRENT_GRAPH_VERSION` av grinden
+`src/gates/json-contract-version.test.ts` — det stod på 3 medan koden gick
+till 10 (granskningen 8/10).
 
 - Vid **import** läses versionen och äldre grafer migreras framåt automatiskt.
   En graf **utan** `version` tolkas som legacy v1.
@@ -333,7 +345,9 @@ Serialiserade grafer stämplas med en `version` (nuvarande: **3**).
   i stället för att läsas fel.
 
 Migreringskedjan finns i
-[`src/viewer/core/graph-migrations.ts`](../src/viewer/core/graph-migrations.ts). Höj
+[`src/viewer/core/graph-migrations.ts`](../src/viewer/core/graph-migrations.ts), och
+**vad varje version ändrade** står där, i stegets `description` och kommentaren
+ovanför dess funktion — inte här, för en andra lista är en som glider. Höj
 `CURRENT_GRAPH_VERSION` och lägg till ett migreringssteg när formatet ändras på
 ett sätt som inte är bakåtkompatibelt.
 

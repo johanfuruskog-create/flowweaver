@@ -1,3 +1,4 @@
+import { TAB } from "../../../testing/tab-keys";
 import { afterEach, describe, expect, test } from "vitest";
 import { userEvent } from "vitest/browser";
 
@@ -64,7 +65,7 @@ describe("den destruktiva huvudhandlingen", () => {
       expect(contrast(hover.color, hover.backgroundColor), "hovring").toBeGreaterThanOrEqual(4.5);
 
       // Keyboard focus: Tab from Behåll, where the dialog puts it.
-      await userEvent.keyboard("{Tab}");
+      await userEvent.keyboard(TAB);
       expect(root.activeElement).toBe(button);
       const focus = getComputedStyle(button);
       expect(contrast(focus.color, focus.backgroundColor), "fokus, texten").toBeGreaterThanOrEqual(4.5);

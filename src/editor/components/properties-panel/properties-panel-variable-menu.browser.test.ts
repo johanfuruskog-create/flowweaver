@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "vitest";
 import { userEvent } from "@vitest/browser/context";
+import { LINE_END, LINE_START } from "../../../testing/caret-keys";
 
 import "../../../viewer/node-types/default-node-types";
 import "./properties-panel";
@@ -145,7 +146,7 @@ describe("var valet hamnar", () => {
     const panel = panelWith({ title: "Hej , välkommen", description: "" });
 
     text(panel, "title").focus();
-    await userEvent.keyboard("{Home}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}");
+    await userEvent.keyboard(`${LINE_START}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}`);
     await userEvent.click(toggle(panel, "title")!);
     await userEvent.click(options(panel, "title")[0]!);
 
@@ -156,7 +157,7 @@ describe("var valet hamnar", () => {
     const panel = panelWith({ title: "Hej NAMN", description: "" });
 
     text(panel, "title").focus();
-    await userEvent.keyboard("{End}{Shift>}{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}{/Shift}");
+    await userEvent.keyboard(`${LINE_END}{Shift>}{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}{/Shift}`);
     await userEvent.click(toggle(panel, "title")!);
     await userEvent.click(options(panel, "title")[0]!);
 
@@ -285,7 +286,7 @@ describe("knappen stjäl aldrig fokus från texten", () => {
     const editable = text(panel, "title");
 
     editable.focus();
-    await userEvent.keyboard("{Home}{ArrowRight}{ArrowRight}{ArrowRight}");
+    await userEvent.keyboard(`${LINE_START}{ArrowRight}{ArrowRight}{ArrowRight}`);
 
     let blurred = 0;
     editable.addEventListener("blur", () => { blurred += 1; });

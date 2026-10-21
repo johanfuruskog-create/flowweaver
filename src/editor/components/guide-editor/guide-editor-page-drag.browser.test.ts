@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import "../../../viewer/node-types/default-node-types";
 import "./guide-editor";
+import { pageFieldTop, pageRowHeight } from "../../../testing/page-field-top";
 import type { FlowNode } from "../flow-node/flow-node";
 import type { GuideEditor } from "./guide-editor";
 import type { NodeEditor } from "../node-editor/node-editor";
@@ -379,12 +380,15 @@ describe("guide-editor Page drag", () => {
     const pageNode = Array.from(
       nodeEditor?.shadowRoot?.querySelectorAll<FlowNode>("flow-node") ?? []
     ).find((node) => node.nodeData?.id === "page");
-    // 212 (the field area's top: the page's text block ends at 192, plus 20)
-    // + 91 + 19 + 91 (two measured rows) + 24 of bottom padding. Every number
-    // is measured rather than assumed, so they move when the nodes' content
-    // does.
-    expect(surface?.style.height).toBe("437px");
-    expect(pageNode?.style.getPropertyValue("--page-height")).toBe("437px");
+    if (!pageNode) throw new Error("The page node was not drawn.");
+    // The field area's top (the page's text block plus 20 — 212 on Linux, 213
+    // on macOS: the typeface differs, see pageFieldTop) + two measured rows
+    // with 19 between them + 24 of bottom padding. Every number is measured
+    // rather than assumed, so they move when the nodes' content does.
+    const row = pageRowHeight(right);
+    const twoRows = `${pageFieldTop(pageNode) + row + 19 + row + 24}px`;
+    expect(surface?.style.height).toBe(twoRows);
+    expect(pageNode?.style.getPropertyValue("--page-height")).toBe(twoRows);
 
     window.dispatchEvent(new PointerEvent("pointerup", { pointerId: 43 }));
 
@@ -439,9 +443,12 @@ describe("guide-editor Page drag", () => {
     expect(nodes?.find((node) => node.id === "c")?.order).toBe(1);
     expect(nodes?.find((node) => node.id === "b")?.order).toBe(2);
     expect(nodes?.find((node) => node.id === "b")?.layout?.breakBefore).toBe(true);
-    expect(findNode("a")?.style.top).toBe("292px");
-    expect(findNode("c")?.style.top).toBe("292px");
-    expect(findNode("b")?.style.top).toBe("402px");
+    // 80 is the page's own y; rows are a field tall with 19 between them.
+    const row1 = 80 + pageFieldTop(findNode("page")!);
+    const step = pageRowHeight(findNode("a"), findNode("c")) + 19;
+    expect(findNode("a")?.style.top).toBe(`${row1}px`);
+    expect(findNode("c")?.style.top).toBe(`${row1}px`);
+    expect(findNode("b")?.style.top).toBe(`${row1 + step}px`);
     // C has moved into the middle slot (column 2), not stayed furthest right.
     expect(findNode("a")?.style.left).toBe("120px");
     expect(findNode("c")?.style.left?.startsWith("330.66")).toBe(true);
@@ -542,7 +549,9 @@ describe("guide-editor Page drag", () => {
     // Immediately after the drop: the element sits in its slot but is visually
     // offset to the drop point via a transform (the FLIP start).
     const dropped = findNode("first");
-    expect(dropped?.style.top).toBe("402px");
+    // The second row: the page's y (80) + its field area + one row + 19.
+    expect(dropped?.style.top)
+      .toBe(`${80 + pageFieldTop(findNode("page")!) + pageRowHeight(dropped) + 19}px`);
     expect(dropped?.style.transform).toContain("translate");
 
     // Efter animationens startbildruta rensas transformen och glidningen sker.
@@ -596,8 +605,11 @@ describe("guide-editor Page drag", () => {
     }));
 
     // Already during the drag the preview shows the truth: Smeknamn stays on row
-    // 2 and does not jump up to row 1.
-    expect(findNode("c")?.style.top).toBe("402px");
+    // 2 and does not jump up to row 1. Rows: the page's y (80) + its field
+    // area, then a field's height + 19 per row.
+    const row1 = 80 + pageFieldTop(findNode("page")!);
+    const step = pageRowHeight(findNode("a")) + 19;
+    expect(findNode("c")?.style.top).toBe(`${row1 + step}px`);
     expect(findNode("c")?.style.left).toBe("120px");
 
     window.dispatchEvent(new PointerEvent("pointerup", { pointerId: 49 }));
@@ -609,9 +621,9 @@ describe("guide-editor Page drag", () => {
     expect(nodes?.find((node) => node.id === "c")?.layout?.breakBefore).toBe(true);
     expect(nodes?.find((node) => node.id === "b")?.order).toBe(2);
     expect(nodes?.find((node) => node.id === "b")?.layout?.breakBefore).toBe(true);
-    expect(findNode("a")?.style.top).toBe("292px");
-    expect(findNode("c")?.style.top).toBe("402px");
-    expect(findNode("b")?.style.top).toBe("512px");
+    expect(findNode("a")?.style.top).toBe(`${row1}px`);
+    expect(findNode("c")?.style.top).toBe(`${row1 + step}px`);
+    expect(findNode("b")?.style.top).toBe(`${row1 + 2 * step}px`);
   });
 
   test("does not shrink the page during a drag and reflows the siblings smoothly", async () => {
@@ -642,7 +654,10 @@ describe("guide-editor Page drag", () => {
     if (!viewport || !second || !handle || !surface) throw new Error("Dragkontroller saknas.");
 
     // Two rows to begin with (see the arithmetic above).
-    expect(surface.style.height).toBe("437px");
+    const fieldTop = pageFieldTop(findNode("page")!);
+    const row = pageRowHeight(second);
+    const twoRows = `${fieldTop + row + 19 + row + 24}px`;
+    expect(surface.style.height).toBe(twoRows);
 
     vi.spyOn(viewport, "setPointerCapture").mockImplementation(() => undefined);
     vi.spyOn(viewport, "hasPointerCapture").mockReturnValue(true);
@@ -658,11 +673,11 @@ describe("guide-editor Page drag", () => {
     }));
 
     // The height does not shrink while the drag runs, even though the target gives only one row.
-    expect(surface.style.height).toBe("437px");
+    expect(surface.style.height).toBe(twoRows);
     // The sibling is previewed into its future slot with the transition state active.
     const first = findNode("first");
     expect(first?.hasAttribute("data-reflowing")).toBe(true);
-    expect(first?.style.top).toBe("292px");
+    expect(first?.style.top).toBe(`${80 + fieldTop}px`);
 
     window.dispatchEvent(new PointerEvent("pointerup", { pointerId: 46 }));
 
@@ -670,14 +685,15 @@ describe("guide-editor Page drag", () => {
     const surfaceAfter = nodeEditor?.shadowRoot?.querySelector<HTMLElement>(
       '.node-editor__page-surface[data-page-id="page"]'
     );
-    expect(surfaceAfter?.style.height).toBe("437px");
+    expect(surfaceAfter?.style.height).toBe(twoRows);
 
     // … och landar på slutvärdet efter animationens startbildruta.
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-    expect(surfaceAfter?.style.height).toBe("347px");
-    expect(findNode("first")?.style.top).toBe("292px");
-    expect(findNode("second")?.style.top).toBe("292px");
+    // One row: the page's floor is room for one field (111) + 24 of padding.
+    expect(surfaceAfter?.style.height).toBe(`${fieldTop + 111 + 24}px`);
+    expect(findNode("first")?.style.top).toBe(`${80 + fieldTop}px`);
+    expect(findNode("second")?.style.top).toBe(`${80 + fieldTop}px`);
     expect(
       nodeEditor?.getData().nodes.find((node) => node.id === "second")?.layout?.breakBefore
     ).toBe(false);

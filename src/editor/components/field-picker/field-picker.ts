@@ -117,6 +117,17 @@ export class FieldPicker extends HTMLElement {
      * stay inside and the click that follows still lands on the row.
      */
     this.root = this.attachShadow({ mode: "open", delegatesFocus: true });
+    /*
+     * The label's click arrives here, on the host itself. Chromium has
+     * already delegated focus to the control by then; WebKit has not
+     * (measured 9/10: focus stayed on the panel's `<aside>`) — Safari does
+     * not focus a button on a click, and the control is a button. Focusing
+     * it here is what the label did for the `<select>`. A click inside the
+     * picker starts in the shadow tree and is left alone.
+     */
+    this.addEventListener("click", (event) => {
+      if (event.composedPath()[0] === this) this.control.focus();
+    });
   }
 
   get options(): FieldPickerOption[] {

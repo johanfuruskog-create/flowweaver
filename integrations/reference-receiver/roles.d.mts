@@ -21,6 +21,8 @@ export declare function allows(role: string, needed: string): boolean;
 export interface RoleConfig {
   bySubject: Map<string, Role>;
   byGroup: Map<string, Role>;
+  /** `LOGINS`: subjekt och verifierade adresser som får komma in som läsare (8/10). */
+  logins: Set<string>;
 }
 
 export declare function readRoleConfig(env?: Record<string, string | undefined>): RoleConfig;
@@ -30,6 +32,15 @@ export declare function roleOf(
   session: { subject?: string; groups?: unknown[] } | null | undefined,
   config: RoleConfig,
 ): Role;
+
+/**
+ * Får sessionen vara här alls? Bara den `.env` namnger: i `ROLES`, via en grupp
+ * i `ROLE_*`, eller i `LOGINS` — en adress bara när leverantören verifierat den.
+ */
+export declare function mayLogIn(
+  session: { subject?: string; groups?: unknown[]; email?: string; emailVerified?: boolean } | null | undefined,
+  config: RoleConfig,
+): boolean;
 
 /** Vilken rung en väg kräver: `GET` är läsarens, resten står i modulen. */
 export declare function neededRole(method: string, section: string | undefined): Role;

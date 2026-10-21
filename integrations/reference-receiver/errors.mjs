@@ -23,6 +23,9 @@
 export const ERROR_CODES = {
   unauthorized: [401],
   forbidden: [403],
+  /* En skrivning från en sida värden inte namnger (CSRF). Skild från
+     `forbidden`: rollen är inte frågan, och en ny inloggning hjälper inte. */
+  origin: [403],
   locked: [409],
   conflict: [409],
   "no-guide": [404],
@@ -39,6 +42,8 @@ export const ERROR_CODES = {
   /* Samma inlämnings-id, annat innehåll: ett lånat id, inte ett återförsök. */
   "submission-conflict": [409],
   "no-recipient": [503],
+  /* För många inlämningar från samma adress inom en timme; `Retry-After` säger hur länge. */
+  "rate-limited": [429],
   mail: [502],
   provider: [502],
   "no-route": [404],

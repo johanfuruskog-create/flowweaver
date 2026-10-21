@@ -72,6 +72,41 @@ import { visibleBand } from "../../controllers/visible-band";
  * `<em>`, `<a>`, `<br>` and the chip — 137 criterion 4. `<br>` is the
  * viewer's own line break inside a paragraph (the map example has them).
  *
+ * ## Apple's Writing Tools may not take a chip or a link (Johan 9/10, A)
+ *
+ * Measured 9/10 on macOS 27 with `dev/writing-tools.html`, the whole text
+ * selected, *Rewrite*: Chrome 155 sent one cancelable `beforeinput`
+ * `insertText` carrying the whole new text (the chip's label and its word
+ * joiner in it); Safari 27.0.1 sent no `beforeinput` at all, rewrote the DOM
+ * and sent one `input`. Either way the chip came back as the word "Förnamn"
+ * and the link was gone. `writingsuggestions="false"` stopped neither.
+ *
+ * Johan's second measurement the same day, with the shadow root listened to:
+ * in Safari nothing came in at all — no `beforeinput`, `input` or
+ * composition, only the field's own `input` on the host. In WebKit a `paste`
+ * of the rewrite as text gives his value to the letter; a DOM rewritten
+ * without events changes nothing (the model stands, and the next key draws
+ * over it). So Safari's way in is taken to be `paste` (c below) — to be
+ * confirmed on the Mac with the probe's stack line.
+ *
+ * So a write that would take a chip or a link away is refused, and the field
+ * says why (`refuseRewrite`) — but only when it cannot be a person:
+ *
+ *   a. `insertText`/`insertReplacementText` of more than one grapheme. A key
+ *      is one; a letter typed over a selected chip goes through as before.
+ *   b. A read-back with no `beforeinput` before it, outside a composition.
+ *      Typing, dictation, autocorrect and drag announce themselves first; an
+ *      input method reads back from `compositionend`, and neither that nor an
+ *      `input` in the same task as it, nor one of a `…Composition…` type, is
+ *      checked. Backspace, Delete and cut are path (a) and never checked.
+ *   c. A `paste` with no paste key (Cmd/Ctrl+V, Shift+Insert) before it,
+ *      whose text holds every word it would take away — each lost chip's
+ *      label, each lost link's text (`onPaste`). A paste from a menu over a
+ *      chip brings other words and goes through.
+ *
+ * Losing is counted, not guessed: a chip name or a link address that the
+ * text held before and does not after (`lostChipsAndLinks`).
+ *
  * ## Its own history
  *
  * Ctrl/Cmd+Z and Y/Shift+Z undo within the field, a word at a time (137 open
@@ -94,8 +129,12 @@ import { visibleBand } from "../../controllers/visible-band";
  * Safari 17 through `getComposedRanges`. Safari 16.4 (the editor's floor,
  * K18) has none of them for a shadow tree; there the field keeps the
  * position it last set itself and what `beforeinput`'s target ranges say.
- * Measured in Chromium only so far — Del D runs the same file in Firefox and
- * WebKit.
+ * Measured 9/10 in WebKit too, where the whole browser suite now runs: there
+ * the shadow root has no `getSelection`, the document's selection says
+ * `BODY`, and `getComposedRanges` gives the field's own text and offsets,
+ * forward and backward. The field's tests that failed in WebKit were the
+ * Mac's keys (plain Home and End do not move a caret there — see
+ * `src/testing/caret-keys.ts`), not the reading.
  */
 
 export interface AnswerOption {
@@ -216,10 +255,18 @@ export class RichTextField extends HTMLElement {
    * selection saved before it and puts focus back (fynd d, 25/9).
    */
   private textFocused = false;
+  /**
+   * A `beforeinput` came in this task. Safari's Writing Tools sent none —
+   * that is how its `input` is told from a person's (see the top comment).
+   */
+  private announced = false;
+  /** Cmd/Ctrl+V or Shift+Insert in this task: the `paste` after it is a person's. */
+  private pasteKey = false;
   private built = false;
 
   private editable!: HTMLElement;
   private frame!: HTMLElement;
+  private notice!: HTMLElement;
   private toolbar!: HTMLElement;
   private answerToggle!: HTMLButtonElement;
   private answerMenu!: HTMLElement;
@@ -433,12 +480,14 @@ export class RichTextField extends HTMLElement {
         ${answers ? `<div class="menu menu--answer" role="menu" aria-label="${escapeAttr(addLabel)}" data-answer-menu hidden></div>` : ""}
         <div class="menu" role="menu" data-chip-menu hidden></div>
       </div>
+      <p class="notice" role="status" data-notice></p>
       ${this.multiline && buttons.length > 0 ? `<p class="hint">${escapeHtml(this.text("editor.properties.rich-text-hint"))}</p>` : ""}
       <prompt-dialog></prompt-dialog>
     `;
 
     this.frame = this.root.querySelector("[data-frame]")!;
     this.editable = this.root.querySelector("[data-text]")!;
+    this.notice = this.root.querySelector("[data-notice]")!;
     this.toolbar = this.root.querySelector("[data-toolbar]") as HTMLElement;
     this.answerToggle = this.root.querySelector("[data-answer-toggle]") as HTMLButtonElement;
     this.answerMenu = this.root.querySelector("[data-answer-menu]") as HTMLElement;
@@ -474,9 +523,15 @@ export class RichTextField extends HTMLElement {
     });
     text.addEventListener("compositionend", () => {
       this.composing = false;
+      // An `input` right after this is the composition's own, never an
+      // unannounced rewrite — the input method may take a chip it was typed over.
+      this.announced = true;
       // The last `input` of a composition may come before or after this
       // event depending on the engine; read after both have landed.
-      setTimeout(() => this.readBack("other"), 0);
+      setTimeout(() => {
+        this.announced = false;
+        this.readBack("other");
+      }, 0);
     });
     text.addEventListener("keydown", this.onKeyDown);
     text.addEventListener("paste", this.onPaste);
@@ -962,8 +1017,25 @@ export class RichTextField extends HTMLElement {
 
     this.doc = edit.doc;
     this.selection = edit.selection;
+    this.notice.textContent = "";
     this.reread();
     this.commit();
+  }
+
+  /**
+   * A rewrite that would take a chip or a link: the model stays as it was,
+   * the DOM is drawn from it again, and the field says why (Johan 9/10, A).
+   */
+  /** The chips and links `after` would lose, by the words the redaktör sees. */
+  private lost(after: RichText): string[] {
+    return lostChipsAndLinks(this.doc, after, (name) => this.variablesValue.find((one) => one.value === name)?.label || name);
+  }
+
+  private refuseRewrite(): void {
+    this.renderText();
+    this.restoreSelection();
+    this.updateState();
+    this.notice.textContent = this.text("editor.properties.writing-tools-refused");
   }
 
   /**
@@ -1100,6 +1172,10 @@ export class RichTextField extends HTMLElement {
     }
 
     this.onSelectionChange();
+    this.announced = true;
+    setTimeout(() => {
+      this.announced = false;
+    }, 0);
 
     // Path (b): the browser writes, `input` reads it back.
     if (event.isComposing || this.composing || !event.cancelable) return;
@@ -1111,13 +1187,20 @@ export class RichTextField extends HTMLElement {
     switch (type) {
       case "insertText":
       case "insertReplacementText": {
-        const text = event.data ?? event.dataTransfer?.getData("text/plain") ?? "";
+        // The invisible formatting a paste leaves out, out here too: Chrome's
+        // Writing Tools handed back the chip's word joiner in its text.
+        const text = (event.data ?? event.dataTransfer?.getData("text/plain") ?? "").replace(INVISIBLE_FORMATTING, "");
         const where = type === "insertReplacementText" && target ? target : this.selection;
         const marks = this.pendingMarks ?? marksAt(this.doc, orderedRange(where)[0]);
+        const edit = insertText(this.doc, where, text.replace(/\r?\n/g, " "), marks);
 
         event.preventDefault();
+        if (graphemes(text) > 1 && this.lost(edit.doc).length > 0) {
+          this.refuseRewrite();
+          return;
+        }
         this.pendingMarks = null;
-        this.apply(insertText(this.doc, where, text.replace(/\r?\n/g, " "), marks), type === "insertText" ? "typing" : "other", text);
+        this.apply(edit, type === "insertText" ? "typing" : "other", text);
         return;
       }
       case "insertParagraph":
@@ -1216,10 +1299,11 @@ export class RichTextField extends HTMLElement {
       return;
     }
 
-    this.readBack(type === "insertText" ? "typing" : "other");
+    // Unannounced: no `beforeinput` came first, and no composition — Safari's Writing Tools.
+    this.readBack(type === "insertText" ? "typing" : "other", !this.announced && !/Composition/.test(type ?? ""));
   };
 
-  private readBack(kind: HistoryKind): void {
+  private readBack(kind: HistoryKind, unannounced = false): void {
     const read = this.readSelection();
     const reading = readDom(this.editable, read ? [read.anchor, { ...read.focus, bias: "end" }] : []);
     const [anchor, focus] = reading.positions;
@@ -1235,6 +1319,10 @@ export class RichTextField extends HTMLElement {
       this.restoreSelection();
       return;
     }
+    if (unannounced && this.lost(doc).length > 0) {
+      this.refuseRewrite();
+      return;
+    }
 
     this.apply({ doc, selection }, kind);
   }
@@ -1243,6 +1331,13 @@ export class RichTextField extends HTMLElement {
     this.onSelectionChange();
     const key = event.key.toLowerCase();
     const modifier = (event.ctrlKey || event.metaKey) && !event.altKey;
+
+    if ((modifier && key === "v") || (event.shiftKey && key === "insert")) {
+      this.pasteKey = true;
+      setTimeout(() => {
+        this.pasteKey = false;
+      }, 0);
+    }
     const features = new Set(this.features);
 
     if (modifier && (key === "z" || key === "y")) {
@@ -1694,15 +1789,48 @@ export class RichTextField extends HTMLElement {
     if (next >= 0) {
       event.preventDefault();
       items[next]?.focus();
+      /*
+       * Focus scrolls a row into view, but Firefox only when too little of it
+       * shows (measured 10/10, Firefox 151: a row 10 of 50 px in view was
+       * scrolled to, one 43 of 52 px in view was not), so the focused row
+       * stood 8–12 px under the menu's edge with its focus ring cut. Chromium
+       * and WebKit already bring it wholly in at focus; for them this is a
+       * no-op.
+       */
+      items[next]?.scrollIntoView({ block: "nearest", inline: "nearest" });
     }
   }
 
   // --- Clipboard ---------------------------------------------------------------
 
+  /**
+   * A paste — and Safari's Writing Tools, which came in as one (measured
+   * 9/10: nothing reached the shadow root but the field's own `input`, and a
+   * `paste` of the rewrite as text gives Johan's value to the letter in
+   * WebKit, `\n\nFörnamn\n\n` and all). Refused, like the other two ways,
+   * only when it cannot be a person's paste: it would take a chip or a link,
+   * no paste key came before it, and it carries the very words it would take
+   * away — a rewrite keeps the words and drops the chip; a person pasting
+   * over a chip brings words of their own.
+   */
   private onPaste = (event: ClipboardEvent): void => {
     event.preventDefault();
     if (this.disabled || !event.clipboardData) return;
-    this.insertTransfer(event.clipboardData.getData("text/html"), event.clipboardData.getData("text/plain"));
+
+    const html = event.clipboardData.getData("text/html");
+    const plain = event.clipboardData.getData("text/plain");
+    const edit = this.transferEdit(html, plain);
+
+    if (!this.pasteKey) {
+      const words = html ? new DOMParser().parseFromString(html, "text/html").body.textContent ?? "" : plain;
+      const lost = this.lost(edit.doc);
+
+      if (lost.length > 0 && lost.every((word) => words.includes(word))) {
+        this.refuseRewrite();
+        return;
+      }
+    }
+    this.apply(edit, "other");
   };
 
   /**
@@ -1721,6 +1849,10 @@ export class RichTextField extends HTMLElement {
    * dropped (criterion 5).
    */
   private insertTransfer(rawHtml: string, rawPlain: string): void {
+    this.apply(this.transferEdit(rawHtml, rawPlain), "other");
+  }
+
+  private transferEdit(rawHtml: string, rawPlain: string): Edit {
     const features = new Set(this.features);
     const html = rawHtml.replace(INVISIBLE_FORMATTING, "");
     const plain = rawPlain.replace(INVISIBLE_FORMATTING, "");
@@ -1749,7 +1881,7 @@ export class RichTextField extends HTMLElement {
       blocks = [{ type: "paragraph", content: joined }];
     }
 
-    this.apply(insertBlocks(this.doc, this.selection, blocks), "other");
+    return insertBlocks(this.doc, this.selection, blocks);
   }
 
   /** A copy carries the Markdown as its plain text, so pasting it back gives the same text. */
@@ -1931,6 +2063,44 @@ function beforeChip(chip: HTMLElement): { node: Node; offset: number } {
 
   if (glue?.hasAttribute("data-chip-glue") && glue.firstChild?.nodeType === Node.TEXT_NODE) return { node: glue.firstChild, offset: 1 };
   return { node: chip.parentNode!, offset: indexOf(chip) };
+}
+
+/**
+ * What `after` has lost of the chips and links `before` held, as the words a
+ * reader saw: a chip's label, a link's text. A chip is counted by its name, as
+ * many as there are; a link only as there or not, by its address — its text
+ * may be split by bold. A chip moved, or a link that still stands somewhere,
+ * is not lost.
+ */
+function lostChipsAndLinks(before: RichText, after: RichText, label: (name: string) => string): string[] {
+  const read = (doc: RichText) => {
+    const chips = new Map<string, number>();
+    const links = new Map<string, string>();
+
+    for (const block of doc.blocks) {
+      for (const item of block.content) {
+        if (item.type === "chip") chips.set(item.name, (chips.get(item.name) ?? 0) + 1);
+        else if (item.type === "text" && item.marks.link) {
+          const key = JSON.stringify(item.marks.link);
+
+          links.set(key, (links.get(key) ?? "") + item.text);
+        }
+      }
+    }
+    return { chips, links };
+  };
+  const had = read(before);
+  const has = read(after);
+
+  return [
+    ...[...had.chips].filter(([name, count]) => (has.chips.get(name) ?? 0) < count).map(([name]) => label(name)),
+    ...[...had.links].filter(([key]) => !has.links.has(key)).map(([, text]) => text),
+  ];
+}
+
+/** User-perceived characters: one key gives one, whatever its code units. */
+function graphemes(text: string): number {
+  return typeof Intl.Segmenter === "function" ? [...new Intl.Segmenter().segment(text)].length : [...text].length;
 }
 
 /** About three menu rows: below it a menu is too short to be worth its anchor's room. */

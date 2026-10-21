@@ -73,7 +73,21 @@ function tryAcquire() {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/*
+ * Re-entrant within one run. Each browser instance in `vitest.config.ts`
+ * (Chromium and WebKit since 9/10) runs this global setup in the same
+ * process, and the second used to find the lock held by its own pid and wait
+ * for itself forever (measured 9/10: ten minutes, nothing run). So the run
+ * counts its holds, and the last teardown releases.
+ */
+const HOLDS = Symbol.for("flowweaver.browser-suite-lock.holds");
+
 export async function setup() {
+  if (holderPid() === process.pid) {
+    globalThis[HOLDS] = (globalThis[HOLDS] ?? 0) + 1;
+    return;
+  }
+
   let told = false;
 
   while (!tryAcquire()) {
@@ -93,9 +107,12 @@ export async function setup() {
 
     await sleep(POLL_MS);
   }
+  globalThis[HOLDS] = 1;
 }
 
 export function teardown() {
+  globalThis[HOLDS] = (globalThis[HOLDS] ?? 1) - 1;
+  if (globalThis[HOLDS] > 0) return;
   if (holderPid() === process.pid) {
     rmSync(LOCK, { recursive: true, force: true });
   }

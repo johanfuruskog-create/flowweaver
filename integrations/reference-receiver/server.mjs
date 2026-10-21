@@ -92,7 +92,7 @@ import {
   sign,
 } from "./auth.mjs";
 import { liveLock, lockMinutes, publicLock, takenLock } from "./locks.mjs";
-import { allows, neededRole, readRoleConfig, roleOf } from "./roles.mjs";
+import { allows, mayLogIn, neededRole, readRoleConfig, roleOf } from "./roles.mjs";
 import { MAX_PAYLOAD_BYTES } from "./limits.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -414,8 +414,58 @@ async function readJson(request, limit) {
   }
 }
 
-const server = createServer(async (request, response) => {
-  const url = new URL(request.url, `http://localhost:${PORT}`);
+/**
+ * The CORS headers for an answer to `request`, or none when its origin is not
+ * one this host names. Shared by every answer, the guard's 500 included (Eva
+ * 20/10): without them a browser reads a 500 as a network error, and the
+ * editor says the host cannot be reached when it can.
+ */
+function corsHeaders(request) {
+  const asking = String(request.headers.origin ?? "");
+  const allowedOrigin = asking === "" ? ORIGIN : ORIGINS.includes(asking) ? asking : "";
+  const headers = {};
+
+  if (allowedOrigin) {
+    headers["access-control-allow-origin"] = allowedOrigin;
+    /*
+     * The session cookie only travels when the answer says it may. Without
+     * this line `credentials: "include"` sends nothing and every route reads
+     * as logged out — with no error anywhere, because the request succeeds.
+     */
+    headers["access-control-allow-credentials"] = "true";
+    headers.vary = "Origin";
+    // `authorization` as well as `content-type` since story 124: the storage
+    // adapter carries the guide's secret as a Bearer token, and a browser
+    // will not send a header the preflight did not allow.
+    headers["access-control-allow-headers"] = "content-type, authorization";
+    /*
+     * `PUT` hör till sedan lagringskontraktet (berättelse 124):
+     * `PUT /guides/<id>/draft` är arbetskopians väg. Utan den i
+     * förhandsförfrågan avvisar webbläsaren skrivningen innan den skickas,
+     * och serverns egen logg ser tom ut — mätt i en riktig webbläsare, för
+     * `fetch` i node bryr sig inte om CORS och provet var grönt hela tiden.
+     */
+    headers["access-control-allow-methods"] = "GET,PUT,POST,DELETE,OPTIONS";
+  }
+
+  return headers;
+}
+
+const answer = async (request, response) => {
+  /*
+   * A target `new URL` cannot read — `//[` is a host that never closes its
+   * bracket — is no request this host can route. The answer is the bare 400
+   * Node's own parser gives a malformed request line, without a contract code:
+   * no browser `fetch` can send one, so no host page will ever read it.
+   */
+  let url;
+  try {
+    url = new URL(request.url, `http://localhost:${PORT}`);
+  } catch {
+    response.writeHead(400, { connection: "close" });
+    response.end();
+    return;
+  }
   /*
    * What this host is reachable as, from the request itself.
    *
@@ -431,32 +481,8 @@ const server = createServer(async (request, response) => {
   const secureCookies = proto === "https";
   /** The origin asking, when a browser is asking. */
   const asking = String(request.headers.origin ?? "");
-  const allowedOrigin = asking === "" ? ORIGIN : ORIGINS.includes(asking) ? asking : "";
   const send = (status, body, extra = {}) => {
-    const headers = { "content-type": "application/json; charset=utf-8", ...extra };
-
-    if (allowedOrigin) {
-      headers["access-control-allow-origin"] = allowedOrigin;
-      /*
-       * The session cookie only travels when the answer says it may. Without
-       * this line `credentials: "include"` sends nothing and every route reads
-       * as logged out — with no error anywhere, because the request succeeds.
-       */
-      headers["access-control-allow-credentials"] = "true";
-      headers.vary = "Origin";
-      // `authorization` as well as `content-type` since story 124: the storage
-      // adapter carries the guide's secret as a Bearer token, and a browser
-      // will not send a header the preflight did not allow.
-      headers["access-control-allow-headers"] = "content-type, authorization";
-      /*
-       * `PUT` hör till sedan lagringskontraktet (berättelse 124):
-       * `PUT /guides/<id>/draft` är arbetskopians väg. Utan den i
-       * förhandsförfrågan avvisar webbläsaren skrivningen innan den skickas,
-       * och serverns egen logg ser tom ut — mätt i en riktig webbläsare, för
-       * `fetch` i node bryr sig inte om CORS och provet var grönt hela tiden.
-       */
-      headers["access-control-allow-methods"] = "GET,PUT,POST,DELETE,OPTIONS";
-    }
+    const headers = { "content-type": "application/json; charset=utf-8", ...extra, ...corsHeaders(request) };
 
     /*
      * `204` är ett svar utan kropp, och då hör ingen `content-type` dit: det
@@ -480,6 +506,33 @@ const server = createServer(async (request, response) => {
     return;
   }
 
+  /*
+   * A write from a page this host does not name is refused before anything
+   * reads the cookie (CSRF, measured 9/10).
+   *
+   * CORS does not stop it on its own. CORS decides whether a page may *read*
+   * the answer; a form POST or a `text/plain` fetch needs no preflight, so the
+   * browser sends it, cookie and all, and the write happens whether or not the
+   * answer is ever readable. `SameSite=Lax` (auth.mjs, setCookie) holds back
+   * the cookie from another *site* — measured in Chromium, Firefox and WebKit —
+   * but a site is the registrable domain: every `*.kommun.se` is the same site
+   * as `api.kommun.se`, so any page on any sibling subdomain could create a
+   * guide, publish one or take a lock in a logged-in editor's name. That is
+   * what the measurement showed before this check existed.
+   *
+   * Only an `Origin` that is present and not ours is refused. Every browser
+   * sends one on POST, PUT and DELETE; a request without one is not a page
+   * acting in somebody's browser — `guides.mjs`, a host's server, curl — and
+   * it carries no cookie it did not set itself. `null` (a sandboxed frame, a
+   * cross-origin redirect) is not on the list and is refused with the rest.
+   */
+  const reads = request.method === "GET" || request.method === "HEAD";
+
+  if (!reads && asking !== "" && asking !== selfBase && !ORIGINS.includes(asking)) {
+    send(403, { error: "origin", message: `writes from ${asking} are not allowed` });
+    return;
+  }
+
   /* ── The editor's login (docs/STORIES/126, docs/LAGRING-KONTRAKT.md) ──── */
 
   /**
@@ -490,8 +543,13 @@ const server = createServer(async (request, response) => {
    * mean *this request carries no identity*, and what happens next is decided
    * by whether a guide can be opened another way.
    */
-  const whoIsAsking = () =>
-    AUTH.on ? readSigned(readCookie(request.headers.cookie, SESSION_COOKIE), AUTH.sessionSecret) : null;
+  const whoIsAsking = () => {
+    if (!AUTH.on) return null;
+    const session = readSigned(readCookie(request.headers.cookie, SESSION_COOKIE), AUTH.sessionSecret);
+
+    // A session for somebody `.env` no longer names is no session (roles.mjs, mayLogIn).
+    return session && mayLogIn(session, ROLES) ? session : null;
+  };
 
   const redirect = (to, extra = {}) => {
     response.writeHead(302, { location: to, ...extra });
@@ -600,6 +658,17 @@ const server = createServer(async (request, response) => {
            * can act on and tells somebody probing rather a lot.
            */
           console.error(`Inloggningen avvisades: ${done.why}`);
+          redirect(returnOf(pending), { "set-cookie": drop });
+          return;
+        }
+
+        /*
+         * A real account that `.env` does not name gets no session (Johan 8/10:
+         * a strict list). The subject goes in the log so the operator can add
+         * it to ROLES or LOGINS; the address does not.
+         */
+        if (!mayLogIn(done.session, ROLES)) {
+          console.error(`Inloggningen nekades: ${done.session.subject} står inte i ROLES, ROLE_* eller LOGINS`);
           redirect(returnOf(pending), { "set-cookie": drop });
           return;
         }
@@ -1894,6 +1963,32 @@ const server = createServer(async (request, response) => {
     version: VERSION,
     finns: ROUTES,
   });
+};
+
+/*
+ * Nothing a request carries may end the process (LOGG 20/10: `GET //[` threw
+ * in `new URL` above, the async handler's rejection went unhandled, and Node
+ * exits on that). This host is public behind Caddy with `Restart=always` and
+ * `RestartSec=3`, so one such request every three seconds would have kept it
+ * down. Whatever throws now is a 500 — or, once the answer has started, a
+ * closed socket — and the next request is served as before.
+ *
+ * Same shape as `integrations/mcp-server/http.mjs`. The 500 has no body and no
+ * code from `errors.mjs`: the contract's codes say what a host decided, and
+ * this is the host failing to decide anything.
+ */
+const server = createServer(async (request, response) => {
+  try {
+    await answer(request, response);
+  } catch (error) {
+    console.error(error?.stack ?? String(error));
+    if (!response.headersSent) {
+      response.writeHead(500, { connection: "close", ...corsHeaders(request) });
+      response.end();
+    } else {
+      response.destroy();
+    }
+  }
 });
 
 export { server, PORT };

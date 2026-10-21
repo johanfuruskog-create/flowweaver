@@ -52,6 +52,12 @@ const announceOf = (element: GuideVersions): HTMLElement =>
 const rowOf = (element: GuideVersions, id: string): HTMLElement =>
   element.shadowRoot!.querySelector<HTMLElement>(`tr[data-id="${id}"]`)!;
 
+const middleOf = (row: HTMLElement): number => {
+  const box = row.getBoundingClientRect();
+
+  return box.top + box.height / 2;
+};
+
 const gripOf = (element: GuideVersions, id: string): HTMLElement =>
   element.shadowRoot!.querySelector<HTMLElement>(`tr[data-id="${id}"] [data-grip]`)!;
 
@@ -64,8 +70,10 @@ describe("uppläsning efter en dragen version", () => {
     grip.dispatchEvent(
       new PointerEvent("pointerdown", { clientY: top, bubbles: true, composed: true }),
     );
-    // Past the row height and the 10px threshold: v1 trades with v2, then v3.
-    window.dispatchEvent(new PointerEvent("pointermove", { clientY: top + 90 }));
+    // Onto the middle of the next row: v1 trades with v2. Aimed at the row
+    // rather than a fixed +90 px — the rows are as tall as their text, and
+    // +90 went past v2 into v3 on macOS (rows 57/54 px there; measured 9/10).
+    window.dispatchEvent(new PointerEvent("pointermove", { clientY: middleOf(rowOf(element, "v2")) }));
     window.dispatchEvent(new PointerEvent("pointerup"));
     await settle();
     // announce() sets the text 30ms after render() clears it.
@@ -82,7 +90,7 @@ describe("uppläsning efter en dragen version", () => {
     first.dispatchEvent(
       new PointerEvent("pointerdown", { clientY: firstTop, bubbles: true, composed: true }),
     );
-    window.dispatchEvent(new PointerEvent("pointermove", { clientY: firstTop + 90 }));
+    window.dispatchEvent(new PointerEvent("pointermove", { clientY: middleOf(rowOf(element, "v2")) }));
     window.dispatchEvent(new PointerEvent("pointerup"));
     await settle();
     await settle();

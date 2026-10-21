@@ -39,6 +39,7 @@ import { ArrivalValueService } from "../../viewer/services/arrival-value-service
 import { isRealDate } from "../../viewer/core/date-math";
 
 import { RuleCasesService } from "../../viewer/services/rule-cases-service";
+import { checkPattern } from "../../viewer/core/safe-pattern";
 import { interpolate, t } from "../localization/editor-ui-strings";
 
 import type { ConditionalVisibility, FlowNodeData, GraphData } from "../../viewer/types/graph";
@@ -72,6 +73,8 @@ export type GuideHealthCode =
   | "broken-email-copy"
   /** A reachable submit-result with no review node anywhere in the graph. */
   | "submit-without-review"
+  /** A reachable file field in a guide that is sent in: only the file's name goes (finding 5, 9/10). */
+  | "file-not-submitted"
   /** A repeating page with no word for what repeats — the viewer has no "Barn 1", no "Lägg till …". */
   | "repeat-without-word"
   /** A repeating page with no list variable — the answers have nowhere to land. */
@@ -117,7 +120,9 @@ export type GuideHealthCode =
   /** Two nodes save under one variable name and both can be answered in the same visit (24/9). */
   | "variable-name-clash"
   /** An answer option with no text in any of the guide's languages (Johan 28/9). */
-  | "option-without-text";
+  | "option-without-text"
+  /** A field's own pattern the viewer does not run: it does not compile, or it can freeze the tab (9/10). */
+  | "pattern-not-run";
 
 export interface GuideHealthIssue {
   code: GuideHealthCode;
@@ -190,6 +195,7 @@ export class GuideHealthService {
       ...this.pageCalculations(graph),
       ...this.arrivalValues(graph, context),
       ...this.sliders(graph),
+      ...this.patterns(graph),
       ...this.emptyCallouts(graph),
       ...this.exampleImages(graph),
       ...this.loops(graph),
@@ -984,6 +990,36 @@ export class GuideHealthService {
               message: `"${this.label(node)}": reglaget har ${sv(positions)} lägen mellan ${sv(min)} och ${sv(max)} — sätt ett större steg.`,
             }]
           : [];
+      });
+  }
+
+  /**
+   * A pattern the viewer skips (security review 8/10, measured 9/10).
+   *
+   * `validateFormat` lets every answer through when the field's pattern does
+   * not compile or is one that backtracks exponentially (`safe-pattern.ts`) —
+   * the second because running it froze the tab for seconds on an ordinary
+   * name. Skipping is right for the visitor and silent for the editor, who set
+   * a rule and would believe it held (PRAXIS 35). This is where it is said. An
+   * error and not a warning: the setting does nothing at all.
+   */
+  private static patterns(graph: GraphData): GuideHealthIssue[] {
+    return graph.nodes
+      .filter((node) => node.data.format === "regex" && typeof node.data.pattern === "string" && node.data.pattern !== "")
+      .flatMap((node): GuideHealthIssue[] => {
+        const check = checkPattern(node.data.pattern as string);
+
+        if (check === "ok") return [];
+
+        return [{
+          code: "pattern-not-run",
+          severity: "error",
+          nodeId: node.id,
+          field: "pattern",
+          message: check === "invalid"
+            ? `"${this.label(node)}": mönstret går inte att läsa, så svaret kontrolleras inte — rätta det eller välj ett namngivet format.`
+            : `"${this.label(node)}": mönstret kan låsa besökarens webbläsare och används därför inte — en grupp som upprepas får inte själv innehålla +, *, ? eller |, som i ([a-z]+ ?)+.`,
+        }];
       });
   }
 

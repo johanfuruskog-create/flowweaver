@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import {
   getGuideLocales,
@@ -196,5 +196,48 @@ describe("textriktning", () => {
 
   test("the region does not affect the direction", () => {
     expect(textDirection("ar-EG")).toBe("rtl");
+  });
+});
+
+/*
+ * Firefox has no `getTextInfo` (measured 10/10, Firefox 151) and read every
+ * right-to-left guide left to right. Without the API the direction comes from
+ * the language's likely script; the API is taken away here the way Firefox
+ * lacks it, and put back after.
+ */
+describe("textriktning utan getTextInfo (Firefox)", () => {
+  // Node has both the method and the older getter; Firefox has neither.
+  const proto = Intl.Locale.prototype as Intl.Locale & { getTextInfo?: unknown; textInfo?: unknown };
+  const originals = (["getTextInfo", "textInfo"] as const).map(
+    (name) => [name, Object.getOwnPropertyDescriptor(proto, name)] as const
+  );
+
+  beforeEach(() => {
+    for (const [name] of originals) delete proto[name];
+  });
+  afterEach(() => {
+    for (const [name, descriptor] of originals) {
+      if (descriptor) Object.defineProperty(proto, name, descriptor);
+    }
+  });
+
+  test.each([
+    ["ar", "rtl"],
+    ["ar-EG", "rtl"],
+    ["fa", "rtl"],
+    ["he", "rtl"],
+    ["ur", "rtl"],
+    ["sv", "ltr"],
+    ["en", "ltr"],
+    ["uk", "ltr"],
+    ["ti", "ltr"],
+    ["so", "ltr"],
+    // The script decides, not the language: Arabic in Latin letters is ltr.
+    ["ar-Latn", "ltr"],
+    ["qq", "ltr"],
+  ])("%s läses %s", (locale, väntat) => {
+    expect("getTextInfo" in new Intl.Locale("ar")).toBe(false);
+    expect("textInfo" in new Intl.Locale("ar")).toBe(false);
+    expect(textDirection(locale)).toBe(väntat);
   });
 });

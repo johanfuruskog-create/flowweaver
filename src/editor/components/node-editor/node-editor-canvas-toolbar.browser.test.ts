@@ -1,3 +1,4 @@
+import { tab } from "../../../testing/tab-keys";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import "../../../viewer/node-types/default-node-types";
@@ -567,7 +568,7 @@ describe("zoomraden (Uppdrag 29/9, Del A)", () => {
 
     // A real Tab, so the focus is :focus-visible (element.focus() is not always).
     toolbar.querySelector<HTMLButtonElement>('[data-action="canvas-zoom-in"]')!.focus();
-    await userEvent.tab();
+    await tab();
     expect(nodeEditor.shadowRoot!.activeElement).toBe(fit);
     expect(tooltip.hidden, "fokus visade ingen tooltip").toBe(false);
     expect(tooltip.textContent).toBe(fit.getAttribute("aria-label"));
@@ -582,7 +583,7 @@ describe("zoomraden (Uppdrag 29/9, Del A)", () => {
     expect(t.left).toBeLessThan(b.right);
     expect(t.right).toBeGreaterThan(b.left);
 
-    await userEvent.tab();
+    await tab();
     expect(nodeEditor.shadowRoot!.activeElement).toBe(fullscreen);
     expect(tooltip.textContent).toBe("Helskärm");
 
@@ -648,7 +649,6 @@ describe("höger-till-vänster (Astra 29/9)", () => {
   /** Tabbordning, tooltip och procentcellen — samma mätning oavsett bredd. */
   async function assertReadingOrderAndSpeech(nodeEditor: NodeEditor, canvas: DOMRect): Promise<void> {
     const toolbar = toolbarOf(nodeEditor);
-    const { userEvent } = await import("vitest/browser");
     const buttons = [...toolbar.querySelectorAll<HTMLButtonElement>("button")];
 
     expect(buttons.map((button) => button.dataset.action), "knapparnas DOM-ordning").toEqual([
@@ -661,7 +661,7 @@ describe("höger-till-vänster (Astra 29/9)", () => {
     buttons[0].focus();
     expect(nodeEditor.shadowRoot!.activeElement, "minus fick inte fokus").toBe(buttons[0]);
     for (let index = 1; index < buttons.length; index += 1) {
-      await userEvent.tab();
+      await tab();
       expect(
         nodeEditor.shadowRoot!.activeElement,
         `tabb ${index} hamnade inte på ${buttons[index].dataset.action}`,

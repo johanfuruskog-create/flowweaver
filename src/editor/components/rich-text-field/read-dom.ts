@@ -48,7 +48,8 @@ const BLOCK_TAGS = new Set([
 ]);
 const SKIPPED_TAGS = new Set(["STYLE", "SCRIPT", "HEAD", "TITLE", "META", "LINK", "TEMPLATE", "NOSCRIPT", "SVG", "IMG", "VIDEO", "AUDIO", "IFRAME", "OBJECT"]);
 
-export function readDom(root: Node, points: DomPoint[] = []): DomReading {
+export function readDom(root: Node, asked: DomPoint[] = []): DomReading {
+  const points = asked.map((point) => endOfRoot(root, point));
   const blocks: Block[] = [];
   let current: Block | null = null;
   const positions: Array<Position | null> = points.map(() => null);
@@ -212,6 +213,31 @@ export function readDom(root: Node, points: DomPoint[] = []): DomReading {
   };
 
   return { doc, positions };
+}
+
+/**
+ * A point after the root's last child, moved to the end inside that child.
+ *
+ * Between blocks a point is the start of the block that follows — but after
+ * the last block nothing follows, and the position one past it was clamped to
+ * the *start* of the last block. Firefox's Cmd/Ctrl+A in the field ends
+ * exactly there, on the editable after its last block (measured 10/10;
+ * Chromium and WebKit end in the text node), so a letter typed over the whole
+ * text went in first and Delete took one character. Moved inside, the point is
+ * read where it stands: the end of the last block's text, or — when that block
+ * is the empty paragraph the field draws with a filler — that empty block,
+ * exactly as before. The descent stops at a chip, which has no inside.
+ */
+function endOfRoot(root: Node, point: DomPoint): DomPoint {
+  if (point.node !== root || point.offset !== root.childNodes.length) return point;
+
+  let node: Node = root;
+
+  while (node.lastChild instanceof Element && node.lastChild.firstChild && !node.lastChild.hasAttribute("data-chip")) {
+    node = node.lastChild;
+  }
+
+  return node === root ? point : { ...point, node, offset: node.childNodes.length };
 }
 
 /** What an inline element says about bold, italic and links — tag or style. */

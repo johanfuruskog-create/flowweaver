@@ -157,13 +157,23 @@ export function readAllowedOrigins(env = process.env) {
 
 /* ── Cookies ───────────────────────────────────────────────────────────── */
 
-/** One cookie out of a `Cookie:` header, or `""`. */
+/**
+ * One cookie out of a `Cookie:` header, or `""`.
+ *
+ * A value `decodeURIComponent` cannot read (`fw_session=%`) is no cookie, the
+ * same as a forged one in `readSigned`: measured 20/10, it threw out of the
+ * request handler and the process died, with OIDC on.
+ */
 export function readCookie(header, name) {
   for (const part of String(header ?? "").split(";")) {
     const at = part.indexOf("=");
 
     if (at > 0 && part.slice(0, at).trim() === name) {
-      return decodeURIComponent(part.slice(at + 1).trim());
+      try {
+        return decodeURIComponent(part.slice(at + 1).trim());
+      } catch {
+        return "";
+      }
     }
   }
 
@@ -482,6 +492,8 @@ export function claimsFrom(claims) {
       String(claims?.preferred_username ?? "").trim() ||
       String(claims?.email ?? "").trim(),
     email: String(claims?.email ?? ""),
+    // Only a provider's own word makes an address count for `LOGINS` (roles.mjs).
+    emailVerified: claims?.email_verified === true || claims?.email_verified === "true",
     ...(groups.length > 0 ? { groups } : {}),
   };
 }

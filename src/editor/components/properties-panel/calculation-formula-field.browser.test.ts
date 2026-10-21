@@ -1,3 +1,4 @@
+import { DOC_END } from "../../../testing/caret-keys";
 import { userEvent } from "@vitest/browser/context";
 import { afterEach, describe, expect, test } from "vitest";
 
@@ -73,7 +74,7 @@ describe("uträkningens formelfält", () => {
     const text = field.shadowRoot!.querySelector<HTMLElement>("[data-text]")!;
 
     text.focus();
-    await userEvent.keyboard("{Control>}{End}{/Control}");
+    await userEvent.keyboard(DOC_END);
     await userEvent.keyboard(" + 1");
     await settle();
     expect(storedFormulas(editor)[2]).toBe("round(min(grund + barntillagg; 9000)) + 1");

@@ -131,7 +131,47 @@ export function readRoleConfig(env = process.env) {
     }
   }
 
-  return { bySubject, byGroup };
+  /*
+   * Who may sign in at all, beyond those with a role (Johan 8/10: "gör en
+   * strikt lista"). Addresses and subjects, lower-cased; a reader is somebody
+   * named here, never "anybody the provider accepts".
+   */
+  const logins = new Set(
+    String(env.LOGINS ?? "")
+      .split(",")
+      .map((one) => one.trim().toLowerCase())
+      .filter((one) => one !== ""),
+  );
+
+  return { bySubject, byGroup, logins };
+}
+
+/**
+ * May this session be here at all?
+ *
+ * The security analysis (8/10) found every account the provider accepted
+ * became a reader and could read every guide on the host. Now a person is let
+ * in only when `.env` names them: by a role (`ROLES`), by a group with a role
+ * (`ROLE_*`), or in `LOGINS`. Nobody named means nobody in — the strict end,
+ * and the first host to set this up writes themselves into `ROLES` anyway.
+ *
+ * An e-mail address counts only when the provider says it verified it: a
+ * provider that lets anybody claim any address would otherwise let anybody in.
+ * Asked on every request, not only at the callback, so a narrowed list takes
+ * effect at the next restart for sessions already issued.
+ */
+export function mayLogIn(session, config) {
+  const subject = String(session?.subject ?? "");
+  const groups = Array.isArray(session?.groups) ? session.groups : [];
+  const email = String(session?.email ?? "").trim().toLowerCase();
+  const logins = config.logins ?? new Set();
+
+  return (
+    (subject !== "" && config.bySubject.has(subject)) ||
+    groups.some((group) => config.byGroup.has(String(group))) ||
+    (subject !== "" && logins.has(subject.toLowerCase())) ||
+    (session?.emailVerified === true && email !== "" && logins.has(email))
+  );
 }
 
 /**

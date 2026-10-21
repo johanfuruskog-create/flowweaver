@@ -29,7 +29,7 @@ import { LOCK_ICON } from "./lock-icon";
 import { ServerGraphStore } from "./server-graph-store";
 import { initTheme } from "./theme-persistence";
 import { initPanelMemory } from "./panel-persistence";
-import { hostConfig } from "./host-config";
+import { hostApi, hostConfig } from "./host-config";
 
 import type { GuideEditor } from "../editor/components/guide-editor/guide-editor";
 import type { ConfirmationDialog } from "../editor/components/confirmation-dialog/confirmation-dialog";
@@ -147,14 +147,12 @@ const secret = params.get("key") ?? "";
  * blocked. The file is called `interest-form.json` for historical reasons;
  * what it holds is the API's base.
  *
- * `?api=` points it somewhere else, and that is harmless for a reason the
- * build provides: the built page's `connect-src` allows exactly one origin, so
- * a browser blocks any other whatever the address says. In development there
- * is no policy, and there the parameter is the difference between being able
- * to try this page against your own receiver and not being able to try it at
- * all.
+ * `?api=` points it at a receiver on this machine and nowhere else
+ * (`hostApi`, 9/10): it is the difference between being able to try this page
+ * against your own receiver and not being able to try it at all, and from any
+ * other address it was a link that aimed the editor's saves at a stranger.
  */
-const API = (params.get("api") ?? hostConfig.api ?? "").trim();
+const { api: API } = hostApi(location.search);
 
 /**
  * The three states, each with a shape of its own.

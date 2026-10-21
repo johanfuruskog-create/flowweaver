@@ -18,6 +18,7 @@
     "test:all:run": "vitest run",
     "test:browser": "vitest --project browser",
     "test:browser:run": "vitest run --project browser",
+    "test:firefox": "FW_FIREFOX=1 vitest run --project 'browser (firefox)'",
     "test:coverage": "vitest run --coverage",
     "smoke": "node e2e/editor-smoke.mjs",
     "smoke:lib": "node e2e/lib-consumer-smoke.mjs",

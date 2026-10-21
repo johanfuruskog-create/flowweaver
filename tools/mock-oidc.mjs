@@ -112,6 +112,19 @@ const PEOPLE = {
     email: "monika.agren@exempel.invalid",
     email_verified: true,
   },
+  /*
+   * Named nowhere in the receiver's `.env`: the account a strict login list
+   * must turn away (Johan 8/10). A real, verified account — the provider
+   * accepts it; the host must not.
+   */
+  okand: {
+    sub: "mock-okand-person",
+    name: "Okänd Person",
+    given_name: "Okänd",
+    family_name: "Person",
+    email: "okand.person@exempel.invalid",
+    email_verified: true,
+  },
 };
 
 /** Codes waiting to be exchanged. In memory, short-lived, single use. */

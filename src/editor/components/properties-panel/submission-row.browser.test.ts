@@ -1,3 +1,4 @@
+import { LINE_END, SELECT_TO_LINE_START } from "../../../testing/caret-keys";
 // FlowWeaver PRO where it is, nothing in the open repo (src/testing/optional-pro.ts).
 import { withPro } from "../../../testing/optional-pro";
 const PRO = await withPro("index.ts");
@@ -96,12 +97,12 @@ describe.runIf(PRO)("raddesignern på Inlämning", () => {
     const inner = cell.shadowRoot!;
 
     inner.querySelector<HTMLElement>("[data-text]")!.focus();
-    await userEvent.keyboard("{End}{Shift>}{Home}{/Shift}");
+    await userEvent.keyboard(LINE_END + SELECT_TO_LINE_START);
     await userEvent.click(inner.querySelector<HTMLButtonElement>('[data-command="bold"]')!);
     await settle();
     expect(cell.value).toBe("**Ärende**");
 
-    await userEvent.keyboard("{End}");
+    await userEvent.keyboard(LINE_END);
     await userEvent.click(inner.querySelector<HTMLButtonElement>("[data-answer-toggle]")!);
     await userEvent.click(inner.querySelector<HTMLButtonElement>('[data-insert="namn"]')!);
     await settle();

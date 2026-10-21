@@ -182,7 +182,7 @@ describe("regelkorten", () => {
     expect(panel.querySelectorAll('[data-property="fallbackLabel"]'), "fältet ritas en gång").toHaveLength(1);
 
     field.focus();
-    await userEvent.keyboard("{Control>}a{/Control}Övrigt");
+    await userEvent.keyboard("{ControlOrMeta>}a{/ControlOrMeta}Övrigt");
     await settle(600);
 
     expect(node(editor, "rc-rule").data.fallbackLabel).toBe("Övrigt");
@@ -242,7 +242,7 @@ describe("uträkningskorten", () => {
     const label = card(panel, "assignment", "rc-a-base").querySelector<HTMLInputElement>('[data-assignment-property="label"]')!;
 
     label.focus();
-    await userEvent.keyboard("{Control>}a{/Control}Bas");
+    await userEvent.keyboard("{ControlOrMeta>}a{/ControlOrMeta}Bas");
     await settle(400);
 
     const row = (node(editor, "rc-calc").data.assignments as Array<{ id: string; variableName: string; label: unknown }>)[0]!;

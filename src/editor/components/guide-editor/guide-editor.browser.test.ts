@@ -1,5 +1,6 @@
 // FlowWeaver PRO where it is, nothing in the open repo (src/testing/optional-pro.ts).
 import { withPro } from "../../../testing/optional-pro";
+import { SCROLL_SNAP } from "../../../testing/scroll-snap";
 const PRO = await withPro("index.ts");
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { userEvent } from "vitest/browser";
@@ -9,6 +10,7 @@ import "./guide-editor";
 
 import { isGraphValid } from "../../core/graph-validator";
 
+import { pageFieldTop, pageRowHeight } from "../../../testing/page-field-top";
 import type { FlowNode } from "../flow-node/flow-node";
 import type { GuideEditor } from "./guide-editor";
 import type { NodeEditor } from "../node-editor/node-editor";
@@ -514,12 +516,16 @@ describe("guide-editor", () => {
 
     await userEvent.type(titleField, "adress");
 
-    const fieldNode = Array.from(
+    const drawn = Array.from(
       nodeEditor?.shadowRoot?.querySelectorAll<FlowNode>("flow-node") ?? []
-    ).find((node) => node.nodeData?.id === "field");
+    );
+    const fieldNode = drawn.find((node) => node.nodeData?.id === "field");
+    const pageNode = drawn.find((node) => node.nodeData?.id === "page");
+    if (!pageNode) throw new Error("The page node was not drawn.");
 
     expect(fieldNode?.style.left).toBe("120px");
-    expect(fieldNode?.style.top).toBe("268px");
+    // The page's y (80) + its field area, measured off the page.
+    expect(fieldNode?.style.top).toBe(`${80 + pageFieldTop(pageNode)}px`);
     expect(nodeEditor?.getData().nodes.find((node) => node.id === "field")?.parentPageId)
       .toBe("page");
   });
@@ -584,14 +590,20 @@ describe("guide-editor", () => {
       '.node-editor__page-surface[data-page-id="page"]'
     );
 
-    expect(left?.style.top).toBe("268px");
-    expect(right?.style.top).toBe("268px");
+    if (!page) throw new Error("The page node was not drawn.");
+    // The page's y (80) + its field area, measured off the page: 188 on Linux,
+    // 189 on macOS, where system-ui is a different typeface (pageFieldTop).
+    const fieldTop = pageFieldTop(page);
+    expect(left?.style.top).toBe(`${80 + fieldTop}px`);
+    expect(right?.style.top).toBe(`${80 + fieldTop}px`);
     expect(left?.style.left).toBe("120px");
     expect(right?.style.left).toBe("436px");
     expect(left?.dataset.columnSpan).toBe("6");
     expect(page?.hasAttribute("data-page-container")).toBe(true);
-    expect(page?.style.getPropertyValue("--page-height")).toBe("323px");
-    expect(surface?.style.height).toBe("323px");
+    // One row of 91 is under the page's floor, room for one field (111),
+    // + 24 of bottom padding.
+    expect(page?.style.getPropertyValue("--page-height")).toBe(`${fieldTop + 111 + 24}px`);
+    expect(surface?.style.height).toBe(`${fieldTop + 111 + 24}px`);
   });
   test("visar sidans layoutelement i paletten och ger dem egna helrader", () => {
     const editor = document.createElement("guide-editor") as GuideEditor;
@@ -618,6 +630,7 @@ describe("guide-editor", () => {
     const nodes = Array.from(
       nodeEditor?.shadowRoot?.querySelectorAll<FlowNode>("flow-node") ?? []
     );
+    const page = nodes.find((node) => node.nodeData?.id === "page");
     const left = nodes.find((node) => node.nodeData?.id === "left");
     const spacer = nodes.find((node) => node.nodeData?.id === "spacer");
     const right = nodes.find((node) => node.nodeData?.id === "right");
@@ -625,16 +638,21 @@ describe("guide-editor", () => {
       '.node-editor__page-surface[data-page-id="page"]'
     );
 
+    if (!page) throw new Error("The page node was not drawn.");
+    const fieldTop = pageFieldTop(page);
+    const row1 = 80 + fieldTop;
     // Blanka raden bryter: vänster på rad 1, blank rad på rad 2, höger på rad 3.
-    expect(left?.style.top).toBe("268px");
-    expect(spacer?.style.top).toBe("378px");
+    const field = pageRowHeight(left);
+    const blank = pageRowHeight(spacer);
+    expect(left?.style.top).toBe(`${row1}px`);
+    expect(spacer?.style.top).toBe(`${row1 + field + 19}px`);
     expect(spacer?.dataset.columnSpan).toBe("12");
-    expect(right?.style.top).toBe("464px");
-    // Three measured rows: 188 (the field area's top on a page with neither
-    // title nor description) + 91 + 19 + 67 (the blank row) + 19 + 91 + 24 of
-    // bottom padding. The numbers follow what the nodes measure, not a row
-    // step.
-    expect(surface?.style.height).toBe("499px");
+    expect(right?.style.top).toBe(`${row1 + field + 19 + blank + 19}px`);
+    // Three measured rows: the field area's top (188 on Linux, 189 on macOS
+    // — see pageFieldTop) + a field (91 in DejaVu Sans) + 19 + the blank row
+    // (67) + 19 + a field + 24 of bottom padding. The numbers follow what the
+    // nodes measure, not a row step.
+    expect(surface?.style.height).toBe(`${fieldTop + field + 19 + blank + 19 + field + 24}px`);
   });
   test("grows the Page and arranges children vertically by order", async () => {
     const editor = document.createElement("guide-editor") as GuideEditor;
@@ -661,11 +679,17 @@ describe("guide-editor", () => {
     );
     const first = nodes.find((node) => node.nodeData?.id === "first");
     const second = nodes.find((node) => node.nodeData?.id === "second");
+    const page = nodes.find((node) => node.nodeData?.id === "page");
+    if (!page) throw new Error("The page node was not drawn.");
+    const fieldTop = pageFieldTop(page);
 
-    expect(surface?.style.height).toBe("437px");
+    // The field area's top + two measured rows with 19 between + 24 of
+    // bottom padding.
+    const firstRow = pageRowHeight(first);
+    expect(surface?.style.height).toBe(`${fieldTop + firstRow + 19 + pageRowHeight(second) + 24}px`);
     expect(first?.style.left).toBe("120px");
-    expect(first?.style.top).toBe("292px");
-    expect(second?.style.top).toBe("402px");
+    expect(first?.style.top).toBe(`${80 + fieldTop}px`);
+    expect(second?.style.top).toBe(`${80 + fieldTop + firstRow + 19}px`);
   });
   test("opens an empty workspace in the middle and places new nodes there", async () => {
     const editor = document.createElement("guide-editor") as GuideEditor;
@@ -1266,7 +1290,7 @@ describe("guide-editor", () => {
         const center = nodeEditor.getViewportCenter();
         return Math.max(Math.abs(center.x - 200), Math.abs(center.y - 150));
       })
-      .toBeLessThanOrEqual(1);
+      .toBeLessThanOrEqual(1 + SCROLL_SNAP);
 
     await openToolbarMenu(toolbar, "view");
     await userEvent.click(fullscreenButton);
@@ -2633,7 +2657,15 @@ describe("guide-editor", () => {
     }
 
     await userEvent.click(previewTab);
-    await userEvent.click(openButton);
+    /*
+     * Focus returns to whatever had it when the dialog opened, so the button
+     * is pressed from the keyboard. A click would do in Chromium, which
+     * focuses a button on a press; Safari does not, and its press moves focus
+     * to the panel instead (measured 9/10: focus came back to the `<aside>`).
+     * The promise is to the keyboard user, who stands on the button.
+     */
+    openButton.focus();
+    await userEvent.keyboard("{Enter}");
 
     expect(dialog.open).toBe(true);
     expect(preview.shadowRoot?.querySelector("h2")?.textContent).toBe(
@@ -2645,7 +2677,7 @@ describe("guide-editor", () => {
     expect(dialog.open).toBe(false);
     expect(editor.shadowRoot?.activeElement).toBe(openButton);
 
-    await userEvent.click(openButton);
+    await userEvent.keyboard("{Enter}");
     dialog.dispatchEvent(new Event("cancel", { cancelable: true }));
 
     expect(dialog.open).toBe(false);

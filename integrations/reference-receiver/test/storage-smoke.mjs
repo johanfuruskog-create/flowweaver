@@ -52,7 +52,8 @@ import { spawn, spawnSync } from "node:child_process";
 import { SESSION_COOKIE, sign } from "../auth.mjs";
 import { LOCK_MINUTES_DEFAULT, lockMinutes } from "../locks.mjs";
 import { entryKey, openStore } from "../store.mjs";
-import { mkdtempSync, existsSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, readdirSync } from "node:fs";
+import { connect } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -105,6 +106,7 @@ const server = spawn(process.execPath, [SERVER, String(PORT)], { env, stdio: "ig
  */
 let lockServer = null;
 let oläsberServer = null;
+let skrivskyddadServer = null;
 
 /*
  * Up means "answers HTTP at all", asked of a storage route. It used to ask
@@ -125,6 +127,32 @@ async function waitForServer() {
 
   return false;
 }
+
+/**
+ * One request written by hand on a socket, and the status line that came back
+ * (`""` when the socket closed without one). `fetch` cannot send these: it
+ * normalises every target before it leaves.
+ */
+const rawRequest = (port, text) =>
+  new Promise((done) => {
+    const socket = connect(port, "127.0.0.1");
+    let answer = "";
+
+    socket.on("data", (chunk) => (answer += chunk));
+    socket.on("error", () => done(answer.split("\r\n")[0]));
+    socket.on("close", () => done(answer.split("\r\n")[0]));
+    socket.write(text);
+    setTimeout(() => socket.destroy(), 2000);
+  });
+
+/** Whether a server still answers HTTP at all, asked of a storage route. */
+const stillUp = async (base) => {
+  try {
+    return (await fetch(`${base}/guides`)).status > 0;
+  } catch {
+    return false;
+  }
+};
 
 /** A guide the editor's door accepts, small and real. */
 const graph = (title) => ({
@@ -496,6 +524,28 @@ try {
   );
 
   guides("remove", vId);
+
+  /* ── A request target nobody can read (LOGG 20/10) ─────────────────── */
+
+  /*
+   * `new URL` threw on these before the handler had looked at anything, the
+   * rejection went unhandled and the process died — and the host is public
+   * behind Caddy. Each is followed by an ordinary request: the 400 is the
+   * smaller half, the server still being there is the point.
+   */
+  for (const target of ["GET //[", "POST http://[/x", "GET //%5B"]) {
+    const status = await rawRequest(
+      PORT,
+      `${target} HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\nConnection: close\r\n\r\n`,
+    );
+    const up = await stillUp(BASE);
+
+    check(
+      `${target} är 400, och nästa begäran besvaras`,
+      status.startsWith("HTTP/1.1 400") && up,
+      `${status || "inget svar"} — servern ${up ? "lever" : "är borta"}`,
+    );
+  }
 
   /* ── The refusals ────────────────────────────────────────────────────── */
 
@@ -1013,6 +1063,8 @@ try {
     SESSION_SECRET,
     LOCK_MINUTES: String(LOCK_MS / 60_000),
     ROLES: "prov-johan:admin,prov-anna:publisher,prov-nisse:editor",
+    // Läsaren utan roll. Sedan 8/10 kommer bara den in som `.env` namnger (roles.mjs, mayLogIn).
+    LOGINS: "prov-monika",
   };
 
   lockServer = spawn(process.execPath, [SERVER, String(LOCK_PORT)], { env: lockEnv, stdio: "ignore" });
@@ -1057,6 +1109,18 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
+  /*
+   * A session cookie `decodeURIComponent` cannot read (`%`) threw out of the
+   * handler with OIDC on, and the process died (LOGG 20/10). It is no session.
+   */
+  const trasigKaka = await asPerson(`${SESSION_COOKIE}=%`, "GET", "/guides").catch(() => ({ status: 0 }));
+
+  check(
+    "en sessionskaka som inte går att avkoda är ingen session (401), och servern lever",
+    trasigKaka.status === 401 && (await stillUp(LOCK_BASE)),
+    `${trasigKaka.status}`,
+  );
+
   const nyGuide = await asPerson(johanCookie, "POST", "/guides", { name: "Bygglov i Överby" });
   const låstId = nyGuide.json?.guide?.id ?? "";
 
@@ -1064,6 +1128,42 @@ try {
     "en värd med inloggning skapar guiden åt förvaltaren",
     nyGuide.status === 200 && låstId !== "",
     `${nyGuide.status} ${nyGuide.text.slice(0, 80)}`,
+  );
+
+  /*
+   * En förfalskad skrivning (CSRF, mätt 9/10). Sidan på en främmande adress
+   * skickar ett formulär — `text/plain`, ingen förhandsförfrågan — och
+   * webbläsaren tar med cookien när sidan ligger på samma *sajt*, t.ex. en
+   * annan underdomän. Före 9/10 skapade den här begäran en guide i Johans namn
+   * (200); CORS hindrade bara sidan från att läsa svaret. Mätt i Chromium,
+   * Firefox och WebKit; här mäts serverns halva, för det är den som avgör.
+   */
+  const forged = async (origin, method, path, body) => {
+    const answer = await fetch(`${LOCK_BASE}${path}`, {
+      method,
+      headers: { "content-type": "text/plain", cookie: johanCookie, origin },
+      body,
+    });
+
+    return { status: answer.status, json: await answer.json().catch(() => null) };
+  };
+  const förfalskad = await forged("http://annan.localhost:8080", "POST", "/guides", '{"name":"Förfalskad","x":"="}');
+  const förfalskatUtkast = await forged("http://annan.localhost:8080", "PUT", `/guides/${låstId}/draft`, JSON.stringify(graph("Förfalskad")));
+  const finnsFörfalskad = (await asPerson(johanCookie, "GET", "/guides")).json?.guides?.some((g) => g.name === "Förfalskad");
+
+  check(
+    "en skrivning från en främmande sida avvisas med origin, cookie eller ej",
+    förfalskad.status === 403 && förfalskad.json?.error === "origin" && förfalskatUtkast.status === 403,
+    `${förfalskad.status} ${JSON.stringify(förfalskad.json)} / PUT ${förfalskatUtkast.status}`,
+  );
+  check("och ingen guide skapades av den", finnsFörfalskad === false, String(finnsFörfalskad));
+
+  const egenSida = await forged("http://localhost:5173", "POST", "/guides", JSON.stringify({ name: "Från egen sida" }));
+
+  check(
+    "samma skrivning från en sida värden namnger går igenom",
+    egenSida.status === 200,
+    `${egenSida.status} ${JSON.stringify(egenSida.json)}`,
   );
 
   /*
@@ -1906,10 +2006,61 @@ try {
     removed.code === 0 && gone.status === 404 && !guides("list").out.includes(id),
     `${removed.out.trim()} — ${gone.status}`,
   );
+  /* ── Vaktens 500 bär CORS (Eva 20/10) ─────────────────────────────── */
+
+  /*
+   * Något som kastar inne i hanteraren blir 500 av vakten runt den. Utan
+   * CORS-huvudena läser webbläsaren det som ett nätverksfel, och editorn säger
+   * att värden inte går att nå fast den svarade. Felet framkallas som Eva
+   * gjorde: registret blir skrivskyddat under en värd som kör, så skrivningen
+   * kastar i SQLite. En egen katalog, för att ingen annan kontroll ska ärva det.
+   */
+  const skyddadKatalog = mkdtempSync(join(tmpdir(), "flowweaver-skrivskydd-"));
+  const SKYDDAD_PORT = 4326;
+  const SKYDDAD_BAS = `http://localhost:${SKYDDAD_PORT}`;
+
+  skrivskyddadServer = spawn(process.execPath, [SERVER, String(SKYDDAD_PORT)], {
+    env: { ...lockEnv, FLOWWEAVER_DB: join(skyddadKatalog, "db.sqlite") },
+    stdio: "ignore",
+  });
+
+  for (let attempt = 0; attempt < 60 && !(await stillUp(SKYDDAD_BAS)); attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  const skapaSomJohan = () =>
+    fetch(`${SKYDDAD_BAS}/guides`, {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: johanCookie, origin: "http://localhost:5173" },
+      body: JSON.stringify({ name: "Skrivskyddad" }),
+    }).catch(() => null);
+
+  const föreSkydd = await skapaSomJohan();
+
+  for (const name of readdirSync(skyddadKatalog)) {
+    chmodSync(join(skyddadKatalog, name), 0o444);
+  }
+  chmodSync(skyddadKatalog, 0o555);
+
+  const underSkydd = await skapaSomJohan();
+  chmodSync(skyddadKatalog, 0o755);
+
+  check(
+    "vaktens 500 bär CORS-huvudena, så editorn ser 500 och inte ett nätverksfel — och värden lever",
+    föreSkydd?.status === 200 &&
+      underSkydd?.status === 500 &&
+      underSkydd.headers.get("access-control-allow-origin") === "http://localhost:5173" &&
+      underSkydd.headers.get("access-control-allow-credentials") === "true" &&
+      (await stillUp(SKYDDAD_BAS)),
+    `före ${föreSkydd?.status}, under ${underSkydd?.status ?? "nätverksfel"}, ` +
+      `acao ${underSkydd?.headers.get("access-control-allow-origin") ?? "saknas"}`,
+  );
+
 } finally {
   server.kill();
   lockServer?.kill();
   oläsberServer?.kill();
+  skrivskyddadServer?.kill();
 }
 
 const failed = checks.filter((one) => !one.ok);

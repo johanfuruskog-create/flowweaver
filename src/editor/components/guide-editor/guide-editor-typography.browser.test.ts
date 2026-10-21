@@ -25,6 +25,14 @@ afterEach(() => {
 
 const settle = (ms = 240): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
+/*
+ * The family is read against the element's own token, not against the word
+ * `system-ui`: the font matrix (`npm run fonts:matrix`) points the token at
+ * other typefaces, and "follows its token" is the claim either way.
+ */
+const token = (element: Element) => getComputedStyle(element).getPropertyValue("--fw-font");
+const same = (family: string) => family.replace(/["'\s]/g, "");
+
 describe("i en värd med eget typsnitt", () => {
   test("editorn följer sitt token och inte sidans serif", async () => {
     document.body.style.fontFamily = '"Times New Roman", serif';
@@ -41,7 +49,7 @@ describe("i en värd med eget typsnitt", () => {
     const family = getComputedStyle(editor).fontFamily;
 
     expect(family).not.toContain("Times");
-    expect(family, "tokenets stack").toContain("system-ui");
+    expect(same(family), "tokenets stack").toBe(same(token(editor)));
   });
 
   test("och visaren gör detsamma, som den alltid gjort", async () => {
@@ -52,6 +60,6 @@ describe("i en värd med eget typsnitt", () => {
     document.body.append(preview);
     await settle();
 
-    expect(getComputedStyle(preview).fontFamily).toContain("system-ui");
+    expect(same(getComputedStyle(preview).fontFamily)).toBe(same(token(preview)));
   });
 });

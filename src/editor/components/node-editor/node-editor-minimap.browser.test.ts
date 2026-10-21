@@ -545,6 +545,27 @@ describe("minikartans kopplingar (berättelse 142)", () => {
     };
   }
 
+  /*
+   * The line's geometric box in client pixels — its `getBBox` through its own
+   * matrix. Chromium and WebKit give exactly this from `getBoundingClientRect`;
+   * Firefox's includes the stroke (measured 10/10: a 3 px line from x 20 to
+   * 120 gives 14–126 there, 20–120 in the other two), which put every line
+   * 1.5 px into the air it does not reach.
+   */
+  function geometri(path: SVGPathElement): { left: number; top: number; right: number; bottom: number } {
+    const box = path.getBBox();
+    const matris = path.getScreenCTM()!;
+    const hörn = [
+      [box.x, box.y], [box.x + box.width, box.y], [box.x, box.y + box.height], [box.x + box.width, box.y + box.height],
+    ].map(([x, y]) => ({ x: matris.a * x! + matris.c * y! + matris.e, y: matris.b * x! + matris.d * y! + matris.f }));
+    return {
+      left: Math.min(...hörn.map((p) => p.x)),
+      top: Math.min(...hörn.map((p) => p.y)),
+      right: Math.max(...hörn.map((p) => p.x)),
+      bottom: Math.max(...hörn.map((p) => p.y)),
+    };
+  }
+
   function sitterPå(editor: NodeEditor, data: GraphData, path: SVGPathElement, from: string, to: string): void {
     const a = prickFör(editor, data, from);
     const b = prickFör(editor, data, to);
@@ -699,7 +720,7 @@ describe("minikartans kopplingar (berättelse 142)", () => {
       right: ram.left + map.clientLeft + map.clientWidth,
       bottom: ram.top + map.clientTop + map.clientHeight,
     };
-    const boxar = linjer(editor).map((path) => path.getBoundingClientRect());
+    const boxar = linjer(editor).map(geometri);
     expect(boxar.length, "guiden har kopplingar").toBeGreaterThan(0);
 
     const lagret = {

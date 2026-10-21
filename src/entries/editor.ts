@@ -107,6 +107,14 @@ export {
 } from "../viewer/core/map-provider-registry";
 export type { MapProvider, MapPickResult, MapKind } from "../viewer/core/map-provider-registry";
 
+// Where a lookup field may send what a resident types — the host's list, never
+// the guide's. Nothing registered means the page's own origin only; see
+// docs/UPPSLAG-KONTRAKT.md, *Vilka adresser ett uppslag får nå*.
+export {
+  registerLookupOrigins,
+  unregisterLookupOrigins,
+} from "../viewer/services/lookup-service";
+
 
 // The submission receiver and its types are FlowWeaver PRO's: see
 // entries/pro-viewer.ts and pro-editor.ts (open-core step 4, 2026-10-06).

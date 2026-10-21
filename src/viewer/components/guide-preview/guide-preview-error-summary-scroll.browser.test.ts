@@ -61,7 +61,10 @@ function pageWithSeveralRequiredFields(): GraphData {
         position: { x: 0, y: 0 },
         data: {
           title: { sv: "Om dig" },
-          description: { sv: "Vi behöver kunna nå dig om vi har frågor om felet. ".repeat(8) },
+          // Sixteen, not eight: in FreeSerif eight left the card at 749 px and
+          // the guard below fired (font matrix, 9/10 2026). Long enough in
+          // every typeface the matrix runs, so the test measures in all four.
+          description: { sv: "Vi behöver kunna nå dig om vi har frågor om felet. ".repeat(16) },
         },
       },
       {

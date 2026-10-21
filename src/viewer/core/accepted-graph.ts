@@ -3,6 +3,7 @@ import {
   migrateGraph,
   readGraphVersion,
 } from "./graph-migrations";
+import { readGraphShape } from "./graph-shape";
 
 import type { GraphData } from "../types/graph";
 
@@ -155,6 +156,23 @@ export function migrateIncoming(value: GraphData): IncomingGraph {
           version
         ).graph as unknown as GraphData)
       : value;
+
+  /*
+   * The shape, checked as the file door checks it (`graph-shape.ts`): before
+   * this, `nodes: {}` or a connection with `from: null` passed and the engine
+   * threw out of the host's page. Checked after the migration, as the file
+   * door does, since the migrations are what turn an old shape into this one.
+   * The graph itself is passed on as it came; only the answer is the check's.
+   */
+  const shape = readGraphShape(lifted as unknown as Record<string, unknown>);
+
+  if (!shape.ok) {
+    const [first, ...rest] = shape.errors;
+    return {
+      ok: false,
+      message: rest.length ? `${first} Och ${rest.length} fel till.` : first!,
+    };
+  }
 
   // The version belongs to serialised JSON, not to the in-memory graph.
   // `exportGraphJson` stamps it on the way out; carry it internally and it

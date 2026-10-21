@@ -30,7 +30,7 @@
  * ## A file that cannot be read is a file that is not there
  *
  * On the server `.env` is `600` and owned by `flowweaver`, while `cases.mjs`
- * is run by `johan`. The read therefore fails by design for the tool that
+ * is run by the operator on the host. The read therefore fails by design for the tool that
  * tidies the register, and it must be silent about it: the runbook passes
  * `FLOWWEAVER_DB` on the command line instead, and a stack trace about a
  * permission would only point away from that.

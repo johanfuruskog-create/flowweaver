@@ -1,4 +1,4 @@
-import { userEvent } from "@vitest/browser/context";
+import { tab } from "./tab-keys";
 
 /**
  * Measures what happens when you tab through a component.
@@ -10,7 +10,7 @@ import { userEvent } from "@vitest/browser/context";
  * `element.focus()` gives focus but not necessarily `:focus-visible`, and that
  * is what decides whether an indicator is drawn. Measuring with `.focus()`
  * therefore measures something other than what a person sees.
- * `userEvent.tab()` presses for real.
+ * `tab()` presses for real (`userEvent.tab()`, Option+Tab in WebKit — `tab-keys.ts`).
  */
 
 export interface Fokusstopp {
@@ -93,7 +93,7 @@ export async function fokusstopp(
       unfocusedShadow.set(nuvarande, getComputedStyle(nuvarande).boxShadow);
     }
 
-    await userEvent.tab();
+    await tab();
 
     const element = djupAktiv();
 

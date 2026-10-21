@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "vitest";
+import { SCROLL_SNAP } from "../../../testing/scroll-snap";
 import { userEvent } from "vitest/browser";
 
 import "../../../viewer/node-types/default-node-types";
@@ -302,7 +303,17 @@ describe("the swatches as targets", () => {
       if (next) {
         const nextRect = next.getBoundingClientRect();
         const middle = (x + nextRect.left + nextRect.width / 2) / 2;
-        expect([swatch, next], `${name}, halfway to the next`).toContain(root.elementFromPoint(middle, y));
+        /*
+         * In Firefox the row sits a fraction off the pixel — the canvas's
+         * scroll offset is not whole there (`scroll-snap.ts`) — and its hit
+         * test leaves a quarter-pixel seam between two targets, right on the
+         * halfway line (measured 10/10: 59.88–60.13 hit the row; the targets
+         * themselves 44 px each, as in Chromium). Half a pixel either side
+         * of the line there; the line itself everywhere else.
+         */
+        for (const at of SCROLL_SNAP ? [middle - SCROLL_SNAP, middle + SCROLL_SNAP] : [middle]) {
+          expect([swatch, next], `${name}, halfway to the next`).toContain(root.elementFromPoint(at, y));
+        }
       }
     });
 

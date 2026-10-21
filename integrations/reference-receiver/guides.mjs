@@ -1,7 +1,7 @@
 /**
  * The guides a host keeps, from a terminal on the machine that keeps them.
  *
- *     FLOWWEAVER_DB=/srv/flowweaver/data/flowweaver.sqlite node guides.mjs new --note "Bostadsbidrag"
+ *     FLOWWEAVER_DB=./data/flowweaver.sqlite node guides.mjs new --note "Bostadsbidrag"
  *     … guides.mjs list
  *     … guides.mjs show <id>
  *     … guides.mjs remove <id>
@@ -92,7 +92,7 @@ const dbFile = (process.env.FLOWWEAVER_DB ?? "").trim();
 if (dbFile === "") {
   stop(
     "FLOWWEAVER_DB är inte satt — säg vilken databas det gäller:\n" +
-      `  FLOWWEAVER_DB=/srv/flowweaver/data/flowweaver.sqlite node guides.mjs ${command} …`,
+      `  FLOWWEAVER_DB=./data/flowweaver.sqlite node guides.mjs ${command} …`,
   );
 }
 

@@ -1,6 +1,11 @@
-import { describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test } from "vitest";
 
-import { LOOKUP_CONTRACT_VERSION, LookupService } from "./lookup-service";
+import {
+  LOOKUP_CONTRACT_VERSION,
+  LookupService,
+  registerLookupOrigins,
+  unregisterLookupOrigins,
+} from "./lookup-service";
 
 import type { FlowNodeData } from "../types/graph";
 
@@ -62,6 +67,8 @@ describe("lookup against the field's own list", () => {
 });
 
 describe("lookup against a service", () => {
+  afterEach(() => unregisterLookupOrigins());
+
   const svar = (kropp: unknown, ok = true, status = 200): typeof fetch =>
     (async () =>
       ({
@@ -87,6 +94,7 @@ describe("lookup against a service", () => {
 
   test("sends the term, the limit and the language in the query string", async () => {
     let requested = "";
+    registerLookupOrigins(["https://exempel.se"]);
 
     await LookupService.search(
       nod({ source: "service", endpoint: "https://exempel.se/api/kommuner" }),
@@ -161,5 +169,96 @@ describe("lookup against a service", () => {
     );
 
     expect(error).toBe("Fältet saknar endpoint.");
+  });
+});
+
+/*
+ * Security finding 6 (9/10): the address comes out of the guide, and the
+ * visitor's text goes to it. A guide is data — imported, shared, edited by
+ * somebody other than the host — so where it may send what a resident types is
+ * the host's decision, not the guide's.
+ */
+describe("which addresses a lookup may reach", () => {
+  afterEach(() => unregisterLookupOrigins());
+
+  /** A fetch that records what it was asked, and answers an empty list. */
+  const recording = () => {
+    const calls: { url: string; init: RequestInit | undefined }[] = [];
+    const impl = (async (url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      return { ok: true, status: 200, json: async () => ({ version: 1, items: [] }) } as Response;
+    }) as unknown as typeof fetch;
+    return { calls, impl };
+  };
+
+  const ask = (endpoint: string, impl: typeof fetch) =>
+    LookupService.search(nod({ source: "service", endpoint }), "öre", undefined, impl);
+
+  test("another origin is not asked when the host has allowed none", async () => {
+    const { calls, impl } = recording();
+
+    const { items, error } = await ask("https://annan.example/api/kommuner", impl);
+
+    expect(calls).toEqual([]);
+    expect(items).toEqual([]);
+    expect(error).not.toBeNull();
+  });
+
+  test("another origin is asked once the host allows it", async () => {
+    registerLookupOrigins(["https://annan.example"]);
+    const { calls, impl } = recording();
+
+    const { error } = await ask("https://annan.example/api/kommuner", impl);
+
+    expect(error).toBeNull();
+    expect(calls).toHaveLength(1);
+  });
+
+  test("an allowed origin does not open its neighbours", async () => {
+    registerLookupOrigins(["https://annan.example"]);
+    const { calls, impl } = recording();
+
+    for (const endpoint of [
+      "http://annan.example/api",
+      "https://annan.example:8443/api",
+      "https://ond.annan.example/api",
+      "//ond.example/api",
+      "data:application/json,{}",
+    ]) {
+      const { error } = await ask(endpoint, impl);
+      expect(error, endpoint).not.toBeNull();
+    }
+
+    expect(calls).toEqual([]);
+  });
+
+  // The page's own origin is the host's own: a relative endpoint is the shape
+  // the contract recommends, and it needs no list.
+  test("the page's own origin needs no list", async () => {
+    const { calls, impl } = recording();
+
+    const { error } = await ask("/api/kommuner", impl);
+
+    expect(error).toBeNull();
+    expect(calls).toHaveLength(1);
+  });
+
+  // A setup fault said out loud, not a list that quietly allows something
+  // other than what the host wrote.
+  test("an entry that is not a bare origin is refused by name", () => {
+    expect(() => registerLookupOrigins(["https://annan.example/api"])).toThrow(
+      /annan\.example\/api/,
+    );
+    expect(() => registerLookupOrigins(["annan.example"])).toThrow(/annan\.example/);
+  });
+
+  // Measured in Chromium 9/10: with fetch's default (`same-origin`) a cookie
+  // set by the page reached the endpoint; with `omit` it did not.
+  test("the call carries no cookies, not even to the page's own origin", async () => {
+    const { calls, impl } = recording();
+
+    await ask("/api/kommuner", impl);
+
+    expect(calls[0]?.init?.credentials).toBe("omit");
   });
 });

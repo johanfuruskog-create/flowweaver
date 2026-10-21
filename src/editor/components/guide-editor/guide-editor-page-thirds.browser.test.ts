@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test } from "vitest";
 import "../../../viewer/node-types/default-node-types";
 import "./guide-editor";
 
+import { pageFieldTop } from "../../../testing/page-field-top";
 import type { FlowNode } from "../flow-node/flow-node";
 import type { GuideEditor } from "./guide-editor";
 import type { NodeEditor } from "../node-editor/node-editor";
@@ -33,10 +34,16 @@ describe("guide-editor Page thirds", () => {
       nodes.find((node) => node.nodeData?.id === id)
     );
 
-    expect(fields.map((field) => field?.style.top)).toEqual(["320px", "320px", "320px"]);
+    if (!page) throw new Error("The page node was not drawn.");
+    // 80 is the page's own y; the field area's top is measured off the page.
+    const rowTop = `${80 + pageFieldTop(page)}px`;
+    expect(fields.map((field) => field?.style.top)).toEqual([rowTop, rowTop, rowTop]);
     expect(fields.map((field) => field?.dataset.columnSpan)).toEqual(["4", "4", "4"]);
-    expect(fields.map((field) => Number.parseFloat(field?.style.left ?? "0")))
-      .toEqual([120, 330.667, 541.333]);
+    // Close, not equal: Chromium writes `style.left` back rounded to six
+    // significant figures (330.667px), WebKit unrounded (330.666667px) —
+    // measured 9/10.
+    const lefts = fields.map((field) => Number.parseFloat(field?.style.left ?? "0"));
+    [120, 330.667, 541.333].forEach((left, index) => expect(lefts[index]).toBeCloseTo(left, 2));
 
     const pageContentBottom = page?.shadowRoot
       ?.querySelector<HTMLElement>(".flow-node__content")

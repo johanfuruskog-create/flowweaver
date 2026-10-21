@@ -1,3 +1,4 @@
+import { TAB } from "../../../testing/tab-keys";
 import { afterEach, describe, expect, test } from "vitest";
 import { userEvent } from "@vitest/browser/context";
 
@@ -23,7 +24,7 @@ afterEach(() => document.body.replaceChildren());
 
 const settle = (ms = 120) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-function pageGraph(): GraphData {
+function pageGraph(telTitle = "Telefonnummer"): GraphData {
   return {
     startNodeId: "sida",
     settings: { sourceLocale: "sv" },
@@ -35,7 +36,7 @@ function pageGraph(): GraphData {
         parentPageId: "sida",
         order: 1,
         position: { x: 0, y: 0 },
-        data: { title: { sv: "Telefonnummer" }, variableName: "tel", required: true },
+        data: { title: { sv: telTitle }, variableName: "tel", required: true },
       },
       {
         id: "epost",
@@ -53,12 +54,16 @@ function pageGraph(): GraphData {
   } as never;
 }
 
-async function mountAndSubmit(fill: Record<string, string>, width?: number): Promise<GuidePreview> {
+async function mountAndSubmit(
+  fill: Record<string, string>,
+  width?: number,
+  telTitle?: string,
+): Promise<GuidePreview> {
   const preview = document.createElement("guide-preview") as GuidePreview;
 
   if (width) preview.style.cssText = `display: block; width: ${width}px;`;
   document.body.append(preview);
-  preview.graph = pageGraph();
+  preview.graph = pageGraph(telTitle);
   await settle();
 
   const root = preview.shadowRoot!;
@@ -141,7 +146,11 @@ describe("felsummeringen", () => {
    * > 1) och `rects[1]` fanns inte alls.
    */
   test("i 390 px: en trasig länk bryter till två rader, vänsterställda och med punkten på rätt rad", async () => {
-    const preview = await mountAndSubmit({}, 390);
+    // A title long enough to break in any typeface. "Telefonnummer" broke
+    // at 390 px on Linux but fitted on one line on macOS, where system-ui is
+    // the narrower SF (measured 9/10) — and then the test below measured
+    // nothing and said so.
+    const preview = await mountAndSubmit({}, 390, "Telefonnummer dagtid, gärna ett mobilnummer");
     const root = preview.shadowRoot!;
     const link = root.querySelectorAll<HTMLElement>("[data-error-link]")[0]!;
     const li = link.closest("li")!;
@@ -201,7 +210,7 @@ describe("felsummeringen", () => {
     preview.graph = pageGraph();
     await settle();
 
-    await userEvent.keyboard("{Tab}");
+    await userEvent.keyboard(TAB);
     const root = preview.shadowRoot!;
     root.querySelector<HTMLButtonElement>('[data-action="next"]')!.click();
     await settle();
@@ -217,7 +226,7 @@ describe("felsummeringen", () => {
 
     // Länken efter den behåller de två bärarna (samma krav som
     // focus-two-bearers.browser.test.ts, men på det här elementet).
-    await userEvent.keyboard("{Tab}");
+    await userEvent.keyboard(TAB);
     const link = root.querySelector<HTMLElement>("[data-error-link]")!;
 
     expect(root.activeElement).toBe(link);

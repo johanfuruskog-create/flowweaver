@@ -291,14 +291,21 @@ const env = {
    * Subjekten är attrappens, som Googles är Googles.
    *
    * **Monika står inte här**, och det är en kontroll och inte en glömska: den
-   * som ingen skrivit in är läsare, vilket är förvalet hela berättelsen vilar
-   * på. Mutationen som fäller det är att lägga till henne.
+   * som inte har en roll är läsare. Mutationen som fäller det är att lägga
+   * till henne.
    */
   ROLES: [
     "mock-johan-furuskog:admin",
     "mock-anna-andersson:publisher",
     "mock-nisse-hult:editor",
   ].join(","),
+  /*
+   * Den strikta listan (Johan 8/10): en läsare är någon som står här, inte
+   * vem som helst leverantören godtar. Monika står med sin verifierade adress
+   * — vägen en värd med Google använder — och *Okänd Person*, som leverantören
+   * också godtar, står ingenstans och ska vändas i dörren.
+   */
+  LOGINS: "monika.agren@exempel.invalid",
   /* Se `LOCK_MS`: värdens tid, nedskruvad, i minuter med decimaler. */
   LOCK_MINUTES: String(LOCK_MS / 60_000),
 };
@@ -3654,9 +3661,29 @@ try {
     JSON.stringify(remsor),
   );
   check(
-    "och den som ingen skrivit in i .env är läsare",
+    "och den som bara står i LOGINS är läsare",
     remsor.monika === "Inloggad som Monika Ågren · läsare",
     remsor.monika || "ingen remsa",
+  );
+
+  /*
+   * Och den som inte står någonstans kommer inte in alls (Johan 8/10). Ett
+   * riktigt, verifierat konto som leverantören godtar: sidan ska stå kvar
+   * utloggad, och värden ska svara 401 på `/auth/me` — det är värden som är
+   * skyddet, inte knappen.
+   */
+  const okand = await person();
+
+  await openGuides(okand);
+  await signIn(okand, "as-okand");
+
+  const okandSida = await listState(okand);
+  const okandMe = await okand.evaluate(async (api) => (await fetch(`${api}/auth/me`, { credentials: "include" })).status, API);
+
+  check(
+    "den som inte står i ROLES, ROLE_* eller LOGINS kommer inte in",
+    okandSida.utloggadSynlig && !okandSida.inloggadSynlig && okandMe === 401,
+    JSON.stringify({ utloggad: okandSida.utloggadSynlig, inloggad: okandSida.inloggadSynlig, me: okandMe }),
   );
 
   /* ── 10b. Ny guide står bara hos förvaltaren, och saknaden sägs i ord ─── */

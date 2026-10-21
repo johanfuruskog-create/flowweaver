@@ -17,14 +17,36 @@
  * Listan läses ur `errors.mjs`, alltså det ena hemmet. Ett prov som bar sin
  * egen kopia hade gått grönt den dag listan ändrades.
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import { ERROR_CODES, isErrorCode } from "../errors.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const source = readFileSync(join(here, "..", "server.mjs"), "utf8");
+/*
+ * Båda halvorna av mottagaren. Inlämningsvägarna flyttades ur `server.mjs` till
+ * `submission-routes.mjs` 6/10 (open-core steg 5), och provet läste fortfarande
+ * bara den första: fem koder såg oanvända ut, och varje ny avvisning i
+ * inlämningen hade gått omätt. Upptäckt 9/10 som en röd grind på main.
+ *
+ * Inlämningshalvan är PRO och finns inte i det öppna repot — där kraschade
+ * provet på ENOENT (mätt 20/10 i den öppna klonen). Den läses därför bara när
+ * den finns. Kontrollerna åt det ena hållet (varje avvisning bär en kod med
+ * rätt status) gäller den källa som finns; kontrollen åt andra hållet (ingen
+ * kod är oanvänd) kräver hela mottagaren och säger SKIP utan den.
+ *
+ * Men bara i det öppna repot. Där PRO finns ska halvan också finnas, och
+ * saknas den är det rött (Eva 21/10: en SKIP på filens frånvaro hade gått
+ * grönt den dag filen flyttades i PRO). Markören är densamma som
+ * `scripts/build-lib-pro.mjs` använder: `src/pro/` i repots rot.
+ */
+const PRO = existsSync(join(here, "..", "..", "..", "src", "pro"));
+const SUBMISSION = join(here, "..", "submission-routes.mjs");
+const whole = existsSync(SUBMISSION);
+const source = [join(here, "..", "server.mjs"), ...(whole ? [SUBMISSION] : [])]
+  .map((path) => readFileSync(path, "utf8"))
+  .join("\n");
 
 const checks = [];
 const check = (name, ok, extra = "") => {
@@ -88,7 +110,14 @@ check("statusen följer koden", wrongStatus.length === 0, wrongStatus.join("; ")
 const PLANNED = new Set([]);
 const unused = Object.keys(ERROR_CODES).filter((code) => !seen.has(code) && !PLANNED.has(code));
 
-check("ingen kod i listan är oanvänd", unused.length === 0, unused.join(", "));
+if (PRO) {
+  check("inlämningshalvan finns där PRO finns", whole, whole ? "" : "submission-routes.mjs saknas");
+}
+if (whole) {
+  check("ingen kod i listan är oanvänd", unused.length === 0, unused.join(", "));
+} else if (!PRO) {
+  console.log("SKIP  ingen kod i listan är oanvänd  — src/pro/ finns inte här (öppna FlowWeaver)");
+}
 
 const failed = checks.filter((ok) => !ok).length;
 console.log(`\n${checks.length - failed}/${checks.length} kontroller`);

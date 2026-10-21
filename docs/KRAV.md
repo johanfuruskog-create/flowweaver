@@ -97,6 +97,15 @@ stopp syns, visar att det har fokus, och — på linjära ytor — kommer i
 läsordning. `element.focus()` duger inte: det ger fokus men inte alltid
 `:focus-visible`, och det är den som avgör om en markering ritas.
 
+**I Safari gäller plattformens regel** (Johans beslut 10/10). Med Safaris förval
+når Tab bara textfält och listor; knappar och länkar nås med **Option+Tab**, eller
+med Tab när användaren slagit på *Tryck Tabb för att markera varje objekt*
+(Safari → Inställningar → Avancerat). Det är så en Safari-användare som går med
+tangentbordet redan har det inställt, och vi följer det i stället för att ge
+varje knapp ett eget `tabindex`. Kravet ovan läses alltså: varje funktion nås
+med plattformens tangentbordsväg. Sviten trycker Option+Tab i WebKit och Tab i
+övriga (`src/testing/tab-keys.ts`); mätt 9/10.
+
 Canvasen undantas från ordningskravet med flit. Dess noder ligger på fria
 koordinater som redaktören valt, och där är grafens ordning rimligare än var
 noderna råkar hamna på skärmen.

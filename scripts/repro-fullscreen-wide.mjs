@@ -16,7 +16,7 @@
  * Före fixen:  vänsterBas 0    (kodens egen regel säger 300)
  * Efter fixen: vänsterBas 549
  */
-import { chromium } from "/home/johan/utveckling/flowweawer/node_modules/playwright-core/index.mjs";
+import { chromium } from "playwright-core";
 const browser = await chromium.launch({ args: ["--no-sandbox"] });
 const page = await browser.newPage({ viewport: { width: 5120, height: 1440 } });
 await page.goto("http://localhost:5199/en/examples/versions.html", { waitUntil: "networkidle" });

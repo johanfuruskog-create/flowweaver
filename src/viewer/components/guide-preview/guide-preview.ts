@@ -683,20 +683,53 @@ export class GuidePreview extends HTMLElement {
 
   private watchWidth(): void {
     if (this.widthWatcher) return;
-    const apply = (width: number): void => {
-      const under = GuidePreview.WIDTH_THRESHOLDS.filter((limit) => width <= limit).join(" ");
-      if (under) {
-        if (this.dataset.under !== under) this.dataset.under = under;
-      } else if ("under" in this.dataset) {
-        delete this.dataset.under;
-      }
-    };
-    apply(this.getBoundingClientRect().width);
+    if (this.hasAttribute("in-node")) GuidePreview.measureWithOthers(this);
+    else this.applyWidth(this.getBoundingClientRect().width);
     this.widthWatcher = new ResizeObserver((entries) => {
       const width = entries[0]?.contentRect.width ?? this.clientWidth;
-      requestAnimationFrame(() => apply(width));
+      requestAnimationFrame(() => this.applyWidth(width));
     });
     this.widthWatcher.observe(this);
+  }
+
+  private applyWidth(width: number): void {
+    const under = GuidePreview.WIDTH_THRESHOLDS.filter((limit) => width <= limit).join(" ");
+    if (under) {
+      if (this.dataset.under !== under) this.dataset.under = under;
+    } else if ("under" in this.dataset) {
+      delete this.dataset.under;
+    }
+  }
+
+  /*
+   * A canvas mounts a miniature in every node at once, and each measured on
+   * its own connect forced a layout of the whole canvas drawn so far — the
+   * cost of drawing grew with the square of the guide. Measured 9/10 in
+   * WebKit, where a layout costs most: 250 nodes took 2.0 s, 0.6 s without
+   * these measurements, and the canvas's scale gate failed on the ratio.
+   *
+   * So the miniatures (`in-node`) are measured together, in a microtask: every
+   * width read first, against one layout, then every attribute written. A
+   * microtask still runs before the frame is painted, so the first paint has
+   * the right layout, as before. A viewer on a host's page is one element and
+   * keeps measuring on the spot.
+   */
+  private static waitingForWidth = new Set<GuidePreview>();
+
+  private static measureWithOthers(preview: GuidePreview): void {
+    const waiting = GuidePreview.waitingForWidth;
+
+    if (waiting.size === 0) {
+      queueMicrotask(() => {
+        const batch = [...waiting].filter((one) => one.isConnected);
+
+        waiting.clear();
+        batch
+          .map((one) => one.getBoundingClientRect().width)
+          .forEach((width, index) => batch[index]!.applyWidth(width));
+      });
+    }
+    waiting.add(preview);
   }
 
   attributeChangedCallback(name: string, _old: string | null, value: string | null): void {

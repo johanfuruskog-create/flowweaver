@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "vitest";
+import { userEvent } from "vitest/browser";
 
 import "../../node-types/default-node-types";
 import "./guide-preview";
@@ -60,6 +61,12 @@ describe("passens knappar i visaren", () => {
     const root = await twoPasses();
     const buttons = [...root.querySelectorAll<HTMLElement>('[data-action="repeat-remove"]')];
 
+    // The pointer first goes to the page's heading. It stays wherever an
+    // earlier file left it, and a button drawn under it reads its hover
+    // fill (`--fw-danger-surface`) instead of none — seen in the font matrix
+    // 9/10 2026, in WenQuanYi Zen Hei, whose taller lines put "Ta bort pass 1"
+    // under it; the file alone was green in all four typefaces.
+    await userEvent.hover(root.querySelector<HTMLElement>("h1, h2")!);
     expect(buttons.length).toBe(2);
     for (const button of buttons) {
       const style = getComputedStyle(button);

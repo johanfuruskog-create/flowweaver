@@ -676,8 +676,15 @@ export class FlowNode extends HTMLElement {
      * enough reruns to reach 0. Measured 7/9 in flow-node-ports-at-zoom.
      * Every distance below is divided by the scale once, and every applied
      * value multiplied back when compared on screen.
+     *
+     * Read only with the eye lit — every other read below is, and outside
+     * the visitor's view nothing here is measured. Read unconditionally it
+     * forced a layout of the whole canvas once per node per render: drawing
+     * 250 nodes took 3.9 s in WebKit against 0.9 s in Chromium, and grew
+     * with the square of the guide (measured 9/10, the scale gate's ratio 30–36
+     * in WebKit).
      */
-    const scale = card.offsetWidth > 0 ? card.getBoundingClientRect().width / card.offsetWidth : 1;
+    const scale = this.visitorViewValue && card.offsetWidth > 0 ? card.getBoundingClientRect().width / card.offsetWidth : 1;
 
     this.root
       .querySelectorAll<HTMLElement>(".flow-node__port-row--output")

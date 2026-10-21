@@ -19,7 +19,7 @@
  * index in a unit test: the editor's side defines custom elements, which the
  * node environment cannot.
  */
-const ABSENT = /Cannot find module|Failed to load url|Failed to fetch dynamically imported module|does the file exist|ERR_MODULE_NOT_FOUND|404/i;
+const ABSENT = /Cannot find module|Failed to load url|Failed to fetch dynamically imported module|Importing a module script failed|does the file exist|ERR_MODULE_NOT_FOUND|404/i;
 
 /*
  * The base in a variable on purpose. Vite rewrites the literal pattern
@@ -52,11 +52,19 @@ export async function proModule(module: string): Promise<Record<string, any> | n
       if (!looksAbsent) throw error;
       // In Chromium a module that throws while loading reports the same
       // "Failed to fetch dynamically imported module" as one that is not
-      // there. Ask the server which. Not by status: the dev server answers a
-      // path that does not exist with 200 and the site's HTML (measured 7/10).
-      // A module comes back as JavaScript; anything else is absent.
+      // there, and WebKit says "Importing a module script failed." for both
+      // (measured 20/10 in the open repo: 42 test files failed at import
+      // until the pattern knew WebKit's words). Ask the server which. A 500
+      // is a module that is there and could not be built — a syntax error,
+      // an import that does not resolve — and that is an error, not absent:
+      // read as absent, every `runIf(PRO)` went quiet over a broken PRO (Eva
+      // 21/10; measured: Vite answers 500 with an HTML error page). Otherwise
+      // not by status: the dev server answers a path that does not exist with
+      // 200 and the site's HTML (measured 7/10). A module comes back as
+      // JavaScript; anything else is absent.
       if (url.startsWith("http")) {
         const answer = await fetch(url);
+        if (answer.status >= 500) throw error;
         if (answer.ok && /javascript/.test(answer.headers.get("content-type") ?? "")) throw error;
       }
       return null;

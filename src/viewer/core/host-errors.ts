@@ -77,7 +77,9 @@ export const GENERAL: HostErrorKey = "host.general";
  *
  * Tre koder har ingen egen rad med flit. `graph`, `provider` och `mail` är
  * fel i värdens maskineri som ingen läsare kan åtgärda: de faller till
- * `GENERAL` och hamnar i värdens logg, där de hör hemma.
+ * `GENERAL` och hamnar i värdens logg, där de hör hemma. `origin` (9/10, en
+ * skrivning från en sida värden inte namnger) likaså: en sida värden namnger
+ * får den aldrig, och den som får den kan inte göra något åt den.
  */
 const KEY_BY_CODE: Record<string, HostErrorKey> = {
   unauthorized: "host.signIn",

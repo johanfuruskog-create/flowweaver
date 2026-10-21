@@ -48,8 +48,12 @@ exploaterbar väg (1 och 2) är dessutom mutationsverifierade.
 
 - **V5 – Validering, sanering, kodning.** All HTML byggs via escaping.
   `FormattedTextService` escapear hela mallen först och applicerar
-  markdown på redan escapead text; länkar har en scheme-allowlist
-  (`https:`/`mailto:`), och variabelvärden escapeas vid insättning.
+  markdown på redan escapead text, och variabelvärden escapeas vid
+  insättning. En länk bedöms som webbläsaren läser den: adressen rensas
+  från kontrolltecken och blanktecken på samma sätt som URL-tolken gör,
+  en adress med schema måste ha `http:`, `https:` eller `mailto:`, och en
+  adress utan schema måste peka på samma ursprung (vilket också stänger
+  `//värd`, `/\värd` och liknande).
   `guide-preview`, `flow-node` och `properties-panel` escapear varje
   interpolerat värde.
 - **V5.1 – Indatavalidering.** `graph-io` validerar struktur och begränsar
@@ -92,5 +96,20 @@ exploaterbar väg (1 och 2) är dessutom mutationsverifierade.
 
 ## Rapportera en sårbarhet
 
-Öppna inte ett publikt issue för säkerhetsproblem. Kontakta ägaren av
-repot direkt.
+**Mejla hello@flowweaver.se** med ämnesraden *Säkerhet* och en beskrivning
+av problemet: vad som händer, i vilken version, och hur det går att
+återskapa. Öppna inte ett publikt issue — det gör problemet känt innan det
+är rättat.
+
+- **Svar:** du får en bekräftelse inom fem arbetsdagar, och därefter
+  besked om vi bedömer det som en sårbarhet och när en rättelse kan komma.
+- **Rättelsen** publiceras i en ny version, och ändringsloggen säger vad som
+  rättats. Vill du bli nämnd säger du det; annars nämns ingen.
+
+## Vilka versioner som får rättelser
+
+FlowWeaver är ännu inte i version 1.0. Säkerhetsrättelser kommer i **nästa
+släppta version**, inte som ändringar i en version som redan är släppt: en
+värd som låst sig vid en version ska få exakt den koden varje gång, och ett
+tyst byte av innehållet vore att bryta det löftet. Den som låst sig vid en
+äldre version behöver alltså byta version för att få en rättelse.

@@ -1,3 +1,4 @@
+import { DOC_END } from "../../../testing/caret-keys";
 import { userEvent } from "@vitest/browser/context";
 import { afterEach, describe, expect, test } from "vitest";
 
@@ -99,7 +100,7 @@ describe("förlustfritt i editorn, över exempelguiderna (136 kriterium 7 och 7b
 
     // Skriv: bara det rörda fältet ändras.
     text.focus();
-    await userEvent.keyboard("{Control>}{End}{/Control}!");
+    await userEvent.keyboard(`${DOC_END}!`);
     const after = editor.getData();
 
     expect(withoutDescription(after, node!.id)).toEqual(withoutDescription(before, node!.id));

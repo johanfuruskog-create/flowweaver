@@ -69,6 +69,25 @@ Ingen ny livscykel uppfinns: `getFiles()` står bredvid `getAnswers()` och svara
 på samma fråga om en annan sorts svar. Ingenting har rest innan dess, så det
 finns ingenting att städa om någon ångrar sig eller stänger fliken.
 
+### Inlämningsnoden bär inte filen
+
+PRO:s *Skicka in* (`submit-result`) är **inte** den här vägen. Den lämnar
+`answers` och `records` till `registerSubmissionReceiver` som JSON, och där är
+ett filfälts svar filens **namn** — `{ cv: "cv.pdf" }`, eller `{label,
+markings}` när besökaren markerat i bilden — aldrig filen. Nyttolasten har
+inget fält för bytes ([`INLAMNING-KONTRAKT.md`](INLAMNING-KONTRAKT.md#vad-guiden-lämnar-payload)).
+Mätt 9/10: en fil på 2 048 bytes vald i fältet, guiden inlämnad — `submit`
+fick `"cv.pdf"`, medan `getFiles()` på kvittenssteget fortfarande gav filen.
+
+Filen finns alltså kvar i visaren när `submit` anropas, och **att få den till
+er är er sak**: läs `getFiles()` på er `<guide-preview>` inne i er `submit` och
+skicka filen bredvid nyttolasten, med samma variabelnamn som nyckel. Ingen av
+våra mottagare gör det i dag — varken referensvärden
+(`integrations/reference-receiver/`, som tar emot JSON) eller
+Sitevision-modulen. En guide med filfält och inlämningsnod kommer fram till dem
+med filens namn och utan filen. Att inlämningen själv bär filen är en egen,
+ännu ogjord uppgift (Johan 9/10).
+
 ### Ett exempelfoto, om värden bjuder på ett
 
 Story 108. En filfråga kan bära ett **exempelfoto** i sin data — en adress och

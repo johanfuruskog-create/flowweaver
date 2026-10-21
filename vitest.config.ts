@@ -75,7 +75,26 @@ export default defineConfig({
             headless: true,
             viewport: { width: 1280, height: 800 },
             provider: playwright(),
-            instances: [{ browser: "chromium" }],
+            /*
+             * WebKit too, since 9/10 (Johan's yes): Safari is the iPad's only
+             * engine, and the first WebKit run found 30 failures Chromium
+             * never could — three of them real (a label that did not focus
+             * the field picker, Swedish language names raised mid-sentence,
+             * a canvas whose draw grew with the square of the guide). Two
+             * engines on eight workers: see LOGG 9/10 for the time it costs.
+             *
+             * Firefox is not in the ordinary suite (LOGG 10/10): Playwright's
+             * Firefox focuses a page's window before every mouse event, so
+             * parallel pages take focus from one another and the focus tests
+             * fail at random — one to five a run. On one worker it is green.
+             * So it runs on its own, on one worker, before every release:
+             * `npm run test:firefox` (~15 min; Johan 10/10, the step is in
+             * `.github/workflows/release.yml`). FW_FIREFOX is set by that
+             * script only.
+             */
+            instances: process.env.FW_FIREFOX
+              ? [{ browser: "firefox", maxWorkers: 1 }]
+              : [{ browser: "chromium" }, { browser: "webkit" }],
           },
         },
       },

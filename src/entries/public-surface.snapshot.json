@@ -176,10 +176,12 @@
       "palettes",
       "registerCodeList",
       "registerLocale",
+      "registerLookupOrigins",
       "registerMapProvider",
       "type * from ../viewer/types/graph",
       "unregisterCodeList",
       "unregisterLocale",
+      "unregisterLookupOrigins",
       "unregisterMapProvider"
     ],
     "entries/editor.ts": [
@@ -230,11 +232,13 @@
       "registerCodeList",
       "registerLinkPicker",
       "registerLocale",
+      "registerLookupOrigins",
       "registerMapProvider",
       "type * from ../viewer/types/graph",
       "unregisterCodeList",
       "unregisterLinkPicker",
       "unregisterLocale",
+      "unregisterLookupOrigins",
       "unregisterMapProvider"
     ]
   }

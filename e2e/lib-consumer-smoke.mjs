@@ -419,9 +419,29 @@ async function main() {
 
     browser = await chromium.launch();
 
+    /*
+     * Every request a page makes, kept until the end so the clicks are in it.
+     *
+     * The security claim the open analysis rests on (ISA/TSA, Johan 8/10) is
+     * that FlowWeaver itself sends nothing anywhere: no font, no analytics, no
+     * CDN, no call home — the page's own origin, and whatever service the HOST
+     * registers, are the only places a request may go. These pages register
+     * none, so their own origin is the whole allowed list. A data: or blob: URL
+     * never leaves the browser and is not a request to anyone.
+     */
+    const ORIGIN = `http://localhost:${PORT}`;
+    const traffic = [];
+
     /** Öppnar en sida som bara laddat EN bundle och samlar dess konsolfel. */
     const open = async (target) => {
       const page = await browser.newPage({ viewport: { width: 1280, height: 820 } });
+      const away = [];
+      traffic.push({ target, away });
+      page.on("request", (request) => {
+        const url = request.url();
+        if (url.startsWith("data:") || url.startsWith("blob:")) return;
+        if (new URL(url).origin !== ORIGIN) away.push(url);
+      });
       const errors = [];
       page.on("pageerror", (error) => errors.push(String(error)));
       page.on("console", (message) => message.type() === "error" && errors.push(message.text()));
@@ -693,6 +713,13 @@ async function main() {
         () => typeof window.FlowWeaverEditor?.checkSetup === "function",
       ),
     );
+    for (const { target, away } of traffic) {
+      check(
+        `${target}: ingen förfrågan lämnar sidans eget ursprung`,
+        away.length === 0,
+        away.slice(0, 3).join(", "),
+      );
+    }
   } finally {
     if (browser) await browser.close();
     if (server) server.close();

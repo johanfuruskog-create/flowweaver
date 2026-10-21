@@ -1,3 +1,4 @@
+import { tab } from "../../../testing/tab-keys";
 import { userEvent } from "@vitest/browser/context";
 import { afterEach, describe, expect, test } from "vitest";
 
@@ -146,8 +147,8 @@ describe("flera villkor", () => {
 
     expect(panel.querySelectorAll(".properties-panel__visibility .properties-panel__condition"), "båda villkoren ritas").toHaveLength(2);
     value.focus();
-    await userEvent.keyboard("{Control>}a{/Control}5000");
-    await userEvent.tab();
+    await userEvent.keyboard("{ControlOrMeta>}a{/ControlOrMeta}5000");
+    await tab();
     await settle(400);
 
     expect(node(editor, "rc-town").visibility).toEqual({
@@ -180,7 +181,7 @@ describe("ett ensamt villkor skriver aldrig om match", () => {
     const value = panel.querySelector<HTMLInputElement>('[data-rule-condition-id="rc-cond-income"] input[data-rule-condition-property="value"]')!;
 
     value.focus();
-    await userEvent.keyboard("{Control>}a{/Control}70000");
+    await userEvent.keyboard("{ControlOrMeta>}a{/ControlOrMeta}70000");
     await settle(300);
 
     const cases = node(editor, "rc-rule").data.cases as Array<{ match: string; conditions: Array<{ value: string }> }>;

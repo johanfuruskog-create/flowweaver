@@ -175,7 +175,13 @@ describe("Lägg till / Ta bort-golv (repeaterande sida)", () => {
     const floor = Math.min(144, card.getBoundingClientRect().width);
 
     expect(add.width, "Lägg till under golvet").toBeGreaterThanOrEqual(floor - 1);
-    expect(remove.width, "Ta bort under golvet").toBeGreaterThanOrEqual(floor - 1);
+    // Ta bort har inget 9rem-golv sedan B3 (Astra 30/9, `min-width: 0` i
+    // guide-preview.scss): ord och soptunna utan ram, innehållets bredd. Den
+    // höll ändå golvet här på Linux — men bara för att "Ta bort barn 1" råkade
+    // bli 143+ px i det typsnittet; i macOS SF blir den 137 px (mätt 9/10).
+    // Det den ska hålla är K6:s träffyta.
+    expect(remove.width, "Ta bort under K6").toBeGreaterThanOrEqual(44);
+    expect(remove.height, "Ta bort under K6").toBeGreaterThanOrEqual(44);
     expect(add.right, "Lägg till sticker ut ur fönstret").toBeLessThanOrEqual(width);
     expect(remove.right, "Ta bort sticker ut ur fönstret").toBeLessThanOrEqual(width);
   });

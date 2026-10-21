@@ -39,6 +39,37 @@
   }
 }
 
+// The same chevron, seated on the text's baseline instead of the box's
+// centre — for a chevron that sits next to lowercase text and has to stand
+// on its x-height whatever the typeface (Johan 9/10, the chip's).
+//
+// Centred, the ink's height depends on the face: the line box's middle lies
+// (ascent − descent) / 2 above the baseline, and nothing in CSS reads that.
+// Measured in the field's test, ink against the x-height's middle: SF −0.88
+// px, Arial +0.06, Verdana −0.75 — the lift above was tuned on Linux, and
+// the iPad that found fynd b runs SF. The baseline and `ex` are the face's
+// own: anchored there the ink lands on the middle of the x-height in any
+// font.
+//
+// The arithmetic, all in the drawn box: 7 px + a 2 px border is a 9 px
+// square; with no baseline of its own its baseline is the bottom edge, so
+// its centre stands 4.5 px above the text's baseline. Turned 45°, the ink
+// (the lower half) centres a quarter of the turned height below that —
+// 9√2 / 4 = 3.18 px — so 1.32 px above the baseline. The translate takes it
+// from there to half an `ex`.
+//
+// The container must align its items on the baseline too (`align-items:
+// baseline`): a lone baseline item in a centred row falls back to the top.
+// That is why this is a variant and not the default — the toolbar's menus and
+// the panel's summaries centre their rows, and they keep `drawn` as it was.
+@mixin drawn-on-baseline {
+  @include drawn;
+
+  align-self: baseline;
+  margin-bottom: 0;
+  transform: translateY(calc(1.32px - 0.5ex)) rotate(45deg);
+}
+
 @mixin open {
   margin-top: 3px;
   margin-bottom: 0;

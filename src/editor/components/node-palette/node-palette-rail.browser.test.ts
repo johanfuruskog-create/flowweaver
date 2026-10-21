@@ -1,3 +1,5 @@
+import { TAB } from "../../../testing/tab-keys";
+import { SCROLL_SNAP } from "../../../testing/scroll-snap";
 import { afterEach, describe, expect, test } from "vitest";
 
 import "../../../viewer/node-types/default-node-types";
@@ -168,12 +170,13 @@ describe("sidomenyn (kriterium 3 och 5)", () => {
   test("menyn ändrar varken grafen eller noderna", async () => {
     const editor = await editorOf();
     const node = editor.shadowRoot!.querySelector("node-editor")!.shadowRoot!.querySelector("flow-node")!;
-    const before = [JSON.stringify(editor.getData()), node.getBoundingClientRect().left];
+    const before = { graph: JSON.stringify(editor.getData()), left: node.getBoundingClientRect().left };
 
     firstMulti(editor).click();
     await settle();
 
-    expect([JSON.stringify(editor.getData()), node.getBoundingClientRect().left]).toEqual(before);
+    expect(JSON.stringify(editor.getData())).toBe(before.graph);
+    expect(Math.abs(node.getBoundingClientRect().left - before.left), "noden flyttade sig").toBeLessThanOrEqual(SCROLL_SNAP);
   });
 });
 
@@ -298,7 +301,7 @@ describe("tillgängligt (kriterium 10)", () => {
     const tip = inPalette(editor, ".node-palette__tip");
 
     inPalette<HTMLButtonElement>(editor, '[data-action="palette-open"]').focus();
-    await userEvent.keyboard("{Tab}");
+    await userEvent.keyboard(TAB);
 
     expect(active(editor)).toBe(categories(editor)[0]);
     expect(tip.hidden).toBe(false);

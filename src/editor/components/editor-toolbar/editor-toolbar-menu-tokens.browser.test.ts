@@ -104,7 +104,12 @@ describe("verktygsradens menyer", () => {
     range.selectNodeContents(long);
     expect(range.getClientRects().length, "\"Exportera inlämningens schema\" bröts över flera rader trots att den ryms på en").toBe(1);
     // Menyn har växt förbi sin min-width-golv (210px) för att rymma raden.
-    expect(menu.getBoundingClientRect().width).toBeGreaterThan(280);
+    // Golvet läses ur menyn, inte ur en siffra: raden är ~297 px meny på
+    // Linux men ~269 på macOS, där system-ui är SF (mätt 9/10) — ett fast
+    // "> 280" var Linux-typsnittets bredd, inte påståendet.
+    expect(menu.getBoundingClientRect().width).toBeGreaterThan(
+      Number.parseFloat(getComputedStyle(menu).minWidth),
+    );
   });
 
   test("men en verkligt lång etikett radbryts ändå, ovanför taket, utan att krocka med kbd-hinten", async () => {
@@ -136,8 +141,15 @@ describe("verktygsradens menyer", () => {
   });
 
   test("hover byter yta och text till plusmenyns primärfärger", async () => {
-    const { items } = await openFileMenu();
+    const { toolbar, items } = await openFileMenu();
     const item = items()[0]!;
+
+    // The pointer first goes somewhere that is not the row. It stays wherever
+    // the previous test left it, and a menu opened under it draws its row
+    // hovered from the start — then "rest" and "hover" read the same colour
+    // (seen 9/10 on the Mac, where the files ran in another order; this test
+    // run twice in a row fails the second time without the line).
+    await userEvent.hover(toolbar.querySelector<HTMLElement>('[data-menu-trigger="file"]')!);
     const before = getComputedStyle(item).backgroundColor;
 
     await userEvent.hover(item);

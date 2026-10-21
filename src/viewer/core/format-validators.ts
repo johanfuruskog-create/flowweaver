@@ -11,6 +11,7 @@
  * it is the absence of one, with the author supplying the rule.
  */
 import { getFormat } from "./format-registry";
+import { checkPattern } from "./safe-pattern";
 
 import "./default-formats";
 
@@ -31,19 +32,17 @@ export function validateFormat(
   }
 
   if (format === "regex") {
-    if (!pattern) return null;
+    /*
+     * A pattern nobody can compile is the author's fault, not the resident's:
+     * refusing the answer would strand somebody over a typo they cannot see.
+     * A pattern that can freeze the tab is let through the same way, for the
+     * same reason — and running it is the one thing worse than skipping it
+     * (`safe-pattern.ts`, measured 9/10). The editor's health check names
+     * both, so the setting is never dropped in silence.
+     */
+    if (!pattern || checkPattern(pattern) !== "ok") return null;
 
-    let regex: RegExp;
-
-    try {
-      regex = new RegExp(pattern);
-    } catch {
-      // A pattern nobody can compile is the author's fault, not the resident's:
-      // refusing the answer would strand somebody over a typo they cannot see.
-      return null;
-    }
-
-    return regex.test(value) ? null : "validation.format.pattern";
+    return new RegExp(pattern).test(value) ? null : "validation.format.pattern";
   }
 
   const registered = getFormat(format);

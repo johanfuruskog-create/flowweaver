@@ -1,3 +1,4 @@
+import { tab } from "../../../testing/tab-keys";
 import { userEvent } from "@vitest/browser/context";
 import { afterEach, describe, expect, test } from "vitest";
 
@@ -114,8 +115,8 @@ describe("svarsalternativens rader", () => {
 
     expect(field.checkVisibility(), "fältet syns direkt i det öppna kortet").toBe(true);
     field.focus();
-    await userEvent.keyboard("{Control>}a{/Control}mejl");
-    await userEvent.tab();
+    await userEvent.keyboard("{ControlOrMeta>}a{/ControlOrMeta}mejl");
+    await tab();
     await settle(600);
 
     const saved = exportGraphJson(first.editor.getData() as GraphData);
@@ -184,7 +185,7 @@ describe("svarsalternativens rader", () => {
     expect(options.at(-1)!.label).toBe("Brevduva");
 
     // Tillbaka till tomt: rubriken tar platshållaren igen, inte en nyckel.
-    await userEvent.keyboard("{Control>}a{/Control}{Backspace}");
+    await userEvent.keyboard("{ControlOrMeta>}a{/ControlOrMeta}{Backspace}");
     await settle();
     expect(nameOf(added), "rubriken när texten töms").toBe("Nytt alternativ");
   });
@@ -283,7 +284,7 @@ describe("svarsalternativens rader", () => {
     const field = row(panel, "ports-mail").querySelector<HTMLTextAreaElement>('textarea[data-option-property="label"]')!;
 
     field.focus();
-    await userEvent.keyboard("{Control>}a{/Control}Brev{Enter}du{Shift>}{Enter}{/Shift}va");
+    await userEvent.keyboard("{ControlOrMeta>}a{/ControlOrMeta}Brev{Enter}du{Shift>}{Enter}{/Shift}va");
     expect(field.value).toBe("Brevduva");
     expect(label()).toBe("Brevduva");
 
@@ -312,7 +313,7 @@ describe("svarsalternativens rader", () => {
     expect(grown).toBeGreaterThan(oneLine * 1.5);
     expect(field.scrollHeight, "ingen rullning inuti").toBeLessThanOrEqual(field.clientHeight);
 
-    await userEvent.keyboard("{Control>}a{/Control}Ja");
+    await userEvent.keyboard("{ControlOrMeta>}a{/ControlOrMeta}Ja");
     expect(field.getBoundingClientRect().height).toBeCloseTo(oneLine, 0);
   });
 
@@ -344,7 +345,7 @@ describe("svarsalternativens rader", () => {
     const field = row(panel, "ports-mail").querySelector<HTMLTextAreaElement>('[data-option-property="label"]')!;
 
     field.focus();
-    await userEvent.keyboard("{Control>}a{/Control}Mejl");
+    await userEvent.keyboard("{ControlOrMeta>}a{/ControlOrMeta}Mejl");
     const title = row(panel, "ports-mail").querySelector<HTMLElement>("[data-option-title]")!;
 
     expect(title.querySelector("[data-option-position]")?.textContent).toBe("Alternativ 1, ");

@@ -2,6 +2,8 @@ import { afterEach, describe, expect, test } from "vitest";
 
 import "../../node-types/default-node-types";
 import "./guide-preview";
+// A test may read the editor (CLAUDE.md): the file door is the yardstick.
+import { importGraphJson } from "../../../editor/core/graph-io";
 
 import type { GuidePreview } from "./guide-preview";
 
@@ -98,6 +100,50 @@ describe("something that is not a guide", () => {
     const preview = await mount(value);
 
     expect(errorText(preview)).not.toBe("");
+  });
+});
+
+/*
+ * The wrong shape (10/10). The random-guide probe found the door answering ok
+ * to `nodes: {}` and to a connection with `from: null`, and the engine then
+ * threw. The door now asks the file door's shape check (`graph-shape.ts`), so a
+ * host gets the sentence the file door gives the same JSON — read here from
+ * `importGraphJson` itself, so the two cannot drift apart.
+ */
+describe("a guide of the wrong shape", () => {
+  const node = {
+    id: "q",
+    type: "text-question",
+    position: { x: 0, y: 0 },
+    data: { title: { sv: "Fråga" }, variableName: "a" },
+  };
+
+  test.each([
+    ["nodes that is not a list", { startNodeId: "q", nodes: {}, connections: [] }],
+    ["a node that is null", { startNodeId: "q", nodes: [null], connections: [] }],
+    [
+      "a connection without a start",
+      { startNodeId: "q", nodes: [node], connections: [{ id: "c", from: null, to: { nodeId: "q", portId: "input" } }] },
+    ],
+  ])("%s: refused with the file door's sentence, nothing thrown", async (_name, value) => {
+    const thrown: unknown[] = [];
+    const onError = (event: ErrorEvent): void => {
+      thrown.push(event.error ?? event.message);
+      event.preventDefault();
+    };
+    window.addEventListener("error", onError);
+
+    try {
+      const preview = await mount(value);
+      const file = importGraphJson(JSON.stringify(value));
+
+      expect(thrown).toEqual([]);
+      expect(file.success).toBe(false);
+      expect(errorText(preview)).toContain(file.success ? "?" : file.errors[0]!);
+      expect(preview.shadowRoot!.querySelector("[data-text-answer]")).toBeNull();
+    } finally {
+      window.removeEventListener("error", onError);
+    }
   });
 });
 

@@ -1,3 +1,4 @@
+import { tab } from "../../../testing/tab-keys";
 import { afterEach, describe, expect, test } from "vitest";
 import { userEvent } from "vitest/browser";
 
@@ -314,7 +315,7 @@ describe("sökning och val (punkt 6 och 7)", () => {
 
     await userEvent.click(control(picker));
     await userEvent.keyboard("{ArrowDown}{ArrowDown}");
-    await userEvent.tab();
+    await tab();
 
     expect(picker.isOpen, "Tab stänger").toBe(false);
     expect(seen).toEqual([]);
@@ -328,7 +329,7 @@ describe("sökning och val (punkt 6 och 7)", () => {
 
     await userEvent.click(control(picker));
     await userEvent.keyboard("{ArrowDown}");
-    await userEvent.tab({ shift: true });
+    await tab({ shift: true });
 
     expect(picker.isOpen, "ingen öppen yta kvar bakom fokus").toBe(false);
     expect(seen).toEqual([]);

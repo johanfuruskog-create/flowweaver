@@ -42,7 +42,7 @@
  *    `VACUUM INTO` is one statement that writes a compacted copy and works the
  *    same on every version either machine has.
  *  - **A fresh file is created 0644 by the receiver's umask**, which would
- *    leave `johan` able to read the register but not to prune it. So a file
+ *    leave the operator on the host able to read the register but not to prune it. So a file
  *    this module creates gets group write, matching the outbox directory: the
  *    person tidying up does it without `sudo`, as the runbook promises.
  */

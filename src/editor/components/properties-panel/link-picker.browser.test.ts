@@ -1,5 +1,6 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { userEvent } from "vitest/browser";
+import { LINE_END } from "../../../testing/caret-keys";
 
 import "../../../viewer/node-types/default-node-types";
 import "./properties-panel";
@@ -46,7 +47,7 @@ function mount(): { field: RichTextField; text: HTMLElement; link: HTMLButtonEle
 /** "mer" selected, the way a person does it: from the end, three to the left. */
 async function selectMer(text: HTMLElement): Promise<void> {
   text.focus();
-  await userEvent.keyboard("{End}{Shift>}{ArrowLeft}{ArrowLeft}{ArrowLeft}{/Shift}");
+  await userEvent.keyboard(`${LINE_END}{Shift>}{ArrowLeft}{ArrowLeft}{ArrowLeft}{/Shift}`);
 }
 
 test("utan väljare: fältets egen dialog frågar efter adressen", async () => {
@@ -92,7 +93,7 @@ test("med väljare och inget markerat: sidans titel blir texten", async () => {
   const { field, text, link } = mount();
 
   text.focus();
-  await userEvent.keyboard("{End}");
+  await userEvent.keyboard(LINE_END);
   await userEvent.click(link);
   await vi.waitFor(() => expect(field.value).not.toBe("Läs mer"));
 
@@ -115,7 +116,7 @@ test("i en länk tar knappen bort länken, som fet tar bort fetstil", async () =
 
   field.value = "Läs [mer](/studera.html)";
   text.focus();
-  await userEvent.keyboard("{End}{ArrowLeft}");
+  await userEvent.keyboard(`${LINE_END}{ArrowLeft}`);
   expect(link.getAttribute("aria-pressed")).toBe("true");
 
   await userEvent.click(link);

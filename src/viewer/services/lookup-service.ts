@@ -69,6 +69,67 @@ export const LOOKUP_LIMIT = 8;
 
 const TOM: LookupResult = { items: [], error: null };
 
+/*
+ * Which origins a lookup may reach — the host's list, never the guide's.
+ *
+ * The endpoint is guide data, and a guide is imported, shared and edited by
+ * people who are not the host. What a resident types goes to that address, so
+ * an address nobody on the hosting side chose is a way to send a resident's
+ * words somewhere the page's owner never agreed to (security finding 6, 9/10).
+ *
+ * Nothing registered means the page's own origin only — a relative endpoint,
+ * which is what `docs/UPPSLAG-KONTRAKT.md` has always recommended. Chosen over
+ * "anything goes until a list exists" because that would leave every host that
+ * never heard of this list exactly as exposed as before, and over "nothing at
+ * all" because the own origin is the host's own: a guide pointed there reaches
+ * only what the host serves. What it costs is a host that already looks up on
+ * another origin: its field says "Uppslaget kunde inte nås" until it registers
+ * that origin. No bundled guide does (16/9, `e2e/lookup-service-smoke.mjs`),
+ * and the built site's CSP (`connect-src 'self'`) would have refused it anyway.
+ *
+ * A module-level list, like the map provider and the code lists, and not an
+ * attribute: the editor's own preview runs lookups too, and a policy that has
+ * to be repeated on every element is one that will be missing on one of them.
+ */
+let allowedOrigins: ReadonlySet<string> = new Set();
+
+/**
+ * Allows lookups to these origins, besides the page's own. Replaces any list
+ * registered before. Each entry is a bare origin — `https://api.example.se`,
+ * scheme and host and any port, nothing after — and anything else is refused
+ * by name: a path here would read as a restriction it could not enforce, and
+ * a missing scheme as a host it could not match.
+ */
+export function registerLookupOrigins(origins: readonly string[]): void {
+  const next = new Set<string>();
+
+  for (const entry of origins) {
+    let origin: string | null = null;
+    try {
+      const url = new URL(entry);
+      if (url.protocol === "https:" || url.protocol === "http:") {
+        origin = url.origin;
+      }
+    } catch {
+      origin = null;
+    }
+
+    if (origin === null || origin !== String(entry).trim().replace(/\/$/, "").toLowerCase()) {
+      throw new TypeError(
+        `registerLookupOrigins: "${String(entry)}" is not an origin like https://api.example.se`,
+      );
+    }
+    next.add(origin);
+  }
+
+  allowedOrigins = next;
+}
+
+/** Back to the page's own origin only. */
+export function unregisterLookupOrigins(): void {
+  allowedOrigins = new Set();
+}
+
 export class LookupService {
   /** The fewest characters before a lookup is made. */
   static getMinChars(node: FlowNodeData): number {
@@ -249,7 +310,17 @@ export class LookupService {
     }
 
     try {
-      const url = new URL(endpoint, globalThis.location?.href ?? "http://localhost");
+      const page = new URL(globalThis.location?.href ?? "http://localhost");
+      const url = new URL(endpoint, page);
+
+      // Judged on the resolved URL, so `//elsewhere`, `data:` and the like
+      // are what the browser would make of them, not what they look like.
+      // Refused before anything leaves the page; the field then says what it
+      // says for any lookup that failed — "Uppslaget kunde inte nås".
+      if (url.origin !== page.origin && !allowedOrigins.has(url.origin)) {
+        return { items: [], error: `Uppslag till ${url.origin} är inte tillåtet av sidan.` };
+      }
+
       url.searchParams.set("q", term);
       url.searchParams.set("limit", String(LOOKUP_LIMIT));
 
@@ -259,6 +330,11 @@ export class LookupService {
 
       const svar = await fetchImpl(url.toString(), {
         headers: { Accept: "application/json" },
+        // fetch's default is `same-origin`, and measured 9/10 in Chromium a
+        // cookie the page set reached a relative endpoint. The contract has
+        // always said "without credentials": a service behind a login is the
+        // BFF's to reach, and a guide is not the host's session to spend.
+        credentials: "omit",
       });
 
       if (!svar.ok) {

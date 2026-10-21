@@ -222,6 +222,21 @@ interface SnapTarget {
  * The pointer route never blocks the next tap: a second tap is a second press
  * (zoom buttons are pressed in a row), only its own click is swallowed.
  */
+/*
+ * Every instant scroll of the canvas goes through here, rounded to the pixel.
+ *
+ * Engines store a fractional offset differently: Chromium rounds 10.6 to 11,
+ * WebKit (Safari, the iPad) truncates it to 10 — measured 9/10. Truncation
+ * always errs the same way, so it adds up: twelve Ctrl+wheel steps in and
+ * twelve out moved the point under the pointer 4–5 px in WebKit and about
+ * 1 px in Chromium. Rounding here gives every engine Chromium's error, which
+ * goes both ways and does not add up.
+ */
+function scrollViewport(viewport: HTMLElement, left: number, top: number): void {
+  viewport.scrollLeft = Math.round(left);
+  viewport.scrollTop = Math.round(top);
+}
+
 function onPress(button: HTMLElement, act: (fromPointer: boolean) => void): void {
   /** Long enough to cover a compatibility click after a tap. */
   const SAME_PRESS = 700;
@@ -2324,8 +2339,7 @@ export class NodeEditor extends HTMLElement {
     const baseX = view.x + (event.clientX - rect.left - minimap.clientLeft) / view.scale;
     const baseY = view.y + (event.clientY - rect.top - minimap.clientTop) / view.scale;
 
-    viewport.scrollLeft = baseX * this.zoom - viewport.clientWidth / 2;
-    viewport.scrollTop = baseY * this.zoom - viewport.clientHeight / 2;
+    scrollViewport(viewport, baseX * this.zoom - viewport.clientWidth / 2, baseY * this.zoom - viewport.clientHeight / 2);
   }
 
   private getViewportElement(): HTMLElement | null {
@@ -2468,8 +2482,7 @@ export class NodeEditor extends HTMLElement {
     if (smooth && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       viewport.scrollTo({ left, top, behavior: "smooth" });
     } else {
-      viewport.scrollLeft = left;
-      viewport.scrollTop = top;
+      scrollViewport(viewport, left, top);
     }
     this.lastViewportSize = {
       width: viewport.clientWidth,
@@ -2552,8 +2565,7 @@ export class NodeEditor extends HTMLElement {
     this.workspaceGeometry = geometry;
     this.applyWorkspaceGeometry();
 
-    viewport.scrollLeft = targetLeft;
-    viewport.scrollTop = targetTop;
+    scrollViewport(viewport, targetLeft, targetTop);
     this.ensureWorkspaceBuffer();
 
     /*
@@ -2965,8 +2977,7 @@ export class NodeEditor extends HTMLElement {
     };
     this.applyWorkspaceGeometry();
     // growLeft/Top are in base px; the scroll is in scaled px.
-    viewport.scrollLeft = previousScrollLeft + growLeft * this.zoom;
-    viewport.scrollTop = previousScrollTop + growTop * this.zoom;
+    scrollViewport(viewport, previousScrollLeft + growLeft * this.zoom, previousScrollTop + growTop * this.zoom);
     this.expandingWorkspace = false;
     this.drawConnections();
 
@@ -3094,8 +3105,7 @@ export class NodeEditor extends HTMLElement {
 
     // The mirror of the growth path: the content moved by the trim, so the
     // scroll moves with it and the view stays where it was.
-    viewport.scrollLeft = previousLeft - trimLeft * this.zoom;
-    viewport.scrollTop = previousTop - trimTop * this.zoom;
+    scrollViewport(viewport, previousLeft - trimLeft * this.zoom, previousTop - trimTop * this.zoom);
     this.expandingWorkspace = false;
     this.scheduleDrawConnections();
   }
@@ -7053,8 +7063,7 @@ export class NodeEditor extends HTMLElement {
       const centerX = viewport.scrollLeft + previousSize.width / 2;
       const centerY = viewport.scrollTop + previousSize.height / 2;
 
-      viewport.scrollLeft = centerX - currentSize.width / 2;
-      viewport.scrollTop = centerY - currentSize.height / 2;
+      scrollViewport(viewport, centerX - currentSize.width / 2, centerY - currentSize.height / 2);
     }
 
     this.lastViewportSize = currentSize;

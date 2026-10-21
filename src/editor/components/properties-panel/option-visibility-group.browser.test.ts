@@ -451,7 +451,14 @@ describe("vända 6 — kortets egna etiketter och avdelare, som bilden", () => {
     const wrap = card(editor, "opt-foretag").querySelector<HTMLElement>(".properties-panel__option-visibility-conditions .properties-panel__select")!;
     const probe = document.createElement("span");
 
-    editor.append(probe);
+    /*
+     * In the page, not in the editor: a child of the editor has no slot to
+     * be drawn in, and WebKit does not restyle an undrawn element — measured
+     * 9/10, its inline colour turned red while the computed one stayed grey.
+     * The probe only turns the token's text into a colour; it needs no
+     * inheritance from the editor.
+     */
+    document.body.append(probe);
     const tokenColour = () => {
       probe.style.color = getComputedStyle(editor).getPropertyValue("--fw-text-secondary");
       return getComputedStyle(probe).color;

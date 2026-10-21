@@ -9,6 +9,31 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
+/*
+ * WebKit computes only the prefixed property — `userSelect` is undefined there
+ * (measured 9/10) while `-webkit-user-select` in the stylesheet is honoured.
+ * Chromium and Firefox give the unprefixed one.
+ *
+ * Firefox does not inherit the computed value: below `:host` every element
+ * computes `auto`, which the spec resolves to the parent's `none` — and it is
+ * honoured (measured 10/10: a triple click under `:host { user-select: none }`
+ * selects nothing in all three engines, without it the text in all three). So
+ * the value that counts is the nearest one that is not `auto`, up through the
+ * shadow root to the host. In Chromium and WebKit the element's own value is
+ * already that one, and the walk stops where it starts.
+ */
+function userSelect(element: Element): string {
+  for (let at: Element | null = element; at; ) {
+    const style = getComputedStyle(at);
+    const value = style.userSelect || style.getPropertyValue("-webkit-user-select");
+    if (value !== "auto") return value;
+    const root: ParentNode | null = at.parentNode;
+    at = root instanceof ShadowRoot ? root.host : at.parentElement;
+  }
+
+  return "auto";
+}
+
 function montera(): HTMLElement {
   const palette = document.createElement("node-palette");
   document.body.append(palette);
@@ -35,7 +60,7 @@ describe("node-palette", () => {
 
     for (const yta of ytor) {
       expect(
-        getComputedStyle(yta).userSelect,
+        userSelect(yta),
         `${yta.className || yta.tagName} går att markera`,
       ).toBe("none");
     }
@@ -49,7 +74,7 @@ describe("node-palette", () => {
     const field = document.createElement("input");
     palette.shadowRoot?.querySelector(".node-palette")?.append(field);
 
-    expect(getComputedStyle(field).userSelect).toBe("text");
+    expect(userSelect(field)).toBe("text");
   });
 });
 

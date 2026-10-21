@@ -228,6 +228,8 @@ h3 {
 input[type="text"] {
   width: 100%;
   box-sizing: border-box;
+  /* The 44 px family, with the select beside it (Johan 9/10). */
+  min-height: var(--fw-control-height);
   padding: 10px 12px;
   border: 1px solid var(--fw-border-control);
   border-radius: var(--fw-radius-md);

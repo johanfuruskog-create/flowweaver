@@ -48,7 +48,7 @@ an object:
 
 <guide-preview></guide-preview>
 
-<script src="https://flowweaver.se/lib/0.11/flowweaver-viewer.global.js"></script>
+<script src="https://flowweaver.se/lib/0.12/flowweaver-viewer.global.js"></script>
 
 <script>
   fetch("my-guide.json")

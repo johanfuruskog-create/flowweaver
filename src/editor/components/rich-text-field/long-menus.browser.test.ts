@@ -1,3 +1,4 @@
+import { DOC_END, DOC_START } from "../../../testing/caret-keys";
 import { page, userEvent } from "@vitest/browser/context";
 import { afterAll, afterEach, describe, expect, test } from "vitest";
 
@@ -234,7 +235,7 @@ describe("långa menyer i en låg panel (900 × 600, 14 svar)", () => {
     const text = field.shadowRoot!.querySelector<HTMLElement>("[data-text]")!;
 
     text.focus();
-    await userEvent.keyboard("{Control>}{Home}{/Control}{Shift>}{ArrowRight}{ArrowRight}{/Shift}");
+    await userEvent.keyboard(`${DOC_START}{Shift>}{ArrowRight}{ArrowRight}{/Shift}`);
     await settle();
     const before = selectionRange(field);
     const beforeText = before.toString();
@@ -260,7 +261,7 @@ describe("långa menyer i en låg panel (900 × 600, 14 svar)", () => {
     const text = field.shadowRoot!.querySelector<HTMLElement>("[data-text]")!;
 
     text.focus();
-    await userEvent.keyboard("{Control>}{End}{/Control}");
+    await userEvent.keyboard(DOC_END);
     await userEvent.click(field.shadowRoot!.querySelector<HTMLElement>("[data-answer-toggle]")!);
     await settle(200);
     field.shadowRoot!.querySelector<HTMLElement>("[data-answer-menu] button")!.focus();

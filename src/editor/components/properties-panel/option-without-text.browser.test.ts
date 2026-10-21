@@ -1,3 +1,4 @@
+import { tab } from "../../../testing/tab-keys";
 import { userEvent } from "@vitest/browser/context";
 import { afterEach, describe, expect, test } from "vitest";
 
@@ -76,7 +77,7 @@ describe("ett nytt svarsalternativ utan text", () => {
     // Förbi editorns 400 ms bokföring: då har kontrollen redan tigit en gång,
     // och det är att lämna fältet som ska få den att säga till.
     await settle(800);
-    await userEvent.tab();
+    await tab();
     await settle(300);
 
     expect(health.textContent).toContain(WARNING);
@@ -91,14 +92,14 @@ describe("ett nytt svarsalternativ utan text", () => {
 
     await userEvent.click(panel.querySelector<HTMLElement>('[data-action="add-option"]')!);
     await settle();
-    await userEvent.tab();
+    await tab();
     await settle(300);
     expect(health.textContent).toContain(WARNING);
 
     const label = [...panel.querySelectorAll<HTMLInputElement>('[data-option-property="label"]')].at(-1)!;
     putCursorIn(label);
     await userEvent.keyboard("Fax");
-    await userEvent.tab();
+    await tab();
     await settle(800);
 
     expect(health.textContent).not.toContain(WARNING);
@@ -125,13 +126,13 @@ describe("ett nytt svarsalternativ utan text", () => {
 
     new MutationObserver(() => everMarked.push(mark() !== null)).observe(outline, { childList: true, subtree: true });
     putCursorIn(label);
-    await userEvent.keyboard("{Control>}a{/Control}{Backspace}");
+    await userEvent.keyboard("{ControlOrMeta>}a{/ControlOrMeta}{Backspace}");
     await settle(800);
     expect(label.value).toBe("");
     expect(everMarked.length, "listan ritades om efter ändringen").toBeGreaterThan(0);
     expect(everMarked.filter(Boolean)).toEqual([]);
 
-    await userEvent.tab();
+    await tab();
     await settle(300);
     expect(mark()?.getAttribute("aria-label")).toContain("svarsalternativ 2 saknar text");
   });
